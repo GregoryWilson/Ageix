@@ -5,6 +5,7 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from services.git_service import GitService
 
 
 class PromotionService:
@@ -12,6 +13,7 @@ class PromotionService:
         self.repo_root = repo_root.resolve()
         self.stage_root = self.repo_root / ".ageix" / "staged"
         self.manifest_root = self.repo_root / ".ageix" / "manifests"
+        self.git = GitService(self.repo_root)
 
     def _safe_repo_path(self, relative_path: str) -> Path:
         candidate = (self.repo_root / relative_path).resolve()
