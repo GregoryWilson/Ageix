@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 from models.patch_manifest import PatchFile, PatchManifest
+from models.patch_proposal import PatchProposal
 
 
 class StagingService:
@@ -93,3 +94,54 @@ class StagingService:
 
     def get_manifest_path(self, patch_id: str) -> Path:
         return self.manifest_root / f"{patch_id}.json"
+    
+    def create_stage_from_patch_proposal(
+        self,
+        proposal: dict,
+    ) -> PatchManifest:
+        changes = proposal.get("changes", [])
+
+        files = [
+            change["path"]
+            for change in changes
+        ]
+
+        manifest = self.create_stage(
+            files=files,
+            summary=proposal.get("summary", "DevWorker patch proposal"),
+            created_by="dev_worker",
+            evidence_sources=[
+                evidence.get("path", "")
+                for evidence in proposal.get("evidence_used", [])
+                if evidence.get("path")
+            ],
+        )
+
+        stage_path = self.get_stage_path(manifest.patch_id)
+
+        for change in changes:
+            operation = change.get("operation")
+
+            if operation != "replace_file":
+                raise ValueError(
+                    f"Unsupported patch proposal operation: {operation}"
+                )
+
+            relative_path = change["path"]
+            staged_file = stage_path / relative_path
+            staged_file.parent.mkdir(parents=True, exist_ok=True)
+            staged_file.write_text(
+                change["content"],
+                encoding="utf-8",
+            )
+
+        # Important: update hashes after writing replacement contents
+        for manifest_file in manifest.files:
+            staged_file = stage_path / manifest_file.path
+            manifest_file.staged_hash = self._hash_file(staged_file)
+
+        manifest.save(
+            self.get_manifest_path(manifest.patch_id)
+        )
+
+        return manifest

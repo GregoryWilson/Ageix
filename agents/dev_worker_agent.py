@@ -5,6 +5,7 @@ from typing import Any
 
 from services.llm_service import invoke_llm
 from utils.prompt_loader import load_prompt
+from models.patch_proposal import PatchProposal, ContextRequest
 
 SYSTEM_PROMPT = load_prompt("dev_worker_system.txt")
 
@@ -35,18 +36,13 @@ def extract_json(raw: str) -> dict[str, Any]:
     return json.loads(cleaned)
 
 
-def ensure_list(value: Any) -> list[Any]:
-    if value is None:
-        return []
-    if isinstance(value, list):
-        return value
-    return [value]
-
-
 def normalize_devworker_result(
     data: dict[str, Any],
     packet: dict[str, Any],
 ) -> dict[str, Any]:
+    if data.get("response_type") and not data.get("result_type"):
+        data["result_type"] = data.pop("response_type")
+
     data.setdefault("agent", "devworker")
     data.setdefault("mode", "proposal_only")
     data.setdefault("objective", packet.get("objective", ""))
@@ -155,6 +151,26 @@ def ensure_list(value: Any) -> list[Any]:
         return value
     return [value]
 
+
+def parse_devworker_result(raw: str):
+    try:
+        data = json.loads(raw)
+
+        result_type = data.get("result_type")
+
+        if result_type == "patch_proposal":
+            return PatchProposal.model_validate(data)
+
+        if result_type == "context_request":
+            return ContextRequest.model_validate(data)
+
+    except Exception:
+        pass
+
+    return {
+        "result_type": "prose",
+        "content": raw,
+    }
 
 #-----------------------------------------------------#
 

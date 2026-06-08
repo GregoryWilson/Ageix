@@ -72,6 +72,7 @@ def _read_file(path_text: str, max_chars: int = 12000) -> dict[str, Any]:
     return {
         "path": path_text,
         "content": limited,
+        "content_mode": "partial_file" if len(text) > max_chars else "full_file",
         "lines": [
             {
                 "line": index,
@@ -136,10 +137,13 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
     read_targets = []
     target_files = payload.get("target_files", [])
 
+    read_targets = sorted(set(read_targets + target_files))
+
     file_reads = [
         _read_file(path)
-        for path in target_files
+        for path in read_targets
     ]
+
     search_terms = []
 
     for file_path in files:
@@ -155,11 +159,6 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
     if "registry" in instructions:
         search_terms.append("AGENT_REGISTRY")
 
-    file_reads = [
-        _read_file(path)
-        for path in sorted(set(read_targets))
-    ]
-
     searches = {
         term: _search_code(term)
         for term in sorted(set(search_terms))
@@ -172,6 +171,7 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
         "files": files,
         "file_count": len(files),
         "read_files": file_reads,
+        "evidence": file_reads,
         "searches": searches,
         "risks": [
             "Read-only inspection only. No files modified.",

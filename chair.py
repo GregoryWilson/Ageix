@@ -2,6 +2,8 @@ from typing import Any
 import copy
 from agents.dispatcher import dispatch_agent
 from work_order_runner import run_work_order
+from pathlib import Path
+from services.staging_service import StagingService
 
 
 def build_chair_message(status: dict) -> str:
@@ -212,7 +214,9 @@ def build_agent_registry() -> dict:
     }
 
 
-def execute_ready_step(state: dict[str, Any]) -> dict[str, Any]:
+def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
+    context_expansion_count: int = 0,) -> dict[str, Any]:
+  
     ready_steps = get_ready_steps(state)
 
     if not ready_steps:
@@ -258,9 +262,53 @@ def execute_ready_step(state: dict[str, Any]) -> dict[str, Any]:
                 devworker_packet,
             )
 
-            validate_devworker_deliverable(
-                agent_result.get("deliverable", {})
-            )
+            deliverable = agent_result.get("deliverable", {})
+
+            if deliverable.get("result_type") == "context_request":
+                return handle_context_request(
+                    context_request=agent_result.get("deliverable", {}),
+                    original_evidence_packet={
+                        "objective": step.get("objective", ""),
+                        "target_files": step.get("target_files", []),
+                        "evidence": devworker_packet.get("repo_evidence", []),
+                        "dependency_hints": devworker_packet.get("dependency_hints", []),
+                    },
+                    context_expansion_count=context_expansion_count,
+                    max_context_expansions=max_context_expansions,
+                )
+
+
+            if deliverable.get("result_type") == "patch_proposal":
+                validate_patch_proposal_deliverable(deliverable)
+
+                errors = validate_replace_file_evidence(
+                    deliverable,
+                    {
+                        "evidence": devworker_packet.get("repo_evidence", []),
+                    },
+                )
+
+                if errors:
+                    return {
+                        "chair_action": "patch_proposal_rejected",
+                        "status": "rejected",
+                        "errors": errors,
+                        "patch_proposal": deliverable,
+                    }
+
+                staging_service = StagingService(Path("."))
+
+                stage_manifest = (
+                    staging_service.create_stage_from_patch_proposal(
+                        deliverable
+                    )
+                )
+
+                agent_result["stage_manifest"] = stage_manifest.to_dict()
+                agent_result["patch_id"] = stage_manifest.patch_id
+
+            else:
+                validate_devworker_deliverable(deliverable)
 
         else:
             prior_artifact_ids = [
@@ -492,7 +540,61 @@ def validate_devworker_deliverable(deliverable: dict[str, Any]) -> None:
     if deliverable["no_write_confirmation"] is not True:
         raise ValueError("DevWorker must confirm no writes.")
     
+def validate_patch_proposal_deliverable(
+    deliverable: dict[str, Any]
+) -> None:
 
+    required = [
+        "result_type",
+        "objective",
+        "summary",
+        "files_considered",
+        "evidence_used",
+        "dependency_hints_used",
+        "assumptions",
+        "dependency_risks",
+        "changes",
+        "test_plan",
+        "no_write_confirmation",
+    ]
+
+    missing = [
+        key
+        for key in required
+        if key not in deliverable
+    ]
+
+    if missing:
+        raise ValueError(
+            f"Patch proposal missing fields: {missing}"
+        )
+
+    seen_paths: set[str] = set()
+
+    for change in deliverable["changes"]:
+        path = change.get("path")
+        operation = change.get("operation")
+        content = change.get("content")
+
+        if operation != "replace_file":
+            raise ValueError("Only replace_file operations are currently supported.")
+
+        if not isinstance(path, str) or not path.strip():
+            raise ValueError("Patch proposal change missing path.")
+
+        if path.startswith("/") or ".." in path.split("/"):
+            raise ValueError(f"Unsafe patch proposal path: {path}")
+
+        if path in seen_paths:
+            raise ValueError(f"Duplicate replacement proposed for {path}")
+
+        seen_paths.add(path)
+
+        if not isinstance(content, str):
+            raise ValueError(f"{path} replacement content must be a string.")
+
+        if not content.strip():
+            raise ValueError(f"{path} replacement content cannot be empty.")
 
 def compact_repo_evidence(item: dict[str, Any]) -> dict[str, Any]:
     lines = item.get("lines", [])
@@ -528,6 +630,166 @@ def compact_repo_evidence(item: dict[str, Any]) -> dict[str, Any]:
         "summary": summary or "Repository file read.",
     }
 
+def evidence_has_full_file(evidence_packet: dict, path: str) -> bool:
+    for item in evidence_packet.get("evidence", []):
+        if item.get("path") == path and item.get("content_mode") == "full_file":
+            return True
+    return False
+
+
+def validate_replace_file_evidence(patch_proposal: dict, evidence_packet: dict) -> list[str]:
+    errors: list[str] = []
+
+    for change in patch_proposal.get("changes", []):
+        if change.get("operation") == "replace_file":
+            path = change.get("path")
+            if not path:
+                errors.append("replace_file change is missing path.")
+                continue
+
+            if not evidence_has_full_file(evidence_packet, path):
+                errors.append(
+                    f"replace_file requires full_file evidence for {path}."
+                )
+
+    return errors
+
+
+def handle_context_request(
+    context_request: dict,
+    original_evidence_packet: dict,
+    context_expansion_count: int,
+    max_context_expansions: int,
+) -> dict:
+    if context_expansion_count >= max_context_expansions:
+        return {
+            "chair_action": "context_expansion_limit_reached",
+            "status": "blocked",
+            "context_request": context_request,
+        }
+
+    requested_files = [
+        item["path"]
+        for item in context_request.get("requested_files", [])
+        if item.get("path")
+    ]
+
+    if not requested_files:
+        return {
+            "chair_action": "context_request_invalid",
+            "status": "rejected",
+            "errors": ["context_request contained no requested files."],
+            "context_request": context_request,
+        }
+
+    expanded_evidence_packet = gather_repository_evidence_for_files(requested_files)
+
+    merged_evidence_packet = merge_evidence_packets(
+        original_evidence_packet,
+        expanded_evidence_packet,
+    )
+
+    return run_devworker_with_evidence(
+        evidence_packet=merged_evidence_packet,
+        context_expansion_count=context_expansion_count + 1,
+        max_context_expansions=max_context_expansions,
+    )
+
+def merge_evidence_packets(original: dict, expanded: dict) -> dict:
+    merged = dict(original)
+    by_path: dict[str, dict] = {}
+
+    for item in original.get("evidence", []):
+        path = item.get("path")
+        if path:
+            by_path[path] = item
+
+    for item in expanded.get("evidence", []):
+        path = item.get("path")
+        if path:
+            by_path[path] = item
+
+    merged["evidence"] = list(by_path.values())
+    return merged
+
+def gather_repository_evidence_for_files(paths: list[str]) -> dict:
+    repository_result = dispatch_agent(
+        "repository",
+        {
+            "objective": "Gather expanded repository context.",
+            "instructions": "Return full-file repository evidence for the requested files.",
+            "target_files": paths,
+            "mode": "evidence_gathering",
+            "context_mode": "full_file",
+            "include_dependency_hints": True,
+        },
+    )
+
+    return repository_result.get("content", repository_result)
+
+
+def run_devworker_with_evidence(
+    evidence_packet: dict,
+    context_expansion_count: int = 0,
+    max_context_expansions: int = 1,
+) -> dict:
+    devworker_packet = {
+        "objective": evidence_packet.get("objective", "Retry with expanded repository context."),
+        "target_files": evidence_packet.get("target_files", []),
+        "repo_evidence": evidence_packet.get("evidence", []),
+        "dependency_hints": evidence_packet.get("dependency_hints", []),
+        "constraints": {
+            "proposal_only": True,
+            "no_file_writes": True,
+            "must_use_repository_evidence": True,
+            "must_cite_lines_when_available": True,
+        },
+    }
+
+    agent_result = dispatch_agent(
+        "dev_worker",
+        devworker_packet,
+    )
+
+    deliverable = agent_result.get("deliverable", {})
+
+    if deliverable.get("result_type") == "context_request":
+        return handle_context_request(
+            context_request=deliverable,
+            original_evidence_packet=evidence_packet,
+            context_expansion_count=context_expansion_count,
+            max_context_expansions=max_context_expansions,
+        )
+    
+    if deliverable.get("result_type") == "patch_proposal":
+        validate_patch_proposal_deliverable(deliverable)
+
+        errors = validate_replace_file_evidence(
+            deliverable,
+            {
+                "evidence": evidence_packet.get("evidence", []),
+            },
+        )
+
+        if errors:
+            return {
+                "chair_action": "patch_proposal_rejected",
+                "status": "rejected",
+                "errors": errors,
+                "patch_proposal": deliverable,
+            }
+
+        staging_service = StagingService(Path("."))
+
+        stage_manifest = staging_service.create_stage_from_patch_proposal(
+            deliverable
+        )
+
+        agent_result["stage_manifest"] = stage_manifest.to_dict()
+        agent_result["patch_id"] = stage_manifest.patch_id
+
+    return agent_result
+
 #-----------------------------------------------------------------------#
 
 if __name__ == "__main__":
@@ -549,8 +811,7 @@ if __name__ == "__main__":
             "objective": "Review DevWorker evidence-aware proposal flow.",
             "instructions": "Use repository evidence from agents/dev_worker_agent.py and chair.py to propose next implementation steps. Do not modify files.",
             "target_files": [
-                "agents/dev_worker_agent.py",
-                "chair.py",
+                "scratch/context_loop_test.py"
             ],
             "expected_output": {
                 "type": "proposal"
