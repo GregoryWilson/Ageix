@@ -42,3 +42,7 @@ build/
 # Ollama / AI artifacts if created locally
 models/
 cache/
+
+# Staging and manifests
+.ageix/staged/
+.ageix/manifests/

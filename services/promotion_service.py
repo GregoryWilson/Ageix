@@ -94,3 +94,28 @@ class PromotionService:
 
         self._save_manifest(patch_id, manifest)
         return manifest
+    
+    def commit_promoted_patch(self, patch_id: str, message: str | None = None) -> dict[str, Any]:
+        manifest = self._load_manifest(patch_id)
+
+        if manifest.get("status") != "promoted":
+            raise ValueError("Patch must be promoted before commit.")
+
+        promoted_files = manifest.get("promoted_files", [])
+
+        if not promoted_files:
+            raise ValueError("No promoted files found in manifest.")
+
+        commit_message = message or f"Apply staged patch {patch_id}"
+
+        commit_hash = self.git.commit_paths(
+            message=commit_message,
+            paths=promoted_files,
+        )
+
+        manifest["status"] = "committed"
+        manifest["git_commit"] = commit_hash
+        manifest["committed_at"] = datetime.now(timezone.utc).isoformat()
+
+        self._save_manifest(patch_id, manifest)
+        return manifest
