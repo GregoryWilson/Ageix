@@ -1,9 +1,12 @@
+import json
 from typing import Any
 import copy
 from agents.dispatcher import dispatch_agent
 from work_order_runner import run_work_order
 from pathlib import Path
 from services.staging_service import StagingService
+from contracts.patch_contract import PatchProposal
+from services.patch_builder import PatchBuilder
 
 
 def build_chair_message(status: dict) -> str:
@@ -230,56 +233,67 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
 
     try:
         if agent_key == "dev_worker":
-            repository_result = dispatch_agent(
-                "repository",
-                {
-                    "objective": step.get("objective", ""),
-                    "instructions": step.get("instructions", ""),
-                    "target_files": step.get("target_files", []),
-                    "mode": "evidence_gathering",
-                    "include_dependency_hints": True,
-                },
-            )
+            agent_result: dict[str, Any] = {}
+            devworker_packet: dict[str, Any] = {}
 
-            repository_content = repository_result.get(
-                "content",
-                repository_result,
-            )
+            for expansion_attempt in range(max_context_expansions + 1):
+                repository_result = dispatch_agent(
+                    "repository",
+                    {
+                        "objective": step.get("objective", ""),
+                        "instructions": step.get("instructions", ""),
+                        "target_files": step.get("target_files", []),
+                        "mode": "evidence_gathering",
+                        "include_dependency_hints": True,
+                    },
+                )
 
-            devworker_packet = build_devworker_packet(
-                objective=step.get("objective", ""),
-                target_files=step.get("target_files", []),
-                repository_result=repository_content,
-            )
+                repository_content = repository_result.get("content", repository_result)
 
-            print("[Chair] DevWorker packet repo evidence count:", len(devworker_packet.get("repo_evidence", [])), flush=True)
+                devworker_packet = build_devworker_packet(
+                    objective=step.get("objective", ""),
+                    target_files=step.get("target_files", []),
+                    repository_result=repository_content,
+                )
 
-            devworker_packet["instructions"] = step.get("instructions", "")
-            devworker_packet["expected_output"] = step.get("expected_output", {})
+                devworker_packet["instructions"] = step.get("instructions", "")
+                devworker_packet["expected_output"] = step.get("expected_output", {})
 
-            agent_result = dispatch_agent(
-                "dev_worker",
-                devworker_packet,
-            )
+                print(
+                    "[Chair] DevWorker packet repo evidence count:",
+                    len(devworker_packet.get("repo_evidence", [])),
+                    flush=True,
+                )
+
+                agent_result = dispatch_agent("dev_worker", devworker_packet)
+                deliverable = agent_result.get("deliverable", {})
+
+                if deliverable.get("result_type") != "context_request":
+                    break
+
+                if expansion_attempt >= max_context_expansions:
+                    return {
+                        "chair_action": "context_request_unresolved",
+                        "status": "blocked",
+                        "context_request": deliverable,
+                        "executed_count": expansion_attempt + 1,
+                    }
+
+                requested_files = [
+                    item.get("path")
+                    for item in deliverable.get("requested_files", [])
+                    if item.get("path")
+                ]
+
+                step["target_files"] = sorted(
+                    set(step.get("target_files", [])) | set(requested_files)
+                )
 
             deliverable = agent_result.get("deliverable", {})
 
-            if deliverable.get("result_type") == "context_request":
-                return handle_context_request(
-                    context_request=agent_result.get("deliverable", {}),
-                    original_evidence_packet={
-                        "objective": step.get("objective", ""),
-                        "target_files": step.get("target_files", []),
-                        "evidence": devworker_packet.get("repo_evidence", []),
-                        "dependency_hints": devworker_packet.get("dependency_hints", []),
-                    },
-                    context_expansion_count=context_expansion_count,
-                    max_context_expansions=max_context_expansions,
-                )
-
-
             if deliverable.get("result_type") == "patch_proposal":
                 validate_patch_proposal_deliverable(deliverable)
+
 
                 errors = validate_replace_file_evidence(
                     deliverable,
@@ -296,16 +310,12 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
                         "patch_proposal": deliverable,
                     }
 
-                staging_service = StagingService(Path("."))
+                manifest = PatchBuilder(Path(".")).stage_patch_from_deliverable(deliverable)
 
-                stage_manifest = (
-                    staging_service.create_stage_from_patch_proposal(
-                        deliverable
-                    )
-                )
-
-                agent_result["stage_manifest"] = stage_manifest.to_dict()
-                agent_result["patch_id"] = stage_manifest.patch_id
+                agent_result["stage_manifest"] = manifest
+                agent_result["patch_id"] = manifest["patch_id"]
+                agent_result["staged_patch"] = manifest
+                agent_result["changed_files"] = manifest["changed_files"]
 
             else:
                 validate_devworker_deliverable(deliverable)
@@ -809,7 +819,7 @@ if __name__ == "__main__":
             "id": "step_1",
             "agent": "dev_worker",
             "objective": "Review DevWorker evidence-aware proposal flow.",
-            "instructions": "Use repository evidence from agents/dev_worker_agent.py and chair.py to propose next implementation steps. Do not modify files.",
+            "instructions": "Modify scratch/context_loop_test.py so hello() returns \"hello from Ageix\". Do not modify live files; return a patch proposal only.",
             "target_files": [
                 "scratch/context_loop_test.py"
             ],
