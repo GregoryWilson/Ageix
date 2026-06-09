@@ -1,0 +1,48 @@
+providers:
+  ollama:
+    base_url: "http://192.168.68.56:11434"
+
+  openrouter:
+    base_url: "https://openrouter.ai/api/v1"
+    app_title: "Ageix Gateway"
+    referer: "http://localhost:8000"
+
+models:
+
+  local_fast:
+    provider: "ollama"
+    model: "qwen2.5:7b"
+
+  local_reasoning:
+    provider: "ollama"
+    model: "qwen2.5:7b"
+
+  local_coding:
+    provider: "ollama"
+    model: "deepseek-coder-v2"
+
+  cloud_fast:
+    provider: "openrouter"
+    model: "openai/gpt-4o-mini"
+
+  cloud_reasoning:
+    provider: "openrouter"
+    model: "anthropic/claude-sonnet-4"
+
+  cloud_coding:
+    provider: "openrouter"
+    model: "openai/gpt-5"
+
+routing:
+  local_model: "local_fast"
+  cloud_model: "cloud_fast"
+  cloud_keywords:
+    - architecture
+    - complex
+    - deep reasoning
+    - design
+    - strategy
+    - analyze
+    - code
+    - debug
+    - programming

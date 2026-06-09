@@ -1,0 +1,944 @@
+{
+  "artifact_id": "65d322cc-f5a4-4ccc-8117-25a1e571cea2",
+  "artifact_type": "repository_analysis",
+  "created_by": "repository",
+  "content": {
+    "work_order": {
+      "work_order_id": "6ed7757ac9d043f68671f57da41762b3",
+      "agent": "repository",
+      "objective": "Ageix, use the repository agent to inspect agents/registry.py only. Do not modify files.",
+      "instructions": [
+        "Ageix, use the repository agent to inspect agents/registry.py only. Do not modify files."
+      ],
+      "input_artifacts": [],
+      "deliverable": {
+        "type": "repository_analysis",
+        "required_sections": [
+          "summary",
+          "files",
+          "file_count",
+          "read_files",
+          "searches",
+          "risks",
+          "questions"
+        ]
+      },
+      "success_criteria": [
+        "Summarizes repository inspection",
+        "Lists repository files",
+        "Reports file count",
+        "Includes requested file reads",
+        "Includes requested code searches",
+        "Identifies risks",
+        "Asks questions if blocked"
+      ],
+      "constraints": {
+        "source": "collaboration_turn",
+        "speaker": "chatgpt",
+        "execution_mode": "proposal_only",
+        "no_file_writes": true
+      }
+    },
+    "deliverable": {
+      "agent": "repository",
+      "status": "completed",
+      "summary": "RepositoryAgent inspected repository files and gathered read-only code evidence.",
+      "files": [
+        ".env",
+        "ageix.db",
+        "agents/__init__.py",
+        "agents/dev_worker_agent.py",
+        "agents/dispatcher.py",
+        "agents/planner_agent.py",
+        "agents/registry.py",
+        "agents/repository_agent.py",
+        "agents/research_agent.py",
+        "app.py",
+        "artifact_store.py",
+        "chair.py",
+        "collaboration_router.py",
+        "collaboration_turn.py",
+        "config.yaml",
+        "core/work_order.py",
+        "core/worker_result.py",
+        "evaluator_agent.py",
+        "health.py",
+        "llm/__init__.py",
+        "llm/router.py",
+        "llm/schemas.py",
+        "logger.py",
+        "logs/ageix.log",
+        "planner.py",
+        "prompts/planner_system.txt",
+        "providers/__init__.py",
+        "providers/ollama.py",
+        "providers/openrouter.py",
+        "router.py",
+        "safety/__init__.py",
+        "safety/scrubber.py",
+        "schemas/__init__.py",
+        "schemas/plan_schema.py",
+        "services/__init__.py",
+        "services/llm_service.py",
+        "store.py",
+        "tools/__init__.py",
+        "tools/test_planner.py",
+        "work_order.py",
+        "work_order_runner.py"
+      ],
+      "file_count": 41,
+      "read_files": [
+        {
+          "path": "agents/registry.py",
+          "content": "# agents/registry.py\n\nfrom typing import Any\n\n\nAGENT_REGISTRY: dict[str, dict[str, Any]] = {\n    \"planner\": {\n        \"name\": \"Planner Agent\",\n        \"description\": \"Creates structured execution plans from user objectives.\",\n        \"handler\": \"agents.planner_agent.run\",\n        \"default_model_profile\": \"reasoning_balanced\",\n        \"allowed_model_profiles\": [\n            \"local_fast\",\n            \"reasoning_balanced\",\n            \"cloud_deep_reasoning\",\n        ],\n        \"capabilities\": [\n            \"planning\",\n            \"task_decomposition\",\n            \"dependency_mapping\",\n        ],\n    },\n    \"research\": {\n        \"name\": \"Research Agent\",\n        \"description\": \"Finds, summarizes, and cites information.\",\n        \"handler\": \"agents.research_agent.run\",\n        \"default_model_profile\": \"cloud_research\",\n        \"allowed_model_profiles\": [\n            \"local_fast\",\n            \"cloud_research\",\n            \"cloud_deep_reasoning\",\n        ],\n        \"capabilities\": [\n            \"research\",\n            \"summarization\",\n            \"source_collection\",\n        ],\n    },\n    \"dev_worker\": {\n        \"name\": \"Development Worker Agent\",\n        \"description\": \"Executes development tasks against a codebase.\",\n        \"handler\": \"agents.dev_worker_agent.run\",\n        \"default_model_profile\": \"reasoning_balanced\",\n        \"allowed_model_profiles\": [\n            \"local_fast\",\n            \"reasoning_balanced\",\n            \"cloud_deep_reasoning\",\n        ],\n        \"capabilities\": [\n            \"code_review\",\n            \"code_modification\",\n            \"testing\",\n            \"debugging\",\n        ],\n    },\n    \"repository\": {\n        \"name\": \"Repository Agent\",\n        \"description\": \"Inspects repository structure and gathers read-only code evidence.\",\n        \"handler\": \"agents.repository_agent.run\",\n        \"default_model_profile\": \"local_fast\",\n        \"allowed_model_profiles\": [\n            \"local_fast\",\n            \"reasoning_balanced\",\n        ],\n        \"capabilities\": [\n            \"repo_file_listing\",\n            \"repo_file_read\",\n            \"code_search\",\n            \"directory_inspection\",\n        ],\n    },\n}\n\n\ndef get_agent(agent_key: str) -> dict[str, Any]:\n    agent = AGENT_REGISTRY.get(agent_key)\n\n    if agent is None:\n        raise ValueError(f\"Unknown agent: {agent_key}\")\n\n    return agent\n\n\ndef list_agents() -> dict[str, dict[str, Any]]:\n    return AGENT_REGISTRY\n\n\ndef agent_exists(agent_key: str) -> bool:\n    return agent_key in AGENT_REGISTRY",
+          "lines": [
+            {
+              "line": 1,
+              "text": "# agents/registry.py"
+            },
+            {
+              "line": 2,
+              "text": ""
+            },
+            {
+              "line": 3,
+              "text": "from typing import Any"
+            },
+            {
+              "line": 4,
+              "text": ""
+            },
+            {
+              "line": 5,
+              "text": ""
+            },
+            {
+              "line": 6,
+              "text": "AGENT_REGISTRY: dict[str, dict[str, Any]] = {"
+            },
+            {
+              "line": 7,
+              "text": "    \"planner\": {"
+            },
+            {
+              "line": 8,
+              "text": "        \"name\": \"Planner Agent\","
+            },
+            {
+              "line": 9,
+              "text": "        \"description\": \"Creates structured execution plans from user objectives.\","
+            },
+            {
+              "line": 10,
+              "text": "        \"handler\": \"agents.planner_agent.run\","
+            },
+            {
+              "line": 11,
+              "text": "        \"default_model_profile\": \"reasoning_balanced\","
+            },
+            {
+              "line": 12,
+              "text": "        \"allowed_model_profiles\": ["
+            },
+            {
+              "line": 13,
+              "text": "            \"local_fast\","
+            },
+            {
+              "line": 14,
+              "text": "            \"reasoning_balanced\","
+            },
+            {
+              "line": 15,
+              "text": "            \"cloud_deep_reasoning\","
+            },
+            {
+              "line": 16,
+              "text": "        ],"
+            },
+            {
+              "line": 17,
+              "text": "        \"capabilities\": ["
+            },
+            {
+              "line": 18,
+              "text": "            \"planning\","
+            },
+            {
+              "line": 19,
+              "text": "            \"task_decomposition\","
+            },
+            {
+              "line": 20,
+              "text": "            \"dependency_mapping\","
+            },
+            {
+              "line": 21,
+              "text": "        ],"
+            },
+            {
+              "line": 22,
+              "text": "    },"
+            },
+            {
+              "line": 23,
+              "text": "    \"research\": {"
+            },
+            {
+              "line": 24,
+              "text": "        \"name\": \"Research Agent\","
+            },
+            {
+              "line": 25,
+              "text": "        \"description\": \"Finds, summarizes, and cites information.\","
+            },
+            {
+              "line": 26,
+              "text": "        \"handler\": \"agents.research_agent.run\","
+            },
+            {
+              "line": 27,
+              "text": "        \"default_model_profile\": \"cloud_research\","
+            },
+            {
+              "line": 28,
+              "text": "        \"allowed_model_profiles\": ["
+            },
+            {
+              "line": 29,
+              "text": "            \"local_fast\","
+            },
+            {
+              "line": 30,
+              "text": "            \"cloud_research\","
+            },
+            {
+              "line": 31,
+              "text": "            \"cloud_deep_reasoning\","
+            },
+            {
+              "line": 32,
+              "text": "        ],"
+            },
+            {
+              "line": 33,
+              "text": "        \"capabilities\": ["
+            },
+            {
+              "line": 34,
+              "text": "            \"research\","
+            },
+            {
+              "line": 35,
+              "text": "            \"summarization\","
+            },
+            {
+              "line": 36,
+              "text": "            \"source_collection\","
+            },
+            {
+              "line": 37,
+              "text": "        ],"
+            },
+            {
+              "line": 38,
+              "text": "    },"
+            },
+            {
+              "line": 39,
+              "text": "    \"dev_worker\": {"
+            },
+            {
+              "line": 40,
+              "text": "        \"name\": \"Development Worker Agent\","
+            },
+            {
+              "line": 41,
+              "text": "        \"description\": \"Executes development tasks against a codebase.\","
+            },
+            {
+              "line": 42,
+              "text": "        \"handler\": \"agents.dev_worker_agent.run\","
+            },
+            {
+              "line": 43,
+              "text": "        \"default_model_profile\": \"reasoning_balanced\","
+            },
+            {
+              "line": 44,
+              "text": "        \"allowed_model_profiles\": ["
+            },
+            {
+              "line": 45,
+              "text": "            \"local_fast\","
+            },
+            {
+              "line": 46,
+              "text": "            \"reasoning_balanced\","
+            },
+            {
+              "line": 47,
+              "text": "            \"cloud_deep_reasoning\","
+            },
+            {
+              "line": 48,
+              "text": "        ],"
+            },
+            {
+              "line": 49,
+              "text": "        \"capabilities\": ["
+            },
+            {
+              "line": 50,
+              "text": "            \"code_review\","
+            },
+            {
+              "line": 51,
+              "text": "            \"code_modification\","
+            },
+            {
+              "line": 52,
+              "text": "            \"testing\","
+            },
+            {
+              "line": 53,
+              "text": "            \"debugging\","
+            },
+            {
+              "line": 54,
+              "text": "        ],"
+            },
+            {
+              "line": 55,
+              "text": "    },"
+            },
+            {
+              "line": 56,
+              "text": "    \"repository\": {"
+            },
+            {
+              "line": 57,
+              "text": "        \"name\": \"Repository Agent\","
+            },
+            {
+              "line": 58,
+              "text": "        \"description\": \"Inspects repository structure and gathers read-only code evidence.\","
+            },
+            {
+              "line": 59,
+              "text": "        \"handler\": \"agents.repository_agent.run\","
+            },
+            {
+              "line": 60,
+              "text": "        \"default_model_profile\": \"local_fast\","
+            },
+            {
+              "line": 61,
+              "text": "        \"allowed_model_profiles\": ["
+            },
+            {
+              "line": 62,
+              "text": "            \"local_fast\","
+            },
+            {
+              "line": 63,
+              "text": "            \"reasoning_balanced\","
+            },
+            {
+              "line": 64,
+              "text": "        ],"
+            },
+            {
+              "line": 65,
+              "text": "        \"capabilities\": ["
+            },
+            {
+              "line": 66,
+              "text": "            \"repo_file_listing\","
+            },
+            {
+              "line": 67,
+              "text": "            \"repo_file_read\","
+            },
+            {
+              "line": 68,
+              "text": "            \"code_search\","
+            },
+            {
+              "line": 69,
+              "text": "            \"directory_inspection\","
+            },
+            {
+              "line": 70,
+              "text": "        ],"
+            },
+            {
+              "line": 71,
+              "text": "    },"
+            },
+            {
+              "line": 72,
+              "text": "}"
+            },
+            {
+              "line": 73,
+              "text": ""
+            },
+            {
+              "line": 74,
+              "text": ""
+            },
+            {
+              "line": 75,
+              "text": "def get_agent(agent_key: str) -> dict[str, Any]:"
+            },
+            {
+              "line": 76,
+              "text": "    agent = AGENT_REGISTRY.get(agent_key)"
+            },
+            {
+              "line": 77,
+              "text": ""
+            },
+            {
+              "line": 78,
+              "text": "    if agent is None:"
+            },
+            {
+              "line": 79,
+              "text": "        raise ValueError(f\"Unknown agent: {agent_key}\")"
+            },
+            {
+              "line": 80,
+              "text": ""
+            },
+            {
+              "line": 81,
+              "text": "    return agent"
+            },
+            {
+              "line": 82,
+              "text": ""
+            },
+            {
+              "line": 83,
+              "text": ""
+            },
+            {
+              "line": 84,
+              "text": "def list_agents() -> dict[str, dict[str, Any]]:"
+            },
+            {
+              "line": 85,
+              "text": "    return AGENT_REGISTRY"
+            },
+            {
+              "line": 86,
+              "text": ""
+            },
+            {
+              "line": 87,
+              "text": ""
+            },
+            {
+              "line": 88,
+              "text": "def agent_exists(agent_key: str) -> bool:"
+            },
+            {
+              "line": 89,
+              "text": "    return agent_key in AGENT_REGISTRY"
+            }
+          ],
+          "truncated": false,
+          "char_count": 2505
+        }
+      ],
+      "searches": {
+        "AGENT_REGISTRY": [
+          {
+            "path": "agents/registry.py",
+            "line": 6,
+            "text": "AGENT_REGISTRY: dict[str, dict[str, Any]] = {"
+          },
+          {
+            "path": "agents/registry.py",
+            "line": 76,
+            "text": "agent = AGENT_REGISTRY.get(agent_key)"
+          },
+          {
+            "path": "agents/registry.py",
+            "line": 85,
+            "text": "return AGENT_REGISTRY"
+          },
+          {
+            "path": "agents/registry.py",
+            "line": 89,
+            "text": "return agent_key in AGENT_REGISTRY"
+          },
+          {
+            "path": "agents/repository_agent.py",
+            "line": 134,
+            "text": "search_terms.append(\"AGENT_REGISTRY\")"
+          }
+        ]
+      },
+      "risks": [
+        "Read-only inspection only. No files modified."
+      ],
+      "questions": [
+        "No questions or blockers."
+      ]
+    },
+    "raw_agent_result": {
+      "agent": "repository",
+      "status": "completed",
+      "summary": "RepositoryAgent inspected repository files and gathered read-only code evidence.",
+      "files": [
+        ".env",
+        "ageix.db",
+        "agents/__init__.py",
+        "agents/dev_worker_agent.py",
+        "agents/dispatcher.py",
+        "agents/planner_agent.py",
+        "agents/registry.py",
+        "agents/repository_agent.py",
+        "agents/research_agent.py",
+        "app.py",
+        "artifact_store.py",
+        "chair.py",
+        "collaboration_router.py",
+        "collaboration_turn.py",
+        "config.yaml",
+        "core/work_order.py",
+        "core/worker_result.py",
+        "evaluator_agent.py",
+        "health.py",
+        "llm/__init__.py",
+        "llm/router.py",
+        "llm/schemas.py",
+        "logger.py",
+        "logs/ageix.log",
+        "planner.py",
+        "prompts/planner_system.txt",
+        "providers/__init__.py",
+        "providers/ollama.py",
+        "providers/openrouter.py",
+        "router.py",
+        "safety/__init__.py",
+        "safety/scrubber.py",
+        "schemas/__init__.py",
+        "schemas/plan_schema.py",
+        "services/__init__.py",
+        "services/llm_service.py",
+        "store.py",
+        "tools/__init__.py",
+        "tools/test_planner.py",
+        "work_order.py",
+        "work_order_runner.py"
+      ],
+      "file_count": 41,
+      "read_files": [
+        {
+          "path": "agents/registry.py",
+          "content": "# agents/registry.py\n\nfrom typing import Any\n\n\nAGENT_REGISTRY: dict[str, dict[str, Any]] = {\n    \"planner\": {\n        \"name\": \"Planner Agent\",\n        \"description\": \"Creates structured execution plans from user objectives.\",\n        \"handler\": \"agents.planner_agent.run\",\n        \"default_model_profile\": \"reasoning_balanced\",\n        \"allowed_model_profiles\": [\n            \"local_fast\",\n            \"reasoning_balanced\",\n            \"cloud_deep_reasoning\",\n        ],\n        \"capabilities\": [\n            \"planning\",\n            \"task_decomposition\",\n            \"dependency_mapping\",\n        ],\n    },\n    \"research\": {\n        \"name\": \"Research Agent\",\n        \"description\": \"Finds, summarizes, and cites information.\",\n        \"handler\": \"agents.research_agent.run\",\n        \"default_model_profile\": \"cloud_research\",\n        \"allowed_model_profiles\": [\n            \"local_fast\",\n            \"cloud_research\",\n            \"cloud_deep_reasoning\",\n        ],\n        \"capabilities\": [\n            \"research\",\n            \"summarization\",\n            \"source_collection\",\n        ],\n    },\n    \"dev_worker\": {\n        \"name\": \"Development Worker Agent\",\n        \"description\": \"Executes development tasks against a codebase.\",\n        \"handler\": \"agents.dev_worker_agent.run\",\n        \"default_model_profile\": \"reasoning_balanced\",\n        \"allowed_model_profiles\": [\n            \"local_fast\",\n            \"reasoning_balanced\",\n            \"cloud_deep_reasoning\",\n        ],\n        \"capabilities\": [\n            \"code_review\",\n            \"code_modification\",\n            \"testing\",\n            \"debugging\",\n        ],\n    },\n    \"repository\": {\n        \"name\": \"Repository Agent\",\n        \"description\": \"Inspects repository structure and gathers read-only code evidence.\",\n        \"handler\": \"agents.repository_agent.run\",\n        \"default_model_profile\": \"local_fast\",\n        \"allowed_model_profiles\": [\n            \"local_fast\",\n            \"reasoning_balanced\",\n        ],\n        \"capabilities\": [\n            \"repo_file_listing\",\n            \"repo_file_read\",\n            \"code_search\",\n            \"directory_inspection\",\n        ],\n    },\n}\n\n\ndef get_agent(agent_key: str) -> dict[str, Any]:\n    agent = AGENT_REGISTRY.get(agent_key)\n\n    if agent is None:\n        raise ValueError(f\"Unknown agent: {agent_key}\")\n\n    return agent\n\n\ndef list_agents() -> dict[str, dict[str, Any]]:\n    return AGENT_REGISTRY\n\n\ndef agent_exists(agent_key: str) -> bool:\n    return agent_key in AGENT_REGISTRY",
+          "lines": [
+            {
+              "line": 1,
+              "text": "# agents/registry.py"
+            },
+            {
+              "line": 2,
+              "text": ""
+            },
+            {
+              "line": 3,
+              "text": "from typing import Any"
+            },
+            {
+              "line": 4,
+              "text": ""
+            },
+            {
+              "line": 5,
+              "text": ""
+            },
+            {
+              "line": 6,
+              "text": "AGENT_REGISTRY: dict[str, dict[str, Any]] = {"
+            },
+            {
+              "line": 7,
+              "text": "    \"planner\": {"
+            },
+            {
+              "line": 8,
+              "text": "        \"name\": \"Planner Agent\","
+            },
+            {
+              "line": 9,
+              "text": "        \"description\": \"Creates structured execution plans from user objectives.\","
+            },
+            {
+              "line": 10,
+              "text": "        \"handler\": \"agents.planner_agent.run\","
+            },
+            {
+              "line": 11,
+              "text": "        \"default_model_profile\": \"reasoning_balanced\","
+            },
+            {
+              "line": 12,
+              "text": "        \"allowed_model_profiles\": ["
+            },
+            {
+              "line": 13,
+              "text": "            \"local_fast\","
+            },
+            {
+              "line": 14,
+              "text": "            \"reasoning_balanced\","
+            },
+            {
+              "line": 15,
+              "text": "            \"cloud_deep_reasoning\","
+            },
+            {
+              "line": 16,
+              "text": "        ],"
+            },
+            {
+              "line": 17,
+              "text": "        \"capabilities\": ["
+            },
+            {
+              "line": 18,
+              "text": "            \"planning\","
+            },
+            {
+              "line": 19,
+              "text": "            \"task_decomposition\","
+            },
+            {
+              "line": 20,
+              "text": "            \"dependency_mapping\","
+            },
+            {
+              "line": 21,
+              "text": "        ],"
+            },
+            {
+              "line": 22,
+              "text": "    },"
+            },
+            {
+              "line": 23,
+              "text": "    \"research\": {"
+            },
+            {
+              "line": 24,
+              "text": "        \"name\": \"Research Agent\","
+            },
+            {
+              "line": 25,
+              "text": "        \"description\": \"Finds, summarizes, and cites information.\","
+            },
+            {
+              "line": 26,
+              "text": "        \"handler\": \"agents.research_agent.run\","
+            },
+            {
+              "line": 27,
+              "text": "        \"default_model_profile\": \"cloud_research\","
+            },
+            {
+              "line": 28,
+              "text": "        \"allowed_model_profiles\": ["
+            },
+            {
+              "line": 29,
+              "text": "            \"local_fast\","
+            },
+            {
+              "line": 30,
+              "text": "            \"cloud_research\","
+            },
+            {
+              "line": 31,
+              "text": "            \"cloud_deep_reasoning\","
+            },
+            {
+              "line": 32,
+              "text": "        ],"
+            },
+            {
+              "line": 33,
+              "text": "        \"capabilities\": ["
+            },
+            {
+              "line": 34,
+              "text": "            \"research\","
+            },
+            {
+              "line": 35,
+              "text": "            \"summarization\","
+            },
+            {
+              "line": 36,
+              "text": "            \"source_collection\","
+            },
+            {
+              "line": 37,
+              "text": "        ],"
+            },
+            {
+              "line": 38,
+              "text": "    },"
+            },
+            {
+              "line": 39,
+              "text": "    \"dev_worker\": {"
+            },
+            {
+              "line": 40,
+              "text": "        \"name\": \"Development Worker Agent\","
+            },
+            {
+              "line": 41,
+              "text": "        \"description\": \"Executes development tasks against a codebase.\","
+            },
+            {
+              "line": 42,
+              "text": "        \"handler\": \"agents.dev_worker_agent.run\","
+            },
+            {
+              "line": 43,
+              "text": "        \"default_model_profile\": \"reasoning_balanced\","
+            },
+            {
+              "line": 44,
+              "text": "        \"allowed_model_profiles\": ["
+            },
+            {
+              "line": 45,
+              "text": "            \"local_fast\","
+            },
+            {
+              "line": 46,
+              "text": "            \"reasoning_balanced\","
+            },
+            {
+              "line": 47,
+              "text": "            \"cloud_deep_reasoning\","
+            },
+            {
+              "line": 48,
+              "text": "        ],"
+            },
+            {
+              "line": 49,
+              "text": "        \"capabilities\": ["
+            },
+            {
+              "line": 50,
+              "text": "            \"code_review\","
+            },
+            {
+              "line": 51,
+              "text": "            \"code_modification\","
+            },
+            {
+              "line": 52,
+              "text": "            \"testing\","
+            },
+            {
+              "line": 53,
+              "text": "            \"debugging\","
+            },
+            {
+              "line": 54,
+              "text": "        ],"
+            },
+            {
+              "line": 55,
+              "text": "    },"
+            },
+            {
+              "line": 56,
+              "text": "    \"repository\": {"
+            },
+            {
+              "line": 57,
+              "text": "        \"name\": \"Repository Agent\","
+            },
+            {
+              "line": 58,
+              "text": "        \"description\": \"Inspects repository structure and gathers read-only code evidence.\","
+            },
+            {
+              "line": 59,
+              "text": "        \"handler\": \"agents.repository_agent.run\","
+            },
+            {
+              "line": 60,
+              "text": "        \"default_model_profile\": \"local_fast\","
+            },
+            {
+              "line": 61,
+              "text": "        \"allowed_model_profiles\": ["
+            },
+            {
+              "line": 62,
+              "text": "            \"local_fast\","
+            },
+            {
+              "line": 63,
+              "text": "            \"reasoning_balanced\","
+            },
+            {
+              "line": 64,
+              "text": "        ],"
+            },
+            {
+              "line": 65,
+              "text": "        \"capabilities\": ["
+            },
+            {
+              "line": 66,
+              "text": "            \"repo_file_listing\","
+            },
+            {
+              "line": 67,
+              "text": "            \"repo_file_read\","
+            },
+            {
+              "line": 68,
+              "text": "            \"code_search\","
+            },
+            {
+              "line": 69,
+              "text": "            \"directory_inspection\","
+            },
+            {
+              "line": 70,
+              "text": "        ],"
+            },
+            {
+              "line": 71,
+              "text": "    },"
+            },
+            {
+              "line": 72,
+              "text": "}"
+            },
+            {
+              "line": 73,
+              "text": ""
+            },
+            {
+              "line": 74,
+              "text": ""
+            },
+            {
+              "line": 75,
+              "text": "def get_agent(agent_key: str) -> dict[str, Any]:"
+            },
+            {
+              "line": 76,
+              "text": "    agent = AGENT_REGISTRY.get(agent_key)"
+            },
+            {
+              "line": 77,
+              "text": ""
+            },
+            {
+              "line": 78,
+              "text": "    if agent is None:"
+            },
+            {
+              "line": 79,
+              "text": "        raise ValueError(f\"Unknown agent: {agent_key}\")"
+            },
+            {
+              "line": 80,
+              "text": ""
+            },
+            {
+              "line": 81,
+              "text": "    return agent"
+            },
+            {
+              "line": 82,
+              "text": ""
+            },
+            {
+              "line": 83,
+              "text": ""
+            },
+            {
+              "line": 84,
+              "text": "def list_agents() -> dict[str, dict[str, Any]]:"
+            },
+            {
+              "line": 85,
+              "text": "    return AGENT_REGISTRY"
+            },
+            {
+              "line": 86,
+              "text": ""
+            },
+            {
+              "line": 87,
+              "text": ""
+            },
+            {
+              "line": 88,
+              "text": "def agent_exists(agent_key: str) -> bool:"
+            },
+            {
+              "line": 89,
+              "text": "    return agent_key in AGENT_REGISTRY"
+            }
+          ],
+          "truncated": false,
+          "char_count": 2505
+        }
+      ],
+      "searches": {
+        "AGENT_REGISTRY": [
+          {
+            "path": "agents/registry.py",
+            "line": 6,
+            "text": "AGENT_REGISTRY: dict[str, dict[str, Any]] = {"
+          },
+          {
+            "path": "agents/registry.py",
+            "line": 76,
+            "text": "agent = AGENT_REGISTRY.get(agent_key)"
+          },
+          {
+            "path": "agents/registry.py",
+            "line": 85,
+            "text": "return AGENT_REGISTRY"
+          },
+          {
+            "path": "agents/registry.py",
+            "line": 89,
+            "text": "return agent_key in AGENT_REGISTRY"
+          },
+          {
+            "path": "agents/repository_agent.py",
+            "line": 134,
+            "text": "search_terms.append(\"AGENT_REGISTRY\")"
+          }
+        ]
+      },
+      "risks": [
+        "Read-only inspection only. No files modified."
+      ],
+      "questions": [
+        "No questions or blockers."
+      ]
+    }
+  },
+  "created_at": "2026-06-08T01:05:48.520527+00:00"
+}

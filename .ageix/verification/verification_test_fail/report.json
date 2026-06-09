@@ -1,0 +1,17 @@
+{
+  "verification_id": "verification_test_fail",
+  "patch_id": "patch_test_fail",
+  "status": "materialized",
+  "result": "FAIL",
+  "reasoning": [
+    "Patch was materialized into an isolated validation workspace.",
+    "Validation command exited non-zero.",
+    "Live repository was not modified."
+  ],
+  "workspace_path": ".ageix/verification/verification_test_fail/workspace",
+  "patch_manifest": {
+    "patch_id": "patch_test_fail",
+    "status": "staged",
+    "objective": "Modify scratch/context_loop_test.py so hello() returns \"hello from Ageix\"."
+  }
+}

@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual Environments
+venv/
+.venv/
+
+# IDEs
+.vscode/
+.idea/
+
+# Environment Files
+.env
+.env.*
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Ageix Staging Area
+.ageix/staged/
+
+# Test Artifacts
+.coverage
+.pytest_cache/
+
+# Build Artifacts
+dist/
+build/
+*.egg-info/
+
+# Ollama / AI artifacts if created locally
+models/
+cache/
+
+# Staging and manifests
+.ageix/staged/
+.ageix/manifests/

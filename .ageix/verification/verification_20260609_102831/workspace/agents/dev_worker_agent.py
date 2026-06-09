@@ -99,8 +99,7 @@ def build_fallback_result(
 
 
 def run(payload: dict[str, Any]) -> dict[str, Any]:
-    normalized_payload = normalize_devworker_packet(payload)
-    prompt = build_devworker_prompt(normalized_payload)
+    prompt = build_devworker_prompt(payload)
 
     print("[DevWorker] Invoking LLM...", flush=True)
 
@@ -115,12 +114,12 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
 
     try:
         deliverable = extract_json(raw)
-        deliverable = normalize_devworker_result(deliverable, normalized_payload)
+        deliverable = normalize_devworker_result(deliverable, payload)
         validation_error = None
     except Exception as ex:
         validation_error = str(ex)
         deliverable = build_fallback_result(
-            packet=normalized_payload,
+            packet=payload,
             raw=raw,
             error=validation_error,
         )
@@ -172,41 +171,6 @@ def parse_devworker_result(raw: str):
         "result_type": "prose",
         "content": raw,
     }
-
-
-def get_work_type(packet: dict[str, Any]) -> str:
-    return str(packet.get("work_type") or "development")
-
-
-def build_repair_runtime_packet(packet: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "work_type": "repair",
-        "objective": packet.get("repair_objective", ""),
-        "original_objective": packet.get("original_objective", ""),
-        "verification_failure": packet.get("failure_reason", ""),
-        "patch_id": packet.get("patch_id", ""),
-        "verification_id": packet.get("verification_id", ""),
-        "repo_evidence": ensure_list(packet.get("evidence")),
-        "dependency_hints": ensure_list(packet.get("dependency_hints")),
-        "target_files": ensure_list(packet.get("target_files")),
-        "constraints": {
-            "proposal_only": True,
-            "no_file_writes": True,
-            "no_promotion": True,
-            "no_commit": True,
-            "must_preserve_original_objective": True,
-            "must_address_verification_failure": True,
-        },
-    }
-
-
-def normalize_devworker_packet(packet: dict[str, Any]) -> dict[str, Any]:
-    work_type = get_work_type(packet)
-
-    if work_type == "repair":
-        return build_repair_runtime_packet(packet)
-
-    return packet
 
 #-----------------------------------------------------#
 
