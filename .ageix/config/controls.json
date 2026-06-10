@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "repair": {
+    "max_local_attempts": 3,
+    "allow_cloud_escalation": true,
+    "max_cloud_attempts": 1
+  },
+  "cloud": {
+    "max_context_tokens": 6000,
+    "max_evidence_items": 8,
+    "max_failure_summary_chars": 4000,
+    "allow_full_logs": false,
+    "allow_full_file_contents": false
+  },
+  "validation": {
+    "require_validation": true,
+    "allow_validation_bypass": false
+  },
+  "governance": {
+    "require_human_review": true,
+    "allow_auto_promotion": false,
+    "allow_auto_commit": false,
+    "allow_direct_repo_modification": false
+  }
+}

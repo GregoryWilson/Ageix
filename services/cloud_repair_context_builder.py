@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 from typing import Any
-
+from pathlib import Path
+from services.controls_service import ControlsService
 
 class CloudRepairContextBuilder:
     """Builds compact, cloud-safe repair escalation packets."""
+
+    def __init__(self, repo_root: Path | str = ".") -> None:
+        self.repo_root = Path(repo_root)
+        self.controls = ControlsService(self.repo_root)
 
     def build_packet(
         self,
@@ -12,10 +17,22 @@ class CloudRepairContextBuilder:
         repair_loop_manifest: dict[str, Any],
         repository_evidence: dict[str, Any] | list[Any] | None = None,
         latest_validation_report: dict[str, Any] | None = None,
-        max_error_chars: int = 4000,
-        max_evidence_items: int = 8,
+        max_error_chars: int | None = None,
+        max_evidence_items: int | None = None,
     ) -> dict[str, Any]:
         attempts = repair_loop_manifest.get("attempts", [])
+
+        effective_max_error_chars = (
+            max_error_chars
+            if max_error_chars is not None
+            else self.controls.cloud.max_failure_summary_chars
+        )
+
+        effective_max_evidence_items = (
+            max_evidence_items
+            if max_evidence_items is not None
+            else self.controls.cloud.max_evidence_items
+        )
 
         return {
             "origin_verification_id": repair_loop_manifest.get("origin_verification_id"),
@@ -25,11 +42,11 @@ class CloudRepairContextBuilder:
             "local_repair_history": self._summarize_attempts(attempts),
             "latest_validation_failure": self._summarize_validation(
                 latest_validation_report,
-                max_error_chars=max_error_chars,
+                max_error_chars=effective_max_error_chars,
             ),
             "repository_evidence": self._compact_evidence(
                 repository_evidence,
-                max_items=max_evidence_items,
+                max_items=effective_max_evidence_items,
             ),
             "repair_loop_id": repair_loop_manifest.get("repair_loop_id"),
             "instruction": (

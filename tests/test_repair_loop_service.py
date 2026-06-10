@@ -318,3 +318,88 @@ def test_repair_loop_cloud_escalation_records_failing_cloud_patch(
     assert manifest["cloud_escalation"]["status"] == "validated"
     assert manifest["cloud_escalation"]["validation_result"] != "PASS"
     assert manifest["cloud_escalation"]["decision"] == "human_review"
+
+
+def test_repair_loop_uses_controls_max_local_attempts(tmp_path: Path):
+    config_dir = tmp_path / ".ageix" / "config"
+    config_dir.mkdir(parents=True)
+
+    (config_dir / "controls.json").write_text(
+        json.dumps(
+            {
+                "repair": {
+                    "max_local_attempts": 1
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    verification_dir = tmp_path / ".ageix" / "verification" / "verification_origin"
+    verification_dir.mkdir(parents=True)
+
+    (verification_dir / "report.json").write_text(
+        json.dumps(
+            {
+                "verification_id": "verification_origin",
+                "patch_id": "patch_origin",
+                "result": "FAIL",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    class AlwaysFailingRepairExecutionService:
+        def __init__(self):
+            self.calls = 0
+
+        def execute_repair_cycle(self, source_verification_id: str):
+            self.calls += 1
+
+            repair_verification_id = f"verification_repair_{self.calls}"
+            repair_verification_dir = (
+                tmp_path / ".ageix" / "verification" / repair_verification_id
+            )
+            repair_verification_dir.mkdir(parents=True)
+
+            (repair_verification_dir / "report.json").write_text(
+                json.dumps(
+                    {
+                        "verification_id": repair_verification_id,
+                        "patch_id": f"patch_repair_{self.calls}",
+                        "result": "FAIL",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            return {
+                "repair_patch_id": f"patch_repair_{self.calls}",
+                "repair_verification_id": repair_verification_id,
+            }
+
+    class DisabledCloudRepairContextBuilder:
+        def build_packet(self, **kwargs):
+            return {}
+
+    class DisabledCloudRepairService:
+        def execute_cloud_repair(self, escalation_packet):
+            return {
+                "status": "no_proposal",
+                "reason": "test_disabled",
+            }
+
+    repair_execution_service = AlwaysFailingRepairExecutionService()
+
+    svc = RepairLoopService(
+        repo_root=tmp_path,
+        repair_execution_service=repair_execution_service,
+        cloud_repair_context_builder=DisabledCloudRepairContextBuilder(),
+        cloud_repair_service=DisabledCloudRepairService(),
+    )
+
+    manifest = svc.run_repair_loop("verification_origin")
+
+    assert repair_execution_service.calls == 1
+    assert manifest["max_attempts"] == 1
+    assert len(manifest["attempts"]) == 1

@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from services.cloud_repair_context_builder import CloudRepairContextBuilder
     from services.cloud_repair_service import CloudRepairService
 
+from services.controls_service import ControlsService
 
 MAX_REPAIR_ATTEMPTS = 3
 
@@ -23,6 +24,7 @@ class RepairLoopService:
         cloud_repair_service: "CloudRepairService | None" = None,
     ) -> None:
         self.repo_root = Path(repo_root)
+        self.controls = ControlsService(self.repo_root)
 
         if repair_execution_service is None:
             from services.repair_execution_service import RepairExecutionService
@@ -47,7 +49,7 @@ class RepairLoopService:
     def run_repair_loop(
         self,
         origin_verification_id: str,
-        max_attempts: int = MAX_REPAIR_ATTEMPTS,
+        max_attempts: int | None = None,
     ) -> dict[str, Any]:
         loop_id = f"repair_loop_{time.strftime('%Y%m%d_%H%M%S')}"
         loop_dir = self.repair_loop_root / loop_id
@@ -56,24 +58,32 @@ class RepairLoopService:
         origin_verification = self._load_verification(origin_verification_id)
         origin_patch_id = origin_verification.get("patch_id")
 
+        effective_max_attempts = (
+            max_attempts
+            if max_attempts is not None
+            else self.controls.repair.max_local_attempts
+        )
+
         manifest: dict[str, Any] = {
             "repair_loop_id": loop_id,
             "status": "running",
             "origin_verification_id": origin_verification_id,
             "origin_patch_id": origin_patch_id,
-            "max_attempts": max_attempts,
+            "max_attempts": effective_max_attempts,
             "attempts": [],
             "final_action": None,
             "escalation": None,
             "cloud_escalation": None,
         }
 
+        
+
         self._write_manifest(loop_dir, manifest)
 
         current_verification_id = origin_verification_id
 
         try:
-            for attempt_number in range(1, max_attempts + 1):
+            for attempt_number in range(1, effective_max_attempts + 1):
                 repair_result = self.repair_execution_service.execute_repair_cycle(
                     current_verification_id
                 )
@@ -112,7 +122,7 @@ class RepairLoopService:
                 decision = self._decide_outcome(
                     validation_result=validation_result,
                     attempt_number=attempt_number,
-                    max_attempts=max_attempts,
+                    max_attempts=effective_max_attempts,
                 )
 
                 manifest["attempts"].append(
@@ -141,6 +151,18 @@ class RepairLoopService:
                         "routed_to": "cloud_repair",
                     }
 
+                    if not self.controls.repair.allow_cloud_escalation:
+                        manifest["status"] = "complete"
+                        manifest["final_action"] = "human_review"
+                        manifest["cloud_escalation"] = {
+                            "attempted": False,
+                            "status": "disabled_by_controls",
+                            "reason": "cloud_escalation_disabled",
+                            "decision": "human_review",
+                        }
+                        self._write_manifest(loop_dir, manifest)
+                        return manifest
+
                     cloud_result = self._execute_cloud_escalation(
                         manifest=manifest,
                         latest_validation_report=repair_verification,
@@ -160,6 +182,18 @@ class RepairLoopService:
                 "recorded_action": "escalate_repair",
                 "routed_to": "cloud_repair",
             }
+
+            if not self.controls.repair.allow_cloud_escalation:
+                manifest["status"] = "complete"
+                manifest["final_action"] = "human_review"
+                manifest["cloud_escalation"] = {
+                    "attempted": False,
+                    "status": "disabled_by_controls",
+                    "reason": "cloud_escalation_disabled",
+                    "decision": "human_review",
+                }
+                self._write_manifest(loop_dir, manifest)
+                return manifest
 
             cloud_result = self._execute_cloud_escalation(
                 manifest=manifest,
