@@ -6,7 +6,6 @@ from datetime import datetime
 from pathlib import Path
 
 from models.patch_manifest import PatchFile, PatchManifest
-from models.patch_proposal import PatchProposal
 
 
 class StagingService:
