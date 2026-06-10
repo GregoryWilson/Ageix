@@ -7,6 +7,8 @@ from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from services.repair_execution_service import RepairExecutionService
+    from services.cloud_repair_context_builder import CloudRepairContextBuilder
+    from services.cloud_repair_service import CloudRepairService
 
 
 MAX_REPAIR_ATTEMPTS = 3
@@ -17,6 +19,8 @@ class RepairLoopService:
         self,
         repo_root: Path | str = ".",
         repair_execution_service: "RepairExecutionService | None" = None,
+        cloud_repair_context_builder: "CloudRepairContextBuilder | None" = None,
+        cloud_repair_service: "CloudRepairService | None" = None,
     ) -> None:
         self.repo_root = Path(repo_root)
 
@@ -25,7 +29,19 @@ class RepairLoopService:
 
             repair_execution_service = RepairExecutionService(repo_root=self.repo_root)
 
+        if cloud_repair_context_builder is None:
+            from services.cloud_repair_context_builder import CloudRepairContextBuilder
+
+            cloud_repair_context_builder = CloudRepairContextBuilder()
+
+        if cloud_repair_service is None:
+            from services.cloud_repair_service import CloudRepairService
+
+            cloud_repair_service = CloudRepairService()
+
         self.repair_execution_service = repair_execution_service
+        self.cloud_repair_context_builder = cloud_repair_context_builder
+        self.cloud_repair_service = cloud_repair_service
         self.repair_loop_root = self.repo_root / ".ageix" / "repair_loops"
 
     def run_repair_loop(
@@ -49,6 +65,7 @@ class RepairLoopService:
             "attempts": [],
             "final_action": None,
             "escalation": None,
+            "cloud_escalation": None,
         }
 
         self._write_manifest(loop_dir, manifest)
@@ -117,13 +134,20 @@ class RepairLoopService:
                     return manifest
 
                 if decision == "escalate_repair":
-                    manifest["status"] = "complete"
                     manifest["escalation"] = {
                         "attempt_number": attempt_number,
                         "reason": "max_repair_attempts_reached",
                         "recorded_action": "escalate_repair",
-                        "routed_to": "human_review",
+                        "routed_to": "cloud_repair",
                     }
+
+                    cloud_result = self._execute_cloud_escalation(
+                        manifest=manifest,
+                        latest_validation_report=repair_verification,
+                    )
+
+                    manifest["cloud_escalation"] = cloud_result
+                    manifest["status"] = "complete"
                     manifest["final_action"] = "human_review"
                     self._write_manifest(loop_dir, manifest)
                     return manifest
@@ -134,8 +158,16 @@ class RepairLoopService:
             manifest["escalation"] = {
                 "reason": "max_repair_attempts_reached",
                 "recorded_action": "escalate_repair",
-                "routed_to": "human_review",
+                "routed_to": "cloud_repair",
             }
+
+            cloud_result = self._execute_cloud_escalation(
+                manifest=manifest,
+                latest_validation_report=self._load_verification(current_verification_id),
+            )
+
+            manifest["cloud_escalation"] = cloud_result
+            manifest["status"] = "complete"
             manifest["final_action"] = "human_review"
             self._write_manifest(loop_dir, manifest)
             return manifest
@@ -146,6 +178,86 @@ class RepairLoopService:
             manifest["error"] = str(exc)
             self._write_manifest(loop_dir, manifest)
             raise
+
+
+    def _execute_cloud_escalation(
+        self,
+        *,
+        manifest: dict[str, Any],
+        latest_validation_report: dict[str, Any],
+    ) -> dict[str, Any]:
+        from services.staging_service import StagingService
+        from services.validation_service import ValidationService
+
+        escalation_packet = self.cloud_repair_context_builder.build_packet(
+            repair_loop_manifest=manifest,
+            repository_evidence=None,
+            latest_validation_report=latest_validation_report,
+        )
+
+        cloud_result = self.cloud_repair_service.execute_cloud_repair(escalation_packet)
+
+        if cloud_result.get("status") != "proposal_generated":
+            return {
+                "attempted": True,
+                "status": cloud_result.get("status"),
+                "reason": cloud_result.get("reason"),
+                "repair_patch_id": None,
+                "verification_id": None,
+                "validation_result": None,
+                "decision": "human_review",
+            }
+
+        proposal = cloud_result.get("proposal")
+
+        if not isinstance(proposal, dict):
+            return {
+                "attempted": True,
+                "status": "invalid_proposal",
+                "reason": "cloud_result_missing_proposal",
+                "repair_patch_id": None,
+                "verification_id": None,
+                "validation_result": None,
+                "decision": "human_review",
+            }
+
+        if proposal.get("result_type") != "patch_proposal":
+            return {
+                "attempted": True,
+                "status": "invalid_proposal",
+                "reason": "cloud_result_not_patch_proposal",
+                "repair_patch_id": None,
+                "verification_id": None,
+                "validation_result": None,
+                "decision": "human_review",
+            }
+
+        staging_service = StagingService(self.repo_root)
+        repair_manifest = staging_service.create_stage_from_patch_proposal(proposal)
+
+        validation_service = ValidationService(self.repo_root)
+        repair_validation = validation_service.validate_staged_patch(
+            repair_manifest.patch_id,
+            validation_commands=[
+                "python3 - <<'PY'\n"
+                "from scratch.context_loop_test import hello\n"
+                "assert hello() == 'hello from Ageix'\n"
+                "PY"
+            ],
+        )
+
+        verification_report = self._load_verification(repair_validation.verification_id)
+        validation_result = str(verification_report.get("result", "")).upper()
+
+        return {
+            "attempted": True,
+            "status": "validated",
+            "reason": None,
+            "repair_patch_id": repair_manifest.patch_id,
+            "verification_id": repair_validation.verification_id,
+            "validation_result": validation_result,
+            "decision": "human_review",
+        }
 
     def _decide_outcome(
         self,

@@ -148,7 +148,10 @@ def test_repair_loop_escalates_after_max_attempts_then_routes_to_human_review(
     assert manifest["status"] == "complete"
     assert manifest["final_action"] == "human_review"
     assert manifest["escalation"]["recorded_action"] == "escalate_repair"
-    assert manifest["escalation"]["routed_to"] == "human_review"
+    assert manifest["escalation"]["routed_to"] == "cloud_repair"
+    assert manifest["cloud_escalation"]["attempted"] is True
+    assert manifest["cloud_escalation"]["status"] == "unavailable"
+    assert manifest["cloud_escalation"]["decision"] == "human_review"
     assert len(manifest["attempts"]) == 3
     assert manifest["attempts"][-1]["decision"] == "escalate_repair"
     assert fake_executor.calls == [
@@ -194,3 +197,124 @@ def test_repair_loop_persists_manifest(tmp_path: Path) -> None:
     persisted = json.loads(manifest_path.read_text(encoding="utf-8"))
 
     assert persisted == manifest
+
+class FakeCloudRepairService:
+    def __init__(self, proposal):
+        self.proposal = proposal
+
+    def execute_cloud_repair(self, escalation_packet):
+        return {
+            "status": "proposal_generated",
+            "reason": None,
+            "proposal": self.proposal,
+        }
+
+
+def write_source_file(repo_root: Path, relative_path: str, content: str) -> None:
+    path = repo_root / relative_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
+def test_repair_loop_cloud_escalation_validates_passing_cloud_patch(
+    tmp_path: Path,
+) -> None:
+    write_source_file(
+        tmp_path,
+        "scratch/context_loop_test.py",
+        'def hello() -> str:\n    return "broken"\n',
+    )
+
+    write_verification(tmp_path, "verification_origin", "patch_origin", "FAIL")
+    write_verification(tmp_path, "verification_repair_1", "patch_repair_1", "FAIL")
+
+    fake_executor = FakeRepairExecutionService(
+        results=[
+            {
+                "repair_patch_id": "patch_repair_1",
+                "repair_verification_id": "verification_repair_1",
+            },
+        ],
+    )
+
+    cloud_service = FakeCloudRepairService(
+        proposal={
+            "result_type": "patch_proposal",
+            "summary": "Cloud repair fixes hello output.",
+            "changes": [
+                {
+                    "operation": "replace_file",
+                    "path": "scratch/context_loop_test.py",
+                    "content": 'def hello() -> str:\n    return "hello from Ageix"\n',
+                }
+            ],
+            "evidence_used": [],
+        }
+    )
+
+    service = RepairLoopService(
+        repo_root=tmp_path,
+        repair_execution_service=fake_executor,
+        cloud_repair_service=cloud_service,
+    )
+
+    manifest = service.run_repair_loop(
+        origin_verification_id="verification_origin",
+        max_attempts=1,
+    )
+
+    assert manifest["cloud_escalation"]["status"] == "validated"
+    assert manifest["cloud_escalation"]["validation_result"] == "PASS"
+    assert manifest["cloud_escalation"]["decision"] == "human_review"
+
+
+def test_repair_loop_cloud_escalation_records_failing_cloud_patch(
+    tmp_path: Path,
+) -> None:
+    write_source_file(
+        tmp_path,
+        "scratch/context_loop_test.py",
+        'def hello() -> str:\n    return "broken"\n',
+    )
+
+    write_verification(tmp_path, "verification_origin", "patch_origin", "FAIL")
+    write_verification(tmp_path, "verification_repair_1", "patch_repair_1", "FAIL")
+
+    fake_executor = FakeRepairExecutionService(
+        results=[
+            {
+                "repair_patch_id": "patch_repair_1",
+                "repair_verification_id": "verification_repair_1",
+            },
+        ],
+    )
+
+    cloud_service = FakeCloudRepairService(
+        proposal={
+            "result_type": "patch_proposal",
+            "summary": "Cloud repair still fails validation.",
+            "changes": [
+                {
+                    "operation": "replace_file",
+                    "path": "scratch/context_loop_test.py",
+                    "content": 'def hello() -> str:\n    return "still broken"\n',
+                }
+            ],
+            "evidence_used": [],
+        }
+    )
+
+    service = RepairLoopService(
+        repo_root=tmp_path,
+        repair_execution_service=fake_executor,
+        cloud_repair_service=cloud_service,
+    )
+
+    manifest = service.run_repair_loop(
+        origin_verification_id="verification_origin",
+        max_attempts=1,
+    )
+
+    assert manifest["cloud_escalation"]["status"] == "validated"
+    assert manifest["cloud_escalation"]["validation_result"] != "PASS"
+    assert manifest["cloud_escalation"]["decision"] == "human_review"
