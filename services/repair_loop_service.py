@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from services.cloud_repair_service import CloudRepairService
 
 from services.controls_service import ControlsService
+from services.governance_policy_service import GovernancePolicyService
 
 MAX_REPAIR_ATTEMPTS = 3
 
@@ -25,6 +26,10 @@ class RepairLoopService:
     ) -> None:
         self.repo_root = Path(repo_root)
         self.controls = ControlsService(self.repo_root)
+        self.governance = GovernancePolicyService(
+            repo_root=self.repo_root,
+            controls_service=self.controls,
+        )
 
         if repair_execution_service is None:
             from services.repair_execution_service import RepairExecutionService
@@ -61,7 +66,7 @@ class RepairLoopService:
         effective_max_attempts = (
             max_attempts
             if max_attempts is not None
-            else self.controls.repair.max_local_attempts
+            else self.governance.maximum_local_repair_attempts()
         )
 
         manifest: dict[str, Any] = {
@@ -151,7 +156,7 @@ class RepairLoopService:
                         "routed_to": "cloud_repair",
                     }
 
-                    if not self.controls.repair.allow_cloud_escalation:
+                    if not self.governance.may_escalate_to_cloud():
                         manifest["status"] = "complete"
                         manifest["final_action"] = "human_review"
                         manifest["cloud_escalation"] = {
