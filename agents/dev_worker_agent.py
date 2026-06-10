@@ -182,11 +182,13 @@ def build_repair_runtime_packet(packet: dict[str, Any]) -> dict[str, Any]:
     return {
         "work_type": "repair",
         "objective": packet.get("repair_objective", ""),
-        "original_objective": packet.get("original_objective", ""),
+        "original_objective": packet.get("original_objective") or packet.get("objective", ""),
         "verification_failure": packet.get("failure_reason", ""),
         "patch_id": packet.get("patch_id", ""),
-        "verification_id": packet.get("verification_id", ""),
-        "repo_evidence": ensure_list(packet.get("evidence")),
+        "verification_id": packet.get("verification_id") or packet.get("source_verification_id", ""),
+        "repo_evidence": ensure_list(
+            packet.get("repo_evidence") or packet.get("evidence")
+        ),
         "dependency_hints": ensure_list(packet.get("dependency_hints")),
         "target_files": ensure_list(packet.get("target_files")),
         "constraints": {

@@ -86,7 +86,11 @@ class StagingService:
             evidence_sources=evidence_sources or [],
         )
 
+        self.manifest_root.mkdir(parents=True, exist_ok=True)
+
         manifest.save(self.manifest_root / f"{patch_id}.json")
+        manifest.save(self.stage_root / patch_id / "manifest.json")
+
         return manifest
 
     def get_stage_path(self, patch_id: str) -> Path:
@@ -140,8 +144,7 @@ class StagingService:
             staged_file = stage_path / manifest_file.path
             manifest_file.staged_hash = self._hash_file(staged_file)
 
-        manifest.save(
-            self.get_manifest_path(manifest.patch_id)
-        )
+        manifest.save(self.get_manifest_path(manifest.patch_id))
+        manifest.save(self.stage_root / manifest.patch_id / "manifest.json")
 
         return manifest

@@ -46,3 +46,5 @@ cache/
 # Staging and manifests
 .ageix/staged/
 .ageix/manifests/
+.ageix/repair_loops/
+.ageix/verification/

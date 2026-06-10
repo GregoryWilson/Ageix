@@ -1,0 +1,425 @@
+[1mdiff --git a/services/repair_loop_service.py b/services/repair_loop_service.py[m
+[1mnew file mode 100644[m
+[1mindex 0000000..0673dec[m
+[1m--- /dev/null[m
+[1m+++ b/services/repair_loop_service.py[m
+[36m@@ -0,0 +1,215 @@[m
+[32m+[m[32mfrom __future__ import annotations[m
+[32m+[m
+[32m+[m[32mimport json[m
+[32m+[m[32mimport time[m
+[32m+[m[32mfrom pathlib import Path[m
+[32m+[m[32mfrom typing import Any, TYPE_CHECKING[m
+[32m+[m
+[32m+[m[32mif TYPE_CHECKING:[m
+[32m+[m[32m    from services.repair_execution_service import RepairExecutionService[m
+[32m+[m
+[32m+[m
+[32m+[m[32mMAX_REPAIR_ATTEMPTS = 3[m
+[32m+[m
+[32m+[m
+[32m+[m[32mclass RepairLoopService:[m
+[32m+[m[32m    def __init__([m
+[32m+[m[32m        self,[m
+[32m+[m[32m        repo_root: Path | str = ".",[m
+[32m+[m[32m        repair_execution_service: "RepairExecutionService | None" = None,[m
+[32m+[m[32m    ) -> None:[m
+[32m+[m[32m        self.repo_root = Path(repo_root)[m
+[32m+[m
+[32m+[m[32m        if repair_execution_service is None:[m
+[32m+[m[32m            from services.repair_execution_service import RepairExecutionService[m
+[32m+[m
+[32m+[m[32m            repair_execution_service = RepairExecutionService(repo_root=self.repo_root)[m
+[32m+[m
+[32m+[m[32m        self.repair_execution_service = repair_execution_service[m
+[32m+[m[32m        self.repair_loop_root = self.repo_root / ".ageix" / "repair_loops"[m
+[32m+[m
+[32m+[m[32m    def run_repair_loop([m
+[32m+[m[32m        self,[m
+[32m+[m[32m        origin_verification_id: str,[m
+[32m+[m[32m        max_attempts: int = MAX_REPAIR_ATTEMPTS,[m
+[32m+[m[32m    ) -> dict[str, Any]:[m
+[32m+[m[32m        loop_id = f"repair_loop_{time.strftime('%Y%m%d_%H%M%S')}"[m
+[32m+[m[32m        loop_dir = self.repair_loop_root / loop_id[m
+[32m+[m[32m        loop_dir.mkdir(parents=True, exist_ok=False)[m
+[32m+[m
+[32m+[m[32m        origin_verification = self._load_verification(origin_verification_id)[m
+[32m+[m[32m        origin_patch_id = origin_verification.get("patch_id")[m
+[32m+[m
+[32m+[m[32m        manifest: dict[str, Any] = {[m
+[32m+[m[32m            "repair_loop_id": loop_id,[m
+[32m+[m[32m            "status": "running",[m
+[32m+[m[32m            "origin_verification_id": origin_verification_id,[m
+[32m+[m[32m            "origin_patch_id": origin_patch_id,[m
+[32m+[m[32m            "max_attempts": max_attempts,[m
+[32m+[m[32m            "attempts": [],[m
+[32m+[m[32m            "final_action": None,[m
+[32m+[m[32m            "escalation": None,[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        self._write_manifest(loop_dir, manifest)[m
+[32m+[m
+[32m+[m[32m        current_verification_id = origin_verification_id[m
+[32m+[m
+[32m+[m[32m        try:[m
+[32m+[m[32m            for attempt_number in range(1, max_attempts + 1):[m
+[32m+[m[32m                repair_result = self.repair_execution_service.execute_repair_cycle([m
+[32m+[m[32m                    current_verification_id[m
+[32m+[m[32m                )[m
+[32m+[m
+[32m+[m[32m                repair_patch_id = repair_result.get("repair_patch_id")[m
+[32m+[m[32m                repair_verification_id = repair_result.get("repair_verification_id")[m
+[32m+[m
+[32m+[m[32m                if not repair_patch_id or not repair_verification_id:[m
+[32m+[m[32m                    manifest["attempts"].append([m
+[32m+[m[32m                        {[m
+[32m+[m[32m                            "attempt_number": attempt_number,[m
+[32m+[m[32m                            "source_verification_id": current_verification_id,[m
+[32m+[m[32m                            "repair_patch_id": repair_patch_id,[m
+[32m+[m[32m                            "verification_id": repair_verification_id,[m
+[32m+[m[32m                            "validation_result": None,[m
+[32m+[m[32m                            "decision": "human_review",[m
+[32m+[m[32m                            "status": "incomplete_repair_attempt",[m
+[32m+[m[32m                            "reason": repair_result.get("reason"),[m
+[32m+[m[32m                        }[m
+[32m+[m[32m                    )[m
+[32m+[m[32m                    manifest["status"] = "complete"[m
+[32m+[m[32m                    manifest["final_action"] = "human_review"[m
+[32m+[m[32m                    self._write_manifest(loop_dir, manifest)[m
+[32m+[m[32m                    return manifest[m
+[32m+[m
+[32m+[m[32m                self._annotate_repair_verification([m
+[32m+[m[32m                    repair_verification_id=repair_verification_id,[m
+[32m+[m[32m                    attempt_number=attempt_number,[m
+[32m+[m[32m                    origin_verification_id=origin_verification_id,[m
+[32m+[m[32m                    origin_patch_id=origin_patch_id,[m
+[32m+[m[32m                )[m
+[32m+[m
+[32m+[m[32m                repair_verification = self._load_verification(repair_verification_id)[m
+[32m+[m[32m                validation_result = str(repair_verification.get("result", "")).upper()[m
+[32m+[m
+[32m+[m[32m                decision = self._decide_outcome([m
+[32m+[m[32m                    validation_result=validation_result,[m
+[32m+[m[32m                    attempt_number=attempt_number,[m
+[32m+[m[32m                    max_attempts=max_attempts,[m
+[32m+[m[32m                )[m
+[32m+[m
+[32m+[m[32m                manifest["attempts"].append([m
+[32m+[m[32m                    {[m
+[32m+[m[32m                        "attempt_number": attempt_number,[m
+[32m+[m[32m                        "source_verification_id": current_verification_id,[m
+[32m+[m[32m                        "repair_patch_id": repair_patch_id,[m
+[32m+[m[32m                        "verification_id": repair_verification_id,[m
+[32m+[m[32m                        "validation_result": validation_result,[m
+[32m+[m[32m                        "decision": decision,[m
+[32m+[m[32m                    }[m
+[32m+[m[32m                )[m
+[32m+[m[32m                self._write_manifest(loop_dir, manifest)[m
+[32m+[m
+[32m+[m[32m                if decision == "human_review":[m
+[32m+[m[32m                    manifest["status"] = "complete"[m
+[32m+[m[32m                    manifest["final_action"] = "human_review"[m
+[32m+[m[32m                    self._write_manifest(loop_dir, manifest)[m
+[32m+[m[32m                    return manifest[m
+[32m+[m
+[32m+[m[32m                if decision == "escalate_repair":[m
+[32m+[m[32m                    manifest["status"] = "complete"[m
+[32m+[m[32m                    manifest["escalation"] = {[m
+[32m+[m[32m                        "attempt_number": attempt_number,[m
+[32m+[m[32m                        "reason": "max_repair_attempts_reached",[m
+[32m+[m[32m                        "recorded_action": "escalate_repair",[m
+[32m+[m[32m                        "routed_to": "human_review",[m
+[32m+[m[32m                    }[m
+[32m+[m[32m                    manifest["final_action"] = "human_review"[m
+[32m+[m[32m                    self._write_manifest(loop_dir, manifest)[m
+[32m+[m[32m                    return manifest[m
+[32m+[m
+[32m+[m[32m                current_verification_id = repair_verification_id[m
+[32m+[m
+[32m+[m[32m            manifest["status"] = "complete"[m
+[32m+[m[32m            manifest["escalation"] = {[m
+[32m+[m[32m                "reason": "max_repair_attempts_reached",[m
+[32m+[m[32m                "recorded_action": "escalate_repair",[m
+[32m+[m[32m                "routed_to": "human_review",[m
+[32m+[m[32m            }[m
+[32m+[m[32m            manifest["final_action"] = "human_review"[m
+[32m+[m[32m            self._write_manifest(loop_dir, manifest)[m
+[32m+[m[32m            return manifest[m
+[32m+[m
+[32m+[m[32m        except Exception as exc:[m
+[32m+[m[32m            manifest["status"] = "interrupted"[m
+[32m+[m[32m            manifest["final_action"] = "human_review"[m
+[32m+[m[32m            manifest["error"] = str(exc)[m
+[32m+[m[32m            self._write_manifest(loop_dir, manifest)[m
+[32m+[m[32m            raise[m
+[32m+[m
+[32m+[m[32m    def _decide_outcome([m
+[32m+[m[32m        self,[m
+[32m+[m[32m        validation_result: str,[m
+[32m+[m[32m        attempt_number: int,[m
+[32m+[m[32m        max_attempts: int,[m
+[32m+[m[32m    ) -> str:[m
+[32m+[m[32m        if validation_result == "PASS":[m
+[32m+[m[32m            return "human_review"[m
+[32m+[m
+[32m+[m[32m        if attempt_number >= max_attempts:[m
+[32m+[m[32m            return "escalate_repair"[m
+[32m+[m
+[32m+[m[32m        return "continue_repair"[m
+[32m+[m
+[32m+[m[32m    def _load_verification(self, verification_id: str) -> dict[str, Any]:[m
+[32m+[m[32m        candidates = [[m
+[32m+[m[32m            self.repo_root / ".ageix" / "verification" / verification_id / "report.json",[m
+[32m+[m[32m            self.repo_root / ".ageix" / "verification" / verification_id / "verification.json",[m
+[32m+[m[32m            self.repo_root / ".ageix" / "verification" / f"{verification_id}.json",[m
+[32m+[m[32m        ][m
+[32m+[m
+[32m+[m[32m        for path in candidates:[m
+[32m+[m[32m            if path.exists():[m
+[32m+[m[32m                data = json.loads(path.read_text(encoding="utf-8"))[m
+[32m+[m[32m                if not isinstance(data, dict):[m
+[32m+[m[32m                    raise ValueError(f"Expected JSON object in {path}")[m
+[32m+[m[32m                return data[m
+[32m+[m
+[32m+[m[32m        raise FileNotFoundError(f"Verification artifact not found: {verification_id}")[m
+[32m+[m
+[32m+[m[32m    def _verification_report_path(self, verification_id: str) -> Path:[m
+[32m+[m[32m        path = self.repo_root / ".ageix" / "verification" / verification_id / "report.json"[m
+[32m+[m[32m        if not path.exists():[m
+[32m+[m[32m            raise FileNotFoundError(f"Verification report not found: {path}")[m
+[32m+[m[32m        return path[m
+[32m+[m
+[32m+[m[32m    def _annotate_repair_verification([m
+[32m+[m[32m        self,[m
+[32m+[m[32m        *,[m
+[32m+[m[32m        repair_verification_id: str,[m
+[32m+[m[32m        attempt_number: int,[m
+[32m+[m[32m        origin_verification_id: str,[m
+[32m+[m[32m        origin_patch_id: str | None,[m
+[32m+[m[32m    ) -> None:[m
+[32m+[m[32m        report_path = self._verification_report_path(repair_verification_id)[m
+[32m+[m[32m        report = json.loads(report_path.read_text(encoding="utf-8"))[m
+[32m+[m
+[32m+[m[32m        report["repair_attempt"] = attempt_number[m
+[32m+[m[32m        report["origin_verification_id"] = origin_verification_id[m
+[32m+[m[32m        report["origin_patch_id"] = origin_patch_id[m
+[32m+[m
+[32m+[m[32m        metadata = report.get("metadata")[m
+[32m+[m[32m        if not isinstance(metadata, dict):[m
+[32m+[m[32m            metadata = {}[m
+[32m+[m
+[32m+[m[32m        metadata["repair_attempt"] = attempt_number[m
+[32m+[m[32m        metadata["origin_verification_id"] = origin_verification_id[m
+[32m+[m[32m        metadata["origin_patch_id"] = origin_patch_id[m
+[32m+[m
+[32m+[m[32m        report["metadata"] = metadata[m
+[32m+[m
+[32m+[m[32m        report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")[m
+[32m+[m
+[32m+[m[32m    def _write_manifest(self, loop_dir: Path, manifest: dict[str, Any]) -> None:[m
+[32m+[m[32m        path = loop_dir / "manifest.json"[m
+[32m+[m[32m        path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")[m
+\ No newline at end of file[m
+[1mdiff --git a/tests/test_repair_loop_service.py b/tests/test_repair_loop_service.py[m
+[1mnew file mode 100644[m
+[1mindex 0000000..02b8648[m
+[1m--- /dev/null[m
+[1m+++ b/tests/test_repair_loop_service.py[m
+[36m@@ -0,0 +1,196 @@[m
+[32m+[m[32mfrom __future__ import annotations[m
+[32m+[m
+[32m+[m[32mimport json[m
+[32m+[m[32mfrom pathlib import Path[m
+[32m+[m[32mfrom typing import Any[m
+[32m+[m
+[32m+[m[32mfrom services.repair_loop_service import RepairLoopService[m
+[32m+[m
+[32m+[m
+[32m+[m[32mclass FakeRepairExecutionService:[m
+[32m+[m[32m    def __init__(self, results: list[dict[str, Any]]) -> None:[m
+[32m+[m[32m        self.results = list(results)[m
+[32m+[m[32m        self.calls: list[str] = [][m
+[32m+[m
+[32m+[m[32m    def execute_repair_cycle(self, verification_id: str) -> dict[str, Any]:[m
+[32m+[m[32m        self.calls.append(verification_id)[m
+[32m+[m[32m        return self.results.pop(0)[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef write_verification([m
+[32m+[m[32m    repo_root: Path,[m
+[32m+[m[32m    verification_id: str,[m
+[32m+[m[32m    patch_id: str,[m
+[32m+[m[32m    result: str,[m
+[32m+[m[32m) -> None:[m
+[32m+[m[32m    verification_dir = repo_root / ".ageix" / "verification" / verification_id[m
+[32m+[m[32m    verification_dir.mkdir(parents=True, exist_ok=True)[m
+[32m+[m
+[32m+[m[32m    report = {[m
+[32m+[m[32m        "verification_id": verification_id,[m
+[32m+[m[32m        "patch_id": patch_id,[m
+[32m+[m[32m        "status": "materialized",[m
+[32m+[m[32m        "result": result,[m
+[32m+[m[32m        "reasoning": [],[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    (verification_dir / "report.json").write_text([m
+[32m+[m[32m        json.dumps(report, indent=2),[m
+[32m+[m[32m        encoding="utf-8",[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef test_repair_loop_first_attempt_passes(tmp_path: Path) -> None:[m
+[32m+[m[32m    write_verification(tmp_path, "verification_origin", "patch_origin", "FAIL")[m
+[32m+[m[32m    write_verification(tmp_path, "verification_repair_1", "patch_repair_1", "PASS")[m
+[32m+[m
+[32m+[m[32m    fake_executor = FakeRepairExecutionService([m
+[32m+[m[32m        results=[[m
+[32m+[m[32m            {[m
+[32m+[m[32m                "repair_patch_id": "patch_repair_1",[m
+[32m+[m[32m                "repair_verification_id": "verification_repair_1",[m
+[32m+[m[32m            }[m
+[32m+[m[32m        ],[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m[32m    service = RepairLoopService([m
+[32m+[m[32m        repo_root=tmp_path,[m
+[32m+[m[32m        repair_execution_service=fake_executor,[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m[32m    manifest = service.run_repair_loop([m
+[32m+[m[32m        origin_verification_id="verification_origin",[m
+[32m+[m[32m        max_attempts=3,[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m[32m    assert manifest["origin_patch_id"] == "patch_origin"[m
+[32m+[m[32m    assert manifest["origin_verification_id"] == "verification_origin"[m
+[32m+[m[32m    assert manifest["final_action"] == "human_review"[m
+[32m+[m[32m    assert len(manifest["attempts"]) == 1[m
+[32m+[m[32m    assert manifest["attempts"][0]["validation_result"] == "PASS"[m
+[32m+[m[32m    assert manifest["attempts"][0]["decision"] == "human_review"[m
+[32m+[m[32m    assert fake_executor.calls == ["verification_origin"][m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef test_repair_loop_retries_then_passes(tmp_path: Path) -> None:[m
+[32m+[m[32m    write_verification(tmp_path, "verification_origin", "patch_origin", "FAIL")[m
+[32m+[m[32m    write_verification(tmp_path, "verification_repair_1", "patch_repair_1", "FAIL")[m
+[32m+[m[32m    write_verification(tmp_path, "verification_repair_2", "patch_repair_2", "PASS")[m
+[32m+[m
+[32m+[m[32m    fake_executor = FakeRepairExecutionService([m
+[32m+[m[32m        results=[[m
+[32m+[m[32m            {[m
+[32m+[m[32m                "repair_patch_id": "patch_repair_1",[m
+[32m+[m[32m                "repair_verification_id": "verification_repair_1",[m
+[32m+[m[32m            },[m
+[32m+[m[32m            {[m
+[32m+[m[32m                "repair_patch_id": "patch_repair_2",[m
+[32m+[m[32m                "repair_verification_id": "verification_repair_2",[m
+[32m+[m[32m            },[m
+[32m+[m[32m        ],[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m[32m    service = RepairLoopService([m
+[32m+[m[32m        repo_root=tmp_path,[m
+[32m+[m[32m        repair_execution_service=fake_executor,[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m[32m    manifest = service.run_repair_loop([m
+[32m+[m[32m        origin_verification_id="verification_origin",[m
+[32m+[m[32m        max_attempts=3,[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m[32m    assert manifest["final_action"] == "human_review"[m
+[32m+[m[32m    assert len(manifest["attempts"]) == 2[m
+[32m+[m[32m    assert manifest["attempts"][0]["decision"] == "continue_repair"[m
+[32m+[m[32m    assert manifest["attempts"][1]["decision"] == "human_review"[m
+[32m+[m[32m    assert fake_executor.calls == [[m
+[32m+[m[32m        "verification_origin",[m
+[32m+[m[32m        "verification_repair_1",[m
+[32m+[m[32m    ][m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef test_repair_loop_escalates_after_max_attempts_then_routes_to_human_review([m
+[32m+[m[32m    tmp_path: Path,[m
+[32m+[m[32m) -> None:[m
+[32m+[m[32m    write_verification(tmp_path, "verification_origin", "patch_origin", "FAIL")[m
+[32m+[m[32m    write_verification(tmp_path, "verification_repair_1", "patch_repair_1", "FAIL")[m
+[32m+[m[32m    write_verification(tmp_path, "verification_repair_2", "patch_repair_2", "FAIL")[m
+[32m+[m[32m    write_verification(tmp_path, "verification_repair_3", "patch_repair_3", "FAIL")[m
+[32m+[m
+[32m+[m[32m    fake_executor = FakeRepairExecutionService([m
+[32m+[m[32m        results=[[m
+[32m+[m[32m            {[m
+[32m+[m[32m                "repair_patch_id": "patch_repair_1",[m
+[32m+[m[32m                "repair_verification_id": "verification_repair_1",[m
+[32m+[m[32m            },[m
+[32m+[m[32m            {[m
+[32m+[m[32m                "repair_patch_id": "patch_repair_2",[m
+[32m+[m[32m                "repair_verification_id": "verification_repair_2",[m
+[32m+[m[32m            },[m
+[32m+[m[32m            {[m
+[32m+[m[32m                "repair_patch_id": "patch_repair_3",[m
+[32m+[m[32m                "repair_verification_id": "verification_repair_3",[m
+[32m+[m[32m            },[m
+[32m+[m[32m        ],[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m[32m    service = RepairLoopService([m
+[32m+[m[32m        repo_root=tmp_path,[m
+[32m+[m[32m        repair_execution_service=fake_executor,[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m[32m    manifest = service.run_repair_loop([m
+[32m+[m[32m        origin_verification_id="verification_origin",[m
+[32m+[m[32m        max_attempts=3,[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m[32m    assert manifest["status"] == "complete"[m
+[32m+[m[32m    assert manifest["final_action"] == "human_review"[m
+[32m+[m[32m    assert manifest["escalation"]["recorded_action"] == "escalate_repair"[m
+[32m+[m[32m    assert manifest["escalation"]["routed_to"] == "human_review"[m
+[32m+[m[32m    assert len(manifest["attempts"]) == 3[m
+[32m+[m[32m    assert manifest["attempts"][-1]["decision"] == "escalate_repair"[m
+[32m+[m[32m    assert fake_executor.calls == [[m
+[32m+[m[32m        "verification_origin",[m
+[32m+[m[32m        "verification_repair_1",[m
+[32m+[m[32m        "verification_repair_2",[m
+[32m+[m[32m    ][m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef test_repair_loop_persists_manifest(tmp_path: Path) -> None:[m
+[32m+[m[32m    write_verification(tmp_path, "verification_origin", "patch_origin", "FAIL")[m
+[32m+[m[32m    write_verification(tmp_path, "verification_repair_1", "patch_repair_1", "PASS")[m
+[32m+[m
+[32m+[m[32m    fake_executor = FakeRepairExecutionService([m
+[32m+[m[32m        results=[[m
+[32m+[m[32m            {[m
+[32m+[m[32m                "repair_patch_id": "patch_repair_1",[m
+[32m+[m[32m                "repair_verification_id": "verification_repair_1",[m
+[32m+[m[32m            }[m
+[32m+[m[32m        ],[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m[32m    service = RepairLoopService([m
+[32m+[m[32m        repo_root=tmp_path,[m
+[32m+[m[32m        repair_execution_service=fake_executor,[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m[32m    manifest = service.run_repair_loop([m
+[32m+[m[32m        origin_verification_id="verification_origin",[m
+[32m+[m[32m        max_attempts=3,[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m[32m    manifest_path = ([m
+[32m+[m[32m        tmp_path[m
+[32m+[m[32m        / ".ageix"[m
+[32m+[m[32m        / "repair_loops"[m
+[32m+[m[32m        / manifest["repair_loop_id"][m
+[32m+[m[32m        / "manifest.json"[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m[32m    assert manifest_path.exists()[m
+[32m+[m
+[32m+[m[32m    persisted = json.loads(manifest_path.read_text(encoding="utf-8"))[m
+[32m+[m
+[32m+[m[32m    assert persisted == manifest[m
+\ No newline at end of file[m

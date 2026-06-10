@@ -180,3 +180,74 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
             "No questions or blockers.",
         ],
     }
+
+def _read_project_file_for_repair(self, file_path: str) -> dict[str, Any]:
+    path = self.repo_root / file_path
+
+    if not path.exists():
+        return {
+            "path": file_path,
+            "exists": False,
+            "content": "",
+            "reason": "file_not_found",
+        }
+
+    if not path.is_file():
+        return {
+            "path": file_path,
+            "exists": False,
+            "content": "",
+            "reason": "not_a_file",
+        }
+
+    return {
+        "path": file_path,
+        "exists": True,
+        "content": path.read_text(encoding="utf-8"),
+    }
+
+
+def collect_repair_evidence(repair_work_order: dict[str, Any]) -> dict[str, Any]:
+    patch_id = str(repair_work_order.get("patch_id", ""))
+    source_verification_id = str(repair_work_order.get("source_verification_id", ""))
+    attempt_number = int(repair_work_order.get("attempt_number", 1))
+    failure_reason = str(repair_work_order.get("failure_reason", ""))
+
+    objective = repair_work_order.get("objective")
+    repair_objective = repair_work_order.get("repair_objective")
+
+    files: list[dict[str, Any]] = []
+    dependency_hints: list[str] = []
+    supporting_evidence: list[str] = [
+        f"Patch ID: {patch_id}",
+        f"Source verification ID: {source_verification_id}",
+        f"Repair attempt: {attempt_number}",
+    ]
+
+    if objective:
+        supporting_evidence.append(f"Original objective: {objective}")
+
+    if repair_objective:
+        supporting_evidence.append(f"Repair objective: {repair_objective}")
+
+    if failure_reason:
+        supporting_evidence.append(f"Failure reason: {failure_reason}")
+
+    changed_files = repair_work_order.get("changed_files")
+    if isinstance(changed_files, list):
+        for file_path in changed_files:
+            if isinstance(file_path, str):
+                files.append(_read_file(file_path))
+
+    return {
+        "evidence_type": "repair_repository_evidence",
+        "patch_id": patch_id,
+        "source_verification_id": source_verification_id,
+        "attempt_number": attempt_number,
+        "failure_reason": failure_reason,
+        "objective": objective,
+        "repair_objective": repair_objective,
+        "files": files,
+        "dependency_hints": dependency_hints,
+        "supporting_evidence": supporting_evidence,
+    }
