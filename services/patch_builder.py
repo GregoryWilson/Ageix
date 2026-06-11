@@ -113,8 +113,11 @@ class PatchBuilder:
 
             if raw_operation == "replace_file":
                 operation = "modify"
+            elif raw_operation == "create_file":
+                operation = "create"
             elif raw_operation in {"create", "modify", "delete"}:
                 operation = raw_operation
+            
             else:
                 raise ValueError(f"Unsupported patch operation: {raw_operation}")
 

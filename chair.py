@@ -254,6 +254,7 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
                     objective=step.get("objective", ""),
                     target_files=step.get("target_files", []),
                     repository_result=repository_content,
+                    step_constraints=step.get("constraints", {}),
                 )
 
                 devworker_packet["instructions"] = step.get("instructions", "")
@@ -262,6 +263,12 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
                 print(
                     "[Chair] DevWorker packet repo evidence count:",
                     len(devworker_packet.get("repo_evidence", [])),
+                    flush=True,
+                )
+
+                print(
+                   "[Chair] DevWorker constraints:",
+                    json.dumps(devworker_packet.get("constraints", {}), indent=2),
                     flush=True,
                 )
 
@@ -472,8 +479,29 @@ def build_devworker_packet(
     objective: str,
     target_files: list[str],
     repository_result: dict,
+    step_constraints: dict[str, Any] | None = None,
 ) -> dict:
     repo_evidence = repository_result.get("evidence", [])
+
+
+    constraints = {
+        "proposal_only": True,
+        "no_file_writes": True,
+        "must_use_repository_evidence": True,
+        "must_cite_lines_when_available": True,
+        "allowed_operations": ["replace_file"],
+    }
+
+    constraints.update(step_constraints or {})
+
+    if constraints.get("allow_create_files"):
+        constraints["allowed_operations"] = sorted(
+            set(constraints.get("allowed_operations", []))
+            | {"replace_file", "create_file"}
+        )
+
+    constraints["proposal_only"] = True
+    constraints["no_file_writes"] = True
 
     if not repo_evidence:
         repo_evidence = [
@@ -486,12 +514,7 @@ def build_devworker_packet(
         "target_files": target_files,
         "repo_evidence": repo_evidence,
         "dependency_hints": repository_result.get("dependency_hints", []),
-        "constraints": {
-            "proposal_only": True,
-            "no_file_writes": True,
-            "must_use_repository_evidence": True,
-            "must_cite_lines_when_available": True,
-        },
+        "constraints": constraints,
     }
 
 def validate_devworker_result(result: dict[str, Any]) -> None:
@@ -568,6 +591,12 @@ def validate_patch_proposal_deliverable(
         "no_write_confirmation",
     ]
 
+    forbidden = [
+        "<new file content",
+        "<placeholder",
+        "based on project identity layer requirements",
+    ]
+
     missing = [
         key
         for key in required
@@ -586,8 +615,16 @@ def validate_patch_proposal_deliverable(
         operation = change.get("operation")
         content = change.get("content")
 
-        if operation != "replace_file":
-            raise ValueError("Only replace_file operations are currently supported.")
+        for marker in forbidden:
+            if marker.lower() in content.lower():
+                raise ValueError(
+                    f"{path} contains placeholder content."
+                )
+
+        if operation not in {"replace_file", "create_file"}:
+            raise ValueError(
+                f"Unsupported patch proposal operation: {operation}"
+            )
 
         if not isinstance(path, str) or not path.strip():
             raise ValueError("Patch proposal change missing path.")
@@ -596,15 +633,15 @@ def validate_patch_proposal_deliverable(
             raise ValueError(f"Unsafe patch proposal path: {path}")
 
         if path in seen_paths:
-            raise ValueError(f"Duplicate replacement proposed for {path}")
+            raise ValueError(f"Duplicate change proposed for {path}")
 
         seen_paths.add(path)
 
         if not isinstance(content, str):
-            raise ValueError(f"{path} replacement content must be a string.")
+            raise ValueError(f"{path} patch content must be a string.")
 
         if not content.strip():
-            raise ValueError(f"{path} replacement content cannot be empty.")
+            raise ValueError(f"{path} patch content cannot be empty.")
 
 def compact_repo_evidence(item: dict[str, Any]) -> dict[str, Any]:
     lines = item.get("lines", [])
@@ -805,36 +842,152 @@ def run_devworker_with_evidence(
 if __name__ == "__main__":
     import json
 
+    sprint_prompt = """
+Ageix Sprint 10.0 – Project Registry & Identity Foundation
+
+We are beginning Phase 10: Project Awareness.
+
+Important architecture rule:
+
+Ageix is not the project. Ageix is the worker.
+
+Ageix must eventually support unlimited projects, repositories, architectures, creative ideas, and workspaces. Therefore Sprint 10.0 must introduce a first-class Project Registry before any repository indexing or code summarization begins.
+
+Do not build repository indexing yet.
+
+Primary goal:
+
+Create the foundational project identity layer for Ageix.
+
+Implement:
+
+1. ProjectRegistryService
+2. ProjectProfileService
+3. Persistent workspace registry artifact
+4. Persistent per-project profile artifact
+5. Tests proving multiple projects can coexist
+
+Suggested artifacts:
+
+.ageix/
+  instance/
+    workspace_registry.json
+
+  projects/
+    <project_id>/
+      project_profile.json
+
+Project records should support fields like:
+
+- project_id
+- name
+- project_type
+- root_path
+- brain_path
+- project_role
+- status
+- created_at
+- updated_at
+- metadata
+
+Initial project_type examples:
+
+- software_repository
+- architecture_design
+- business_plan
+- creative_project
+- research_project
+- hardware_project
+- general_workspace
+
+Initial project_role examples:
+
+- development
+- production
+- ageix_development_source
+- ageix_production_runtime
+- external_project
+
+Required service behavior:
+
+- register_project()
+- get_project()
+- list_projects()
+- resolve_project()
+- prevent duplicate project IDs
+- create project brain directory
+- write project_profile.json
+- maintain workspace_registry.json
+- load existing registry if present
+- behave deterministically
+- avoid hardcoding Ageix as the only project
+- avoid assuming Path(".") is always the target project
+
+Testing requirements:
+
+- registering one project creates registry and profile
+- registering two projects keeps both isolated
+- duplicate project_id is rejected
+- resolving a project returns root_path and brain_path
+- registry survives reload
+- project brain paths are deterministic
+- invalid project IDs are handled cleanly
+
+Important boundaries:
+
+- Do not implement repo indexing yet.
+- Do not implement LLM summaries yet.
+- Do not modify existing patch lifecycle behavior unless necessary.
+- Keep this sprint focused on project identity only.
+
+Acceptance criteria:
+
+At the end of Sprint 10.0, Ageix can explicitly know about multiple projects and resolve a selected project without confusing the Ageix runtime with the target project.
+
+The result should establish the foundation for Sprint 10.1: Repository Index Foundation.
+""".strip()
+
     task = {
-        "title": "Test Dev Worker",
-        "description": "Verify dev worker routing."
+        "title": "Ageix Sprint 10.0",
+        "description": sprint_prompt,
     }
 
     plan_result = build_plan_for_task(task=task)
     state = create_chair_state(task, plan_result)
 
     state["plan"] = {
-    "steps": [
-        {
-            "id": "step_1",
-            "agent": "dev_worker",
-            "objective": "Review DevWorker evidence-aware proposal flow.",
-            "instructions": "Modify scratch/context_loop_test.py so hello() returns \"hello from Ageix\". Do not modify live files; return a patch proposal only.",
-            "target_files": [
-                "scratch/context_loop_test.py"
-            ],
-            "expected_output": {
-                "type": "proposal"
-            },
-            "constraints": {
-                "proposal_only": True
-            },
-            "status": "pending",
-            "dependencies": []
-        }
-    ]
-}
+        "steps": [
+            {
+                "id": "step_1",
+                "agent": "dev_worker",
+                "objective": "Implement Sprint 10.0 Project Registry and Identity Foundation.",
+                "instructions": sprint_prompt,
+                "target_files": [
+                    "services/project_registry_service.py",
+                    "services/project_profile_service.py",
+                    "tests/test_project_registry_service.py",
+                    "tests/test_project_profile_service.py",
+                ],
+                "expected_output": {
+                    "type": "patch",
+                    "description": "Patch implementing project registry/profile services and tests."
+                },
+                "constraints": {
+                    "proposal_only": False,
+                    "do_not_build_repo_indexing": True,
+                    "do_not_build_llm_summaries": True,
+                    "do_not_assume_path_dot_is_target_project": True,
+                    "do_not_hardcode_ageix_as_only_project": True,
+                    "preserve_existing_patch_lifecycle": True,
+                    "allow_create_files": True,
+                    "allow_new_files_without_existing_evidence": True,
+                },
+                "status": "pending",
+                "dependencies": [],
+            }
+        ]
+    }
 
     state = execute_ready_steps_until_blocked_or_done(state)
-    
+
     print(json.dumps(state, indent=2))

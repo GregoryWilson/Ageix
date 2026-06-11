@@ -125,7 +125,7 @@ class StagingService:
         for change in changes:
             operation = change.get("operation")
 
-            if operation != "replace_file":
+            if operation not in {"replace_file", "create_file"}:
                 raise ValueError(
                     f"Unsupported patch proposal operation: {operation}"
                 )
