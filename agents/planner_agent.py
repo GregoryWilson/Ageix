@@ -86,8 +86,20 @@ def execute_planner_agent(
     
     raw = result.get("response", "")
 
+    
+
     try:
         data = extract_json(raw)
+
+        if isinstance(data, list):
+            data = {
+                "objective": task.get("title", "Generated execution plan"),
+                "strategy": "Execute steps in dependency order.",
+                "steps": data,
+                "metadata": {
+                    "normalized_from": "raw_step_list"
+                },
+            }
 
         if "work_plan" in data and "steps" not in data:
             data = {
@@ -99,36 +111,54 @@ def execute_planner_agent(
                 },
             }
 
-        def normalize_plan(data: dict, task: dict) -> dict:
-            if "work_plan" in data and "steps" not in data:
-                data["steps"] = data.pop("work_plan")
+        if "plan" in data and "steps" not in data:
+            plan_steps = []
 
-            if "objective" not in data:
-                data["objective"] = task.get("title", "Generated execution plan")
+            for idx, (step_id, step_data) in enumerate(data["plan"].items(), start=1):
+                plan_steps.append({
+                    "id": step_id,
+                    "agent": "repository" if idx == 1 else "dev_worker",
+                    "objective": step_data.get("action", step_id),
+                    "instructions": step_data.get("description", ""),
+                    "target_files": step_data.get("target_files", []),
+                    "inputs": {},
+                    "expected_output": {},
+                    "constraints": {},
+                    "success_criteria": [],
+                    "dependencies": [],
+                })
 
-            if "strategy" not in data:
-                data["strategy"] = "Execute steps in dependency order."
+            data = {
+                "objective": task.get("title", "Generated execution plan"),
+                "strategy": "Normalized from legacy plan format.",
+                "steps": plan_steps,
+                "metadata": {
+                    "normalized_from": "legacy_plan_object"
+                },
+            }
 
-            for step in data.get("steps", []):
-                if isinstance(step.get("expected_output"), str):
-                    step["expected_output"] = {
-                        "description": step["expected_output"]
-                    }
+        if "objective" not in data:
+            data["objective"] = task.get("title", "Generated execution plan")
 
-                if isinstance(step.get("constraints"), str):
-                    step["constraints"] = {
-                        "description": step["constraints"]
-                    }
+        if "strategy" not in data:
+            data["strategy"] = "Execute steps in dependency order."
 
-                if isinstance(step.get("success_criteria"), str):
-                    step["success_criteria"] = [
-                        step["success_criteria"]
-                    ]
+        for step in data.get("steps", []):
 
-            return data
+            if step.get("agent") == "dev_worker":
+                if not step.get("target_files"):
+                    raise ValueError(
+                        "DevWorker step missing target_files."
+                    )
 
-        data = extract_json(raw)
-        data = normalize_plan(data, task)
+            if isinstance(step.get("expected_output"), str):
+                step["expected_output"] = {"description": step["expected_output"]}
+
+            if isinstance(step.get("constraints"), str):
+                step["constraints"] = {"description": step["constraints"]}
+
+            if isinstance(step.get("success_criteria"), str):
+                step["success_criteria"] = [step["success_criteria"]]
 
         plan = ExecutionPlan(**data)
         validation_error = None
@@ -169,6 +199,7 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
     if task is None:
         raise ValueError("Planner agent requires 'task'")
     
+
     return execute_planner_agent(
         task=task,
         parent_task=payload.get("parent_task"),

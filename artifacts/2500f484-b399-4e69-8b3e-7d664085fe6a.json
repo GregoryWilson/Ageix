@@ -1,0 +1,57 @@
+{
+  "artifact_id": "2500f484-b399-4e69-8b3e-7d664085fe6a",
+  "artifact_type": "agent_deliverable",
+  "created_by": "research",
+  "content": {
+    "work_order": {
+      "work_order_id": "step_1",
+      "agent": "research",
+      "objective": "Analyze the objective input for technical requirements",
+      "instructions": [
+        "Perform a technical analysis of the objective input and identify key components"
+      ],
+      "input_artifacts": [],
+      "deliverable": {
+        "type": "agent_deliverable",
+        "required_sections": [
+          "summary",
+          "findings",
+          "risks",
+          "assumptions"
+        ]
+      },
+      "success_criteria": [
+        "requirements array populated",
+        "constraints array populated"
+      ],
+      "constraints": {
+        "max_time": "300s"
+      }
+    },
+    "deliverable": {
+      "agent": "research",
+      "status": "completed",
+      "summary": "**1. Executive Summary**  \nNo input artifacts were provided for analysis. The technical requirements cannot be evaluated without additional data or specifications.  \n\n**2. Key Findings**  \n- **Missing Input Artifacts**: The objective input lacks required data, preventing technical analysis.  \n- **Constraint Compliance**: The 300-second time limit is irrelevant without actionable input.  \n\n**3. Supporting Evidence**  \n- **Input Artifacts**: Explicitly listed as empty, indicating no data was provided for analysis.  \n- **Constraints**: The time constraint cannot be applied to an incomplete task.",
+      "findings": [],
+      "sources": [],
+      "route": "ollama",
+      "model_key": "local_fast",
+      "model": "qwen3:8b",
+      "reason": "Default local route",
+      "fallback_used": false
+    },
+    "raw_agent_result": {
+      "agent": "research",
+      "status": "completed",
+      "summary": "**1. Executive Summary**  \nNo input artifacts were provided for analysis. The technical requirements cannot be evaluated without additional data or specifications.  \n\n**2. Key Findings**  \n- **Missing Input Artifacts**: The objective input lacks required data, preventing technical analysis.  \n- **Constraint Compliance**: The 300-second time limit is irrelevant without actionable input.  \n\n**3. Supporting Evidence**  \n- **Input Artifacts**: Explicitly listed as empty, indicating no data was provided for analysis.  \n- **Constraints**: The time constraint cannot be applied to an incomplete task.",
+      "findings": [],
+      "sources": [],
+      "route": "ollama",
+      "model_key": "local_fast",
+      "model": "qwen3:8b",
+      "reason": "Default local route",
+      "fallback_used": false
+    }
+  },
+  "created_at": "2026-06-11T18:02:45.786200+00:00"
+}

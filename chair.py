@@ -7,7 +7,8 @@ from pathlib import Path
 from services.staging_service import StagingService
 from contracts.patch_contract import PatchProposal
 from services.patch_builder import PatchBuilder
-
+import argparse
+from services.objective_source_service import ObjectiveSourceService
 
 def build_chair_message(status: dict) -> str:
     title = status["title"]
@@ -95,10 +96,12 @@ def create_chair_state(
     task: dict,
     plan_result: dict,
 ) -> dict:
+    plan = initialize_plan_steps(plan_result.get("plan", {}))
+
     return {
         "task": task,
         "status": "planned",
-        "plan": plan_result.get("plan", {}),
+        "plan": plan,
         "planner_turn": plan_result.get("planner_turn", {}),
         "plan_step_count": plan_result.get("plan_step_count", 0),
         "validation_error": plan_result.get("validation_error"),
@@ -405,6 +408,12 @@ def update_plan_status(state: dict[str, Any]) -> dict[str, Any]:
 
     return state
 
+def initialize_plan_steps(plan: dict[str, Any]) -> dict[str, Any]:
+    for step in plan.get("steps", []):
+        step.setdefault("status", "pending")
+        step.setdefault("dependencies", [])
+    return plan
+
 def execute_ready_steps_until_blocked_or_done(
     state: dict[str, Any],
     max_steps: int = 10,
@@ -642,6 +651,8 @@ def validate_patch_proposal_deliverable(
 
         if not content.strip():
             raise ValueError(f"{path} patch content cannot be empty.")
+        
+        validate_no_placeholder_patch_content(path, content)
 
 def compact_repo_evidence(item: dict[str, Any]) -> dict[str, Any]:
     lines = item.get("lines", [])
@@ -837,115 +848,47 @@ def run_devworker_with_evidence(
 
     return agent_result
 
+def validate_no_placeholder_patch_content(path: str, content: str) -> None:
+    lowered = content.lower()
+
+    forbidden_markers = [
+        "<new file content",
+        "<placeholder",
+        "todo",
+        "pass\n",
+        "pass\r\n",
+        "based on requirements",
+    ]
+
+    for marker in forbidden_markers:
+        if marker in lowered:
+            raise ValueError(f"{path} contains placeholder/stub content.")
+
+    if path.startswith("tests/") and "assert " not in content:
+        raise ValueError(f"{path} test file contains no assertions.")
+
+
+def parse_chair_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run the Ageix Chair orchestrator.")
+    parser.add_argument("--objective", help="Objective text to execute.")
+    parser.add_argument("--objective-file", help="Path to a file containing the objective.")
+    parser.add_argument("--project-id", default="ageix", help="Project identifier.")
+    return parser.parse_args()
+
 #-----------------------------------------------------------------------#
 
 if __name__ == "__main__":
     import json
 
-    sprint_prompt = """
-Ageix Sprint 10.0 – Project Registry & Identity Foundation
+    args = parse_chair_args()
 
-We are beginning Phase 10: Project Awareness.
+    objective_envelope = ObjectiveSourceService(Path(".")).resolve_objective(
+        objective_text=args.objective,
+        objective_file=args.objective_file,
+        project_id=args.project_id,
+    )
 
-Important architecture rule:
-
-Ageix is not the project. Ageix is the worker.
-
-Ageix must eventually support unlimited projects, repositories, architectures, creative ideas, and workspaces. Therefore Sprint 10.0 must introduce a first-class Project Registry before any repository indexing or code summarization begins.
-
-Do not build repository indexing yet.
-
-Primary goal:
-
-Create the foundational project identity layer for Ageix.
-
-Implement:
-
-1. ProjectRegistryService
-2. ProjectProfileService
-3. Persistent workspace registry artifact
-4. Persistent per-project profile artifact
-5. Tests proving multiple projects can coexist
-
-Suggested artifacts:
-
-.ageix/
-  instance/
-    workspace_registry.json
-
-  projects/
-    <project_id>/
-      project_profile.json
-
-Project records should support fields like:
-
-- project_id
-- name
-- project_type
-- root_path
-- brain_path
-- project_role
-- status
-- created_at
-- updated_at
-- metadata
-
-Initial project_type examples:
-
-- software_repository
-- architecture_design
-- business_plan
-- creative_project
-- research_project
-- hardware_project
-- general_workspace
-
-Initial project_role examples:
-
-- development
-- production
-- ageix_development_source
-- ageix_production_runtime
-- external_project
-
-Required service behavior:
-
-- register_project()
-- get_project()
-- list_projects()
-- resolve_project()
-- prevent duplicate project IDs
-- create project brain directory
-- write project_profile.json
-- maintain workspace_registry.json
-- load existing registry if present
-- behave deterministically
-- avoid hardcoding Ageix as the only project
-- avoid assuming Path(".") is always the target project
-
-Testing requirements:
-
-- registering one project creates registry and profile
-- registering two projects keeps both isolated
-- duplicate project_id is rejected
-- resolving a project returns root_path and brain_path
-- registry survives reload
-- project brain paths are deterministic
-- invalid project IDs are handled cleanly
-
-Important boundaries:
-
-- Do not implement repo indexing yet.
-- Do not implement LLM summaries yet.
-- Do not modify existing patch lifecycle behavior unless necessary.
-- Keep this sprint focused on project identity only.
-
-Acceptance criteria:
-
-At the end of Sprint 10.0, Ageix can explicitly know about multiple projects and resolve a selected project without confusing the Ageix runtime with the target project.
-
-The result should establish the foundation for Sprint 10.1: Repository Index Foundation.
-""".strip()
+    sprint_prompt = objective_envelope["description"]
 
     task = {
         "title": "Ageix Sprint 10.0",
@@ -954,39 +897,6 @@ The result should establish the foundation for Sprint 10.1: Repository Index Fou
 
     plan_result = build_plan_for_task(task=task)
     state = create_chair_state(task, plan_result)
-
-    state["plan"] = {
-        "steps": [
-            {
-                "id": "step_1",
-                "agent": "dev_worker",
-                "objective": "Implement Sprint 10.0 Project Registry and Identity Foundation.",
-                "instructions": sprint_prompt,
-                "target_files": [
-                    "services/project_registry_service.py",
-                    "services/project_profile_service.py",
-                    "tests/test_project_registry_service.py",
-                    "tests/test_project_profile_service.py",
-                ],
-                "expected_output": {
-                    "type": "patch",
-                    "description": "Patch implementing project registry/profile services and tests."
-                },
-                "constraints": {
-                    "proposal_only": False,
-                    "do_not_build_repo_indexing": True,
-                    "do_not_build_llm_summaries": True,
-                    "do_not_assume_path_dot_is_target_project": True,
-                    "do_not_hardcode_ageix_as_only_project": True,
-                    "preserve_existing_patch_lifecycle": True,
-                    "allow_create_files": True,
-                    "allow_new_files_without_existing_evidence": True,
-                },
-                "status": "pending",
-                "dependencies": [],
-            }
-        ]
-    }
 
     state = execute_ready_steps_until_blocked_or_done(state)
 

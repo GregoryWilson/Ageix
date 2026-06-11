@@ -162,3 +162,30 @@ A context_request for a missing file is invalid when:
 - create_file is in allowed_operations
 - the work order explicitly asks to create that file
 - requirements are sufficient to write the new file
+
+
+Patch quality rules:
+
+Patch proposals must contain complete, runnable code.
+
+Forbidden:
+- pass-only service classes
+- empty function bodies
+- placeholder comments instead of implementation
+- tests with no assertions
+- syntax-invalid tests
+- content like "<new file content>"
+- TODO-only implementations
+
+For every new service file:
+- include real imports
+- include real public methods requested by the work order
+- include deterministic behavior
+- include input validation
+- include JSON/file persistence when required
+
+For every test file:
+- include executable pytest tests
+- include assertions
+- cover the acceptance criteria
+- tests must compile

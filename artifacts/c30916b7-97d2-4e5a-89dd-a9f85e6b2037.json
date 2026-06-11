@@ -1,0 +1,57 @@
+{
+  "artifact_id": "c30916b7-97d2-4e5a-89dd-a9f85e6b2037",
+  "artifact_type": "agent_deliverable",
+  "created_by": "research",
+  "content": {
+    "work_order": {
+      "work_order_id": "step_1",
+      "agent": "research",
+      "objective": "Gather information on current objectives and constraints",
+      "instructions": [
+        "Collect all relevant documentation and stakeholder input related to the objective"
+      ],
+      "input_artifacts": [],
+      "deliverable": {
+        "type": "agent_deliverable",
+        "required_sections": [
+          "summary",
+          "findings",
+          "risks",
+          "assumptions"
+        ]
+      },
+      "success_criteria": [
+        "Document contains key objectives and constraints",
+        "Document is formatted correctly"
+      ],
+      "constraints": {
+        "format": "markdown"
+      }
+    },
+    "deliverable": {
+      "agent": "research",
+      "status": "completed",
+      "summary": "# Executive Summary\n\nThe objective of this research endeavor is to gather comprehensive information regarding the current objectives and constraints that pertain to ongoing and future projects. This involves reviewing existing documentation and collecting insights from stakeholders to provide a clear framework for decision-making and strategic planning.\n\n# Key Findings \n\n1. **Objectives Identification**\n   - The main objectives identified from stakeholder input include increasing operational efficiency, enhancing customer satisfaction, driving innovation, and ensuring compliance with regulatory standards.\n\n2. **Constraints Analysis**\n   - Key constraints affecting project execution include budget limitations, resource availability, regulatory compliance requirements, and time constraints due to project deadlines.\n\n3. **Stakeholder Engagement**\n   - There is a necessity for continuous engagement tools to maintain communication with stakeholders, ensuring their inputs and expectations are regularly incorporated into project plans.\n\n# Supporting Evidence\n\n- **Documentation Review**: An initial review of existing documents, including project charters, strategic plans, and stakeholder feedback forms, highlights the alignment of identified objectives with the organization\u2019s long-term vision.\n\n- **Stakeholder Interviews**: Preliminary conversations with stakeholders have reiterated the importance of addressing both the articulated objectives and the practical constraints faced in their respective areas of responsibility.\n\n- **Regulatory Guidelines**: A careful analysis of relevant regulatory frameworks has pointed to specific compliance requirements that must be integrated into project planning to mitigate legal risks.\n\nThis research will facilitate a clearer understanding of the operational landscape while aligning future projects with organizational goals and addressing inherent constraints effectively.",
+      "findings": [],
+      "sources": [],
+      "route": "openrouter",
+      "model_key": "cloud_fast",
+      "model": "openai/gpt-4o-mini",
+      "reason": "Router selected cloud route for current/external info",
+      "fallback_used": false
+    },
+    "raw_agent_result": {
+      "agent": "research",
+      "status": "completed",
+      "summary": "# Executive Summary\n\nThe objective of this research endeavor is to gather comprehensive information regarding the current objectives and constraints that pertain to ongoing and future projects. This involves reviewing existing documentation and collecting insights from stakeholders to provide a clear framework for decision-making and strategic planning.\n\n# Key Findings \n\n1. **Objectives Identification**\n   - The main objectives identified from stakeholder input include increasing operational efficiency, enhancing customer satisfaction, driving innovation, and ensuring compliance with regulatory standards.\n\n2. **Constraints Analysis**\n   - Key constraints affecting project execution include budget limitations, resource availability, regulatory compliance requirements, and time constraints due to project deadlines.\n\n3. **Stakeholder Engagement**\n   - There is a necessity for continuous engagement tools to maintain communication with stakeholders, ensuring their inputs and expectations are regularly incorporated into project plans.\n\n# Supporting Evidence\n\n- **Documentation Review**: An initial review of existing documents, including project charters, strategic plans, and stakeholder feedback forms, highlights the alignment of identified objectives with the organization\u2019s long-term vision.\n\n- **Stakeholder Interviews**: Preliminary conversations with stakeholders have reiterated the importance of addressing both the articulated objectives and the practical constraints faced in their respective areas of responsibility.\n\n- **Regulatory Guidelines**: A careful analysis of relevant regulatory frameworks has pointed to specific compliance requirements that must be integrated into project planning to mitigate legal risks.\n\nThis research will facilitate a clearer understanding of the operational landscape while aligning future projects with organizational goals and addressing inherent constraints effectively.",
+      "findings": [],
+      "sources": [],
+      "route": "openrouter",
+      "model_key": "cloud_fast",
+      "model": "openai/gpt-4o-mini",
+      "reason": "Router selected cloud route for current/external info",
+      "fallback_used": false
+    }
+  },
+  "created_at": "2026-06-11T18:10:24.741165+00:00"
+}
