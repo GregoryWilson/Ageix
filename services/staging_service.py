@@ -131,6 +131,17 @@ class StagingService:
                 )
 
             relative_path = change["path"]
+            live_path = self._safe_repo_path(relative_path)
+
+            if operation == "create_file" and live_path.exists():
+                raise ValueError(
+                    f"create_file cannot overwrite existing file: {relative_path}"
+                )
+
+            if operation == "replace_file" and not live_path.exists():
+                raise ValueError(
+                    f"replace_file requires existing file: {relative_path}"
+                )
             staged_file = stage_path / relative_path
             staged_file.parent.mkdir(parents=True, exist_ok=True)
             staged_file.write_text(
