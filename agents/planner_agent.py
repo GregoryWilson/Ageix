@@ -86,7 +86,7 @@ def execute_planner_agent(
     
     raw = result.get("response", "")
 
-    
+    warnings = []
 
     try:
         data = extract_json(raw)
@@ -142,13 +142,21 @@ def execute_planner_agent(
 
         if "strategy" not in data:
             data["strategy"] = "Execute steps in dependency order."
-
+        
+        
         for step in data.get("steps", []):
 
             if step.get("agent") == "dev_worker":
-                if not step.get("target_files"):
-                    raise ValueError(
-                        "DevWorker step missing target_files."
+                target_files = step.get("target_files") or step.get("inputs", {}).get("target_files")
+
+                if not target_files:
+                    warnings.append(
+                        {
+                            "step_id": step.get("id"),
+                            "level": "warning",
+                            "code": "DEV_WORKER_TARGET_FILES_MISSING",
+                            "message": "DevWorker step missing target_files; repository discovery required.",
+                        }
                     )
 
             if isinstance(step.get("expected_output"), str):
@@ -160,6 +168,7 @@ def execute_planner_agent(
             if isinstance(step.get("success_criteria"), str):
                 step["success_criteria"] = [step["success_criteria"]]
 
+        
         plan = ExecutionPlan(**data)
         validation_error = None
 
@@ -186,6 +195,7 @@ def execute_planner_agent(
         "content": plan.model_dump(),
         "raw_response": raw,
         "validation_error": validation_error,
+        "warnings": warnings,
         "route": result.get("route"),
         "model_key": result.get("model_key"),
         "model": result.get("model"),
