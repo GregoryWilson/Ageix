@@ -801,6 +801,8 @@ def run_devworker_with_evidence(
             "no_file_writes": True,
             "must_use_repository_evidence": True,
             "must_cite_lines_when_available": True,
+            "allowed_operations": ["replace_file", "create_file"],
+            "allow_create_files": True,
         },
     }
 
