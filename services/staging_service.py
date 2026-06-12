@@ -30,7 +30,7 @@ class StagingService:
         return candidate
 
     def create_patch_id(self) -> str:
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")
         return f"patch_{timestamp}"
 
     def create_stage(
@@ -132,6 +132,18 @@ class StagingService:
 
             relative_path = change["path"]
             live_path = self._safe_repo_path(relative_path)
+
+            live_file = self._safe_repo_path(relative_path)
+
+            if operation == "create_file" and live_file.exists():
+                raise ValueError(
+                    f"create_file cannot overwrite existing file: {relative_path}"
+                )
+
+            if operation == "replace_file" and not live_file.exists():
+                raise ValueError(
+                    f"replace_file requires existing file: {relative_path}"
+                )
 
             if operation == "create_file" and live_path.exists():
                 raise ValueError(

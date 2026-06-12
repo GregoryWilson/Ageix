@@ -46,6 +46,13 @@ def normalize_devworker_result(
     data.setdefault("agent", "devworker")
     data.setdefault("mode", "proposal_only")
     data.setdefault("objective", packet.get("objective", ""))
+    data.setdefault(
+        "summary",
+        f"Patch proposal for {packet.get('objective', 'requested work')}"
+    )
+
+    data["notes"] = ensure_list(data.get("notes"))
+    data["test_plan"] = ensure_list(data.get("test_plan"))
 
     repo_evidence = ensure_list(packet.get("repo_evidence"))
     dependency_hints = ensure_list(packet.get("dependency_hints"))

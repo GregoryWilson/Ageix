@@ -14,7 +14,7 @@ class PatchBuilder:
         self.staged_root = self.repo_root / ".ageix" / "staged"
 
     def stage_patch(self, proposal: PatchProposal) -> dict:
-        patch_id = f"patch_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        patch_id = f"patch_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
         patch_dir = self.staged_root / patch_id
         files_dir = patch_dir / "files"
         originals_dir = patch_dir / "originals"

@@ -9,6 +9,9 @@ from contracts.patch_contract import PatchProposal
 from services.patch_builder import PatchBuilder
 import argparse
 from services.objective_source_service import ObjectiveSourceService
+from services.proposal_quality_service import ProposalQualityService
+
+MAX_PROPOSAL_QUALITY_RETRIES = 1
 
 def build_chair_message(status: dict) -> str:
     title = status["title"]
@@ -258,10 +261,12 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
                     target_files=step.get("target_files", []),
                     repository_result=repository_content,
                     step_constraints=step.get("constraints", {}),
+                    success_criteria=step.get("success_criteria", []),
                 )
 
                 devworker_packet["instructions"] = step.get("instructions", "")
                 devworker_packet["expected_output"] = step.get("expected_output", {})
+                devworker_packet["success_criteria"] = step.get("success_criteria", [])
 
                 print(
                     "[Chair] DevWorker packet repo evidence count:",
@@ -302,7 +307,47 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
             deliverable = agent_result.get("deliverable", {})
 
             if deliverable.get("result_type") == "patch_proposal":
+                print(
+                    "[Chair] DevWorker deliverable:",
+                    json.dumps(deliverable, indent=2),
+                    flush=True,
+                )
                 validate_patch_proposal_deliverable(deliverable)
+
+                quality_result = validate_patch_proposal_quality(
+                    deliverable=deliverable,
+                    devworker_packet=devworker_packet,
+                )
+
+                if not quality_result.passed:
+                    retry_packet = build_quality_retry_packet(
+                        devworker_packet=devworker_packet,
+                        quality_result=quality_result,
+                    )
+
+                    agent_result = dispatch_agent("dev_worker", retry_packet)
+                    deliverable = agent_result.get("deliverable", {})
+
+                    if deliverable.get("result_type") != "patch_proposal":
+                        validate_devworker_deliverable(deliverable)
+                    else:
+                        validate_patch_proposal_deliverable(deliverable)
+                        quality_result = validate_patch_proposal_quality(
+                            deliverable=deliverable,
+                            devworker_packet=retry_packet,
+                        )
+
+                    if not quality_result.passed:
+                        return {
+                            "chair_action": "patch_proposal_quality_rejected",
+                            "status": "rejected",
+                            "errors": [
+                                violation.message
+                                for violation in quality_result.violations
+                            ],
+                            "quality_result": quality_result.model_dump(),
+                            "patch_proposal": deliverable,
+                        }
 
 
                 errors = validate_replace_file_evidence(
@@ -489,6 +534,7 @@ def build_devworker_packet(
     target_files: list[str],
     repository_result: dict,
     step_constraints: dict[str, Any] | None = None,
+    success_criteria: list[str] | None = None,
 ) -> dict:
     repo_evidence = repository_result.get("evidence", [])
 
@@ -521,6 +567,7 @@ def build_devworker_packet(
     return {
         "objective": objective,
         "target_files": target_files,
+        "success_criteria": success_criteria or [],
         "repo_evidence": repo_evidence,
         "dependency_hints": repository_result.get("dependency_hints", []),
         "constraints": constraints,
@@ -653,6 +700,45 @@ def validate_patch_proposal_deliverable(
             raise ValueError(f"{path} patch content cannot be empty.")
         
         validate_no_placeholder_patch_content(path, content)
+
+
+def validate_patch_proposal_quality(
+    *,
+    deliverable: dict,
+    devworker_packet: dict,
+):
+    return ProposalQualityService().validate(
+        proposal=deliverable,
+        objective=devworker_packet.get("objective", ""),
+        success_criteria=devworker_packet.get("success_criteria", []),
+        target_files=devworker_packet.get("target_files", []),
+    )
+
+def build_quality_retry_packet(
+    *,
+    devworker_packet: dict,
+    quality_result,
+) -> dict:
+    retry_packet = dict(devworker_packet)
+    violations = [
+        violation.model_dump()
+        for violation in quality_result.violations
+    ]
+
+    retry_packet["quality_retry"] = True
+    retry_packet["quality_feedback"] = "\n".join(
+        violation.message
+        for violation in quality_result.violations
+    )
+    retry_packet["quality_feedback_structured"] = {
+        "result": "fail",
+        "violations": violations,
+    }
+    retry_packet["constraints"] = dict(retry_packet.get("constraints", {}))
+    retry_packet["constraints"]["proposal_quality_retry"] = True
+    retry_packet["constraints"]["max_proposal_quality_retries"] = MAX_PROPOSAL_QUALITY_RETRIES
+    return retry_packet
+
 
 def compact_repo_evidence(item: dict[str, Any]) -> dict[str, Any]:
     lines = item.get("lines", [])
@@ -794,6 +880,7 @@ def run_devworker_with_evidence(
     devworker_packet = {
         "objective": evidence_packet.get("objective", "Retry with expanded repository context."),
         "target_files": evidence_packet.get("target_files", []),
+        "success_criteria": evidence_packet.get("success_criteria", []),
         "repo_evidence": evidence_packet.get("evidence", []),
         "dependency_hints": evidence_packet.get("dependency_hints", []),
         "constraints": {
@@ -822,7 +909,47 @@ def run_devworker_with_evidence(
         )
     
     if deliverable.get("result_type") == "patch_proposal":
+        print(
+            "[Chair] DevWorker deliverable:",
+            json.dumps(deliverable, indent=2),
+            flush=True,
+        )
         validate_patch_proposal_deliverable(deliverable)
+
+        quality_result = validate_patch_proposal_quality(
+            deliverable=deliverable,
+            devworker_packet=devworker_packet,
+        )
+
+        if not quality_result.passed:
+            retry_packet = build_quality_retry_packet(
+                devworker_packet=devworker_packet,
+                quality_result=quality_result,
+            )
+
+            agent_result = dispatch_agent("dev_worker", retry_packet)
+            deliverable = agent_result.get("deliverable", {})
+
+            if deliverable.get("result_type") != "patch_proposal":
+                validate_devworker_deliverable(deliverable)
+            else:
+                validate_patch_proposal_deliverable(deliverable)
+                quality_result = validate_patch_proposal_quality(
+                    deliverable=deliverable,
+                    devworker_packet=retry_packet,
+                )
+
+            if not quality_result.passed:
+                return {
+                    "chair_action": "patch_proposal_quality_rejected",
+                    "status": "rejected",
+                    "errors": [
+                        violation.message
+                        for violation in quality_result.violations
+                    ],
+                    "quality_result": quality_result.model_dump(),
+                    "patch_proposal": deliverable,
+                }
 
         errors = validate_replace_file_evidence(
             deliverable,
