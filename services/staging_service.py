@@ -42,6 +42,9 @@ class StagingService:
         conversation_id: str | None = None,
         work_order_id: str | None = None,
         evidence_sources: list[str] | None = None,
+        proposal_quality: dict | None = None,
+        requirement_trace: dict | None = None,
+        behavior_verification: dict | None = None,
     ) -> PatchManifest:
         patch_id = self.create_patch_id()
         patch_dir = self.stage_root / patch_id / "files"
@@ -83,6 +86,9 @@ class StagingService:
             work_order_id=work_order_id,
             files=manifest_files,
             evidence_sources=evidence_sources or [],
+            proposal_quality=proposal_quality,
+            requirement_trace=requirement_trace,
+            behavior_verification=behavior_verification,
         )
 
         self.manifest_root.mkdir(parents=True, exist_ok=True)
@@ -101,6 +107,10 @@ class StagingService:
     def create_stage_from_patch_proposal(
         self,
         proposal: dict,
+        *,
+        proposal_quality: dict | None = None,
+        requirement_trace: dict | None = None,
+        behavior_verification: dict | None = None,
     ) -> PatchManifest:
         changes = proposal.get("changes", [])
 
@@ -118,6 +128,9 @@ class StagingService:
                 for evidence in proposal.get("evidence_used", [])
                 if evidence.get("path")
             ],
+            proposal_quality=proposal_quality,
+            requirement_trace=requirement_trace,
+            behavior_verification=behavior_verification,
         )
 
         stage_path = self.get_stage_path(manifest.patch_id)

@@ -23,6 +23,7 @@ class ProposalQualityViolation(BaseModel):
     expected: str | None = None
     actual: str | None = None
     retryable: bool = True
+    instruction: str | None = None
 
 
 class RequirementTrace(BaseModel):
@@ -57,6 +58,8 @@ class ProposalQualityResult(BaseModel):
                 lines.append(f"  Expected: {violation.expected}")
             if violation.actual is not None:
                 lines.append(f"  Actual: {violation.actual}")
+            if violation.instruction is not None:
+                lines.append(f"  Instruction: {violation.instruction}")
 
         lines.append("Revise the proposal to satisfy the original objective and success criteria exactly.")
         return "\n".join(lines)

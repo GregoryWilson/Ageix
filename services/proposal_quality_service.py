@@ -51,6 +51,7 @@ class ProposalQualityService:
                             file_path=path,
                             expected=", ".join(sorted(target_file_set)),
                             actual=path,
+                        instruction="Only modify files explicitly listed in target_files, or request expanded target_files.",
                         )
                     )
 
@@ -62,6 +63,8 @@ class ProposalQualityService:
                         message=f"Requested target_file was not modified: {path}.",
                         file_path=path,
                         expected=path,
+                        actual="<missing>",
+                        instruction="Include a change for every requested target_file.",
                     )
                 )
 
@@ -79,6 +82,8 @@ class ProposalQualityService:
                         code=ProposalQualityFailureCode.REQUIRED_LITERAL_MISSING,
                         message=f"Required literal not found in proposed content: {literal!r}.",
                         expected=literal,
+                        actual=self._nearest_literal(combined_content),
+                        instruction="Preserve requested literal exactly.",
                     )
                 )
 
@@ -112,6 +117,8 @@ class ProposalQualityService:
                         code=ProposalQualityFailureCode.SUCCESS_CRITERIA_NOT_ADDRESSED,
                         message=f"Success criterion is not represented in proposed changes: {criterion}",
                         expected=criterion,
+                        actual="<missing>",
+                        instruction="Represent each success criterion in implementation or test content.",
                     )
                 )
 
@@ -137,6 +144,7 @@ class ProposalQualityService:
                             message=f"Python content does not compile: {ex.msg} at line {ex.lineno}.",
                             file_path=path,
                             actual=str(ex),
+                        instruction="Return syntactically valid Python content for the full file.",
                         )
                     )
 
@@ -203,6 +211,7 @@ class ProposalQualityService:
                     message=f"{path} contains placeholder/stub content.",
                     file_path=path,
                     actual=marker,
+                    instruction="Replace placeholder or stub content with complete implementation.",
                 )
 
         return None
@@ -234,3 +243,9 @@ class ProposalQualityService:
                     return True
 
         return False
+
+    def _nearest_literal(self, content: str) -> str | None:
+        match = _QUOTED_LITERAL_PATTERN.search(content)
+        if match:
+            return match.group(2)
+        return None

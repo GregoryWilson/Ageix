@@ -13,7 +13,14 @@ class PatchBuilder:
         self.repo_root = repo_root.resolve()
         self.staged_root = self.repo_root / ".ageix" / "staged"
 
-    def stage_patch(self, proposal: PatchProposal) -> dict:
+    def stage_patch(
+        self,
+        proposal: PatchProposal,
+        *,
+        proposal_quality: dict | None = None,
+        requirement_trace: dict | None = None,
+        behavior_verification: dict | None = None,
+    ) -> dict:
         patch_id = f"patch_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
         patch_dir = self.staged_root / patch_id
         files_dir = patch_dir / "files"
@@ -62,6 +69,9 @@ class PatchBuilder:
             "changed_files": changed_files,
             "patch_dir": str(patch_dir),
             "diff_file": str(patch_dir / "diff.patch"),
+            "proposal_quality": proposal_quality,
+            "requirement_trace": requirement_trace,
+            "behavior_verification": behavior_verification,
         }
 
         (patch_dir / "manifest.json").write_text(
@@ -105,6 +115,10 @@ class PatchBuilder:
     def stage_patch_from_deliverable(
         self,
         deliverable: dict,
+        *,
+        proposal_quality: dict | None = None,
+        requirement_trace: dict | None = None,
+        behavior_verification: dict | None = None,
     ) -> dict:
         files: list[PatchFile] = []
 
@@ -140,4 +154,9 @@ class PatchBuilder:
             files=files,
         )
 
-        return self.stage_patch(proposal)
+        return self.stage_patch(
+            proposal,
+            proposal_quality=proposal_quality,
+            requirement_trace=requirement_trace,
+            behavior_verification=behavior_verification,
+        )
