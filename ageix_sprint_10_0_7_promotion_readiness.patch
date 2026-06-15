@@ -1,0 +1,965 @@
+diff --git a/.ageix/config/controls.json b/.ageix/config/controls.json
+index 6e8017f..34607f0 100644
+--- a/.ageix/config/controls.json
++++ b/.ageix/config/controls.json
+@@ -37,5 +37,11 @@
+       "validation_evidence": 0.2,
+       "runtime_execution": 0.2
+     }
++  },
++  "promotion_governance": {
++    "enabled": true,
++    "human_approval_required": true,
++    "minimum_confidence": 0.8,
++    "allow_promotion_with_blockers": false
+   }
+-}
+\ No newline at end of file
++}
+diff --git a/chair.py b/chair.py
+index 4b272d5..b082938 100644
+--- a/chair.py
++++ b/chair.py
+@@ -15,6 +15,8 @@ from services.requirement_trace_service import RequirementTraceService
+ from services.validation_evidence_service import ValidationEvidenceService
+ from services.test_execution_service import TestExecutionService
+ from services.confidence_scoring_service import ConfidenceScoringService
++from services.promotion_readiness_service import PromotionReadinessService
++from services.governance_review_packet_service import GovernanceReviewPacketService
+ from models.test_execution_evidence import TestExecutionResult
+ 
+ MAX_PROPOSAL_QUALITY_RETRIES = 1
+@@ -429,22 +431,79 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
+                         "patch_proposal": deliverable,
+                     }
+ 
++                requirement_trace_summary = RequirementTraceService().summarize(trace_result)
++                validation_summary = ValidationEvidenceService().summarize(validation_result)
++                runtime_validation_summary = TestExecutionService(Path(".")).summarize(runtime_result)
++                confidence_summary = build_confidence_summary(
++                    quality_result=quality_result,
++                    trace_result=trace_result,
++                    behavior_result=behavior_result,
++                    validation_result=validation_result,
++                    runtime_result=runtime_result,
++                )
++                promotion_readiness = build_promotion_readiness(
++                    quality_result=quality_result,
++                    trace_result=trace_result,
++                    behavior_result=behavior_result,
++                    validation_result=validation_result,
++                    runtime_result=runtime_result,
++                    confidence_summary=confidence_summary,
++                )
++                promotion_readiness_summary = PromotionReadinessService(Path(".")).summarize(promotion_readiness)
++
++                if not promotion_readiness.passed:
++                    promotion_violations = [
++                        blocker.model_dump()
++                        for blocker in promotion_readiness.blockers
++                    ]
++                    return {
++                        "chair_action": "patch_promotion_readiness_rejected",
++                        "status": "rejected",
++                        "errors": [
++                            blocker.message
++                            for blocker in promotion_readiness.blockers
++                        ],
++                        "promotion_readiness_result": promotion_readiness.model_dump(),
++                        "promotion_retry_packet": build_promotion_retry_packet(
++                            devworker_packet=devworker_packet,
++                            promotion_readiness=promotion_readiness,
++                        ),
++                        "quality_result": quality_result.model_dump(),
++                        "requirement_trace_result": trace_result.model_dump(),
++                        "behavior_verification_result": behavior_result.model_dump(),
++                        "runtime_validation_result": runtime_result.model_dump(),
++                        "validation_evidence_result": validation_result.model_dump(),
++                        "patch_proposal": deliverable,
++                    }
++
++                governance_packet = GovernanceReviewPacketService().build_packet(
++                    objective=deliverable.get("objective", ""),
++                    implementation_summary=deliverable.get("summary", ""),
++                    changed_files=[
++                        change.get("path", "")
++                        for change in deliverable.get("changes", [])
++                        if change.get("path")
++                    ],
++                    requirement_trace=requirement_trace_summary,
++                    behavior_verification=behavior_result.model_dump(),
++                    validation_evidence=validation_result.model_dump(),
++                    runtime_evidence=runtime_result.model_dump(),
++                    confidence_summary=confidence_summary,
++                    promotion_readiness=promotion_readiness,
++                )
++
+                 manifest = PatchBuilder(Path(".")).stage_patch_from_deliverable(
+                     deliverable,
+                     proposal_quality=quality_result.model_dump(),
+-                    requirement_trace=RequirementTraceService().summarize(trace_result),
++                    requirement_trace=requirement_trace_summary,
+                     behavior_verification=behavior_result.model_dump(),
+-            validation_summary=ValidationEvidenceService().summarize(validation_result),
+-            validation_evidence=validation_result.model_dump(),
+-            runtime_validation_summary=TestExecutionService(Path(".")).summarize(runtime_result),
+-            runtime_execution_evidence=runtime_result.model_dump(),
+-            confidence_summary=build_confidence_summary(
+-                quality_result=quality_result,
+-                trace_result=trace_result,
+-                behavior_result=behavior_result,
+-                validation_result=validation_result,
+-                runtime_result=runtime_result,
+-            ),
++                    validation_summary=validation_summary,
++                    validation_evidence=validation_result.model_dump(),
++                    runtime_validation_summary=runtime_validation_summary,
++                    runtime_execution_evidence=runtime_result.model_dump(),
++                    confidence_summary=confidence_summary,
++                    promotion_readiness_summary=promotion_readiness_summary,
++                    governance_review_packet=GovernanceReviewPacketService().metadata(governance_packet),
+                 )
+ 
+                 agent_result["stage_manifest"] = manifest
+@@ -821,6 +880,49 @@ def build_confidence_summary(
+     )
+ 
+ 
++
++def build_promotion_readiness(
++    *,
++    quality_result,
++    trace_result,
++    behavior_result,
++    validation_result,
++    runtime_result,
++    confidence_summary: dict,
++):
++    return PromotionReadinessService(Path(".")).evaluate(
++        proposal_quality=quality_result,
++        requirement_trace=trace_result,
++        behavior_verification=behavior_result,
++        validation_evidence=validation_result,
++        runtime_validation=runtime_result,
++        confidence_summary=confidence_summary,
++    )
++
++
++def build_promotion_retry_packet(
++    *,
++    devworker_packet: dict,
++    promotion_readiness,
++) -> dict:
++    retry_packet = dict(devworker_packet)
++    blockers = [blocker.model_dump() for blocker in promotion_readiness.blockers]
++    retry_packet["promotion_readiness_retry"] = True
++    retry_packet["promotion_readiness_feedback"] = "\n".join(
++        blocker.get("remediation", "")
++        for blocker in blockers
++        if blocker.get("remediation")
++    )
++    retry_packet["promotion_readiness_feedback_structured"] = {
++        "result": promotion_readiness.status,
++        "recommendation": promotion_readiness.recommendation,
++        "blockers": blockers,
++    }
++    retry_packet["constraints"] = dict(retry_packet.get("constraints", {}))
++    retry_packet["constraints"]["promotion_readiness_retry"] = True
++    retry_packet["constraints"]["require_requirement_trace"] = True
++    return retry_packet
++
+ def validate_patch_proof_of_delivery(
+     *,
+     deliverable: dict,
+diff --git a/models/governance_review_packet.py b/models/governance_review_packet.py
+new file mode 100644
+index 0000000..da1bb73
+--- /dev/null
++++ b/models/governance_review_packet.py
+@@ -0,0 +1,20 @@
++from __future__ import annotations
++
++from typing import Any
++
++from pydantic import BaseModel, Field
++
++from models.promotion_readiness import PromotionBlocker
++
++
++class GovernanceReviewPacket(BaseModel):
++    objective: str
++    implementation_summary: str
++    changed_files: list[str] = Field(default_factory=list)
++    requirement_traces: list[dict[str, Any]] = Field(default_factory=list)
++    behavioral_evidence: dict[str, Any] = Field(default_factory=dict)
++    validation_evidence: dict[str, Any] = Field(default_factory=dict)
++    runtime_evidence: dict[str, Any] = Field(default_factory=dict)
++    confidence_summary: dict[str, Any] = Field(default_factory=dict)
++    blockers: list[PromotionBlocker] = Field(default_factory=list)
++    promotion_recommendation: str
+diff --git a/models/patch_manifest.py b/models/patch_manifest.py
+index c3ac05d..4fce554 100644
+--- a/models/patch_manifest.py
++++ b/models/patch_manifest.py
+@@ -45,6 +45,8 @@ class PatchManifest:
+     runtime_validation_summary: dict[str, Any] | None = None
+     runtime_execution_evidence: dict[str, Any] | None = None
+     confidence_summary: dict[str, Any] | None = None
++    promotion_readiness_summary: dict[str, Any] | None = None
++    governance_review_packet: dict[str, Any] | None = None
+     git_commit: str | None = None
+     created_at: str = field(
+         default_factory=lambda: datetime.now(timezone.utc).isoformat()
+diff --git a/models/promotion_readiness.py b/models/promotion_readiness.py
+new file mode 100644
+index 0000000..9ae8062
+--- /dev/null
++++ b/models/promotion_readiness.py
+@@ -0,0 +1,35 @@
++from __future__ import annotations
++
++from typing import Literal
++
++from pydantic import BaseModel, Field
++
++
++PromotionBlockerCode = Literal[
++    "LOW_CONFIDENCE",
++    "FAILED_RUNTIME_VALIDATION",
++    "MISSING_TEST_COVERAGE",
++    "MISSING_REQUIREMENT_TRACE",
++    "QUALITY_VALIDATION_FAILURE",
++    "VALIDATION_EVIDENCE_FAILURE",
++    "GOVERNANCE_POLICY_VIOLATION",
++]
++
++
++class PromotionBlocker(BaseModel):
++    code: PromotionBlockerCode
++    severity: Literal["warning", "error", "critical"] = "error"
++    message: str
++    remediation: str
++
++
++class PromotionReadinessResult(BaseModel):
++    status: Literal["ready", "conditional", "blocked"]
++    confidence: float
++    blockers: list[PromotionBlocker] = Field(default_factory=list)
++    recommendation: Literal["promote", "review", "reject"]
++    human_approval_required: bool = True
++
++    @property
++    def passed(self) -> bool:
++        return self.status == "ready" and self.recommendation == "promote"
+diff --git a/scripts/apply_patch_and_commit.sh b/scripts/apply_patch_and_commit.sh
+new file mode 100755
+index 0000000..0363a13
+--- /dev/null
++++ b/scripts/apply_patch_and_commit.sh
+@@ -0,0 +1,75 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++usage() {
++  cat <<'EOF'
++Usage:
++  scripts/apply_patch_and_commit.sh [patch-file] [commit-message]
++
++If either argument is omitted, the script prompts for it.
++The script stops on the first error.
++EOF
++}
++
++if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
++  usage
++  exit 0
++fi
++
++patch_file="${1:-}"
++commit_message="${2:-}"
++
++if [[ -z "$patch_file" ]]; then
++  read -r -p "Patch file: " patch_file
++fi
++
++if [[ -z "$commit_message" ]]; then
++  read -r -p "Commit message: " commit_message
++fi
++
++if [[ -z "$patch_file" ]]; then
++  echo "ERROR: Patch file is required." >&2
++  exit 1
++fi
++
++if [[ -z "$commit_message" ]]; then
++  echo "ERROR: Commit message is required." >&2
++  exit 1
++fi
++
++if [[ ! -f "$patch_file" ]]; then
++  echo "ERROR: Patch file not found: $patch_file" >&2
++  exit 1
++fi
++
++if ! git rev-parse --show-toplevel >/dev/null 2>&1; then
++  echo "ERROR: This script must be run inside a Git repository." >&2
++  exit 1
++fi
++
++repo_root="$(git rev-parse --show-toplevel)"
++cd "$repo_root"
++
++if [[ -n "$(git status --porcelain)" ]]; then
++  echo "ERROR: Working tree is not clean. Commit, stash, or discard changes first." >&2
++  git status --short
++  exit 1
++fi
++
++echo "Checking patch..."
++git apply --check "$patch_file"
++
++echo "Applying patch..."
++git apply "$patch_file"
++
++echo "Running tests..."
++PYTHONPATH=. python -m pytest
++
++echo "Staging changes..."
++git add -A
++
++echo "Committing changes..."
++git commit -m "$commit_message"
++
++echo "Done."
++git status --short
+diff --git a/services/controls_service.py b/services/controls_service.py
+index c2e1e18..0f8bc03 100644
+--- a/services/controls_service.py
++++ b/services/controls_service.py
+@@ -55,6 +55,16 @@ class PromotionConfidenceControls:
+         })
+ 
+ 
++
++
++@dataclass(frozen=True)
++class PromotionGovernanceControls:
++    enabled: bool = True
++    human_approval_required: bool = True
++    minimum_confidence: float = 0.80
++    allow_promotion_with_blockers: bool = False
++
++
+ class ControlsService:
+     """
+     Centralized configuration service for Ageix governance and controls.
+@@ -103,6 +113,12 @@ class ControlsService:
+                 "runtime_execution": 0.20,
+             },
+         },
++        "promotion_governance": {
++            "enabled": True,
++            "human_approval_required": True,
++            "minimum_confidence": 0.80,
++            "allow_promotion_with_blockers": False,
++        },
+     }
+ 
+     def __init__(self, repo_root: Path):
+@@ -115,6 +131,7 @@ class ControlsService:
+         self.validation = ValidationControls(**self._config["validation"])
+         self.governance = GovernanceControls(**self._config["governance"])
+         self.promotion_confidence = PromotionConfidenceControls(**self._config["promotion_confidence"])
++        self.promotion_governance = PromotionGovernanceControls(**self._config["promotion_governance"])
+ 
+     def _load_config(self) -> dict[str, Any]:
+         config_path = (
+@@ -162,12 +179,14 @@ class ControlsService:
+     ) -> None:
+         governance = config.setdefault("governance", {})
+         validation = config.setdefault("validation", {})
++        promotion_governance = config.setdefault("promotion_governance", {})
+ 
+         governance["allow_auto_promotion"] = False
+         governance["allow_auto_commit"] = False
+         governance["allow_direct_repo_modification"] = False
+ 
+         validation["allow_validation_bypass"] = False
++        promotion_governance["allow_promotion_with_blockers"] = False
+ 
+     def get_raw_config(self) -> dict[str, Any]:
+         return deepcopy(self._config)
+\ No newline at end of file
+diff --git a/services/governance_review_packet_service.py b/services/governance_review_packet_service.py
+new file mode 100644
+index 0000000..ffa2270
+--- /dev/null
++++ b/services/governance_review_packet_service.py
+@@ -0,0 +1,45 @@
++from __future__ import annotations
++
++from typing import Any
++
++from models.governance_review_packet import GovernanceReviewPacket
++from models.promotion_readiness import PromotionReadinessResult
++
++
++class GovernanceReviewPacketService:
++    """Builds a human-reviewable packet for governed patch promotion decisions."""
++
++    def build_packet(
++        self,
++        *,
++        objective: str,
++        implementation_summary: str,
++        changed_files: list[str],
++        requirement_trace: dict[str, Any] | None = None,
++        behavior_verification: dict[str, Any] | None = None,
++        validation_evidence: dict[str, Any] | None = None,
++        runtime_evidence: dict[str, Any] | None = None,
++        confidence_summary: dict[str, Any] | None = None,
++        promotion_readiness: PromotionReadinessResult,
++    ) -> GovernanceReviewPacket:
++        trace = requirement_trace or {}
++        return GovernanceReviewPacket(
++            objective=objective,
++            implementation_summary=implementation_summary,
++            changed_files=changed_files,
++            requirement_traces=trace.get("traces", []),
++            behavioral_evidence=behavior_verification or {},
++            validation_evidence=validation_evidence or {},
++            runtime_evidence=runtime_evidence or {},
++            confidence_summary=confidence_summary or {},
++            blockers=promotion_readiness.blockers,
++            promotion_recommendation=promotion_readiness.recommendation,
++        )
++
++    def metadata(self, packet: GovernanceReviewPacket) -> dict[str, Any]:
++        return {
++            "generated": True,
++            "changed_file_count": len(packet.changed_files),
++            "blocker_count": len(packet.blockers),
++            "recommendation": packet.promotion_recommendation,
++        }
+diff --git a/services/patch_builder.py b/services/patch_builder.py
+index c87b9fb..6fa159b 100644
+--- a/services/patch_builder.py
++++ b/services/patch_builder.py
+@@ -25,6 +25,8 @@ class PatchBuilder:
+         runtime_validation_summary: dict | None = None,
+         runtime_execution_evidence: dict | None = None,
+         confidence_summary: dict | None = None,
++        promotion_readiness_summary: dict | None = None,
++        governance_review_packet: dict | None = None,
+     ) -> dict:
+         patch_id = f"patch_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
+         patch_dir = self.staged_root / patch_id
+@@ -82,6 +84,8 @@ class PatchBuilder:
+             "runtime_validation_summary": runtime_validation_summary,
+             "runtime_execution_evidence": runtime_execution_evidence,
+             "confidence_summary": confidence_summary,
++            "promotion_readiness_summary": promotion_readiness_summary,
++            "governance_review_packet": governance_review_packet,
+         }
+ 
+         (patch_dir / "manifest.json").write_text(
+@@ -134,6 +138,8 @@ class PatchBuilder:
+         runtime_validation_summary: dict | None = None,
+         runtime_execution_evidence: dict | None = None,
+         confidence_summary: dict | None = None,
++        promotion_readiness_summary: dict | None = None,
++        governance_review_packet: dict | None = None,
+     ) -> dict:
+         files: list[PatchFile] = []
+ 
+@@ -179,4 +185,6 @@ class PatchBuilder:
+             runtime_validation_summary=runtime_validation_summary,
+             runtime_execution_evidence=runtime_execution_evidence,
+             confidence_summary=confidence_summary,
++            promotion_readiness_summary=promotion_readiness_summary,
++            governance_review_packet=governance_review_packet,
+         )
+\ No newline at end of file
+diff --git a/services/promotion_readiness_service.py b/services/promotion_readiness_service.py
+new file mode 100644
+index 0000000..a823614
+--- /dev/null
++++ b/services/promotion_readiness_service.py
+@@ -0,0 +1,133 @@
++from __future__ import annotations
++
++from pathlib import Path
++from typing import Any
++
++from models.promotion_readiness import PromotionBlocker, PromotionReadinessResult
++from services.controls_service import ControlsService
++
++
++class PromotionReadinessService:
++    """Deterministically evaluates whether a candidate patch is ready for promotion."""
++
++    REMEDIATION = {
++        "LOW_CONFIDENCE": "Provide stronger validation evidence and improve implementation confidence.",
++        "FAILED_RUNTIME_VALIDATION": "Investigate runtime validation failures and provide a corrected implementation.",
++        "MISSING_TEST_COVERAGE": "Provide executable test coverage supporting the implementation.",
++        "MISSING_REQUIREMENT_TRACE": "Add requirement trace evidence that maps requested behavior to implementation and tests.",
++        "QUALITY_VALIDATION_FAILURE": "Correct proposal quality violations before requesting promotion.",
++        "VALIDATION_EVIDENCE_FAILURE": "Provide complete validation evidence for each traced requirement.",
++        "GOVERNANCE_POLICY_VIOLATION": "Adjust the promotion request to comply with configured governance controls.",
++    }
++
++    def __init__(self, repo_root: Path | str = ".") -> None:
++        self.controls = ControlsService(Path(repo_root)).promotion_governance
++
++    def evaluate(
++        self,
++        *,
++        proposal_quality: Any = None,
++        requirement_trace: Any = None,
++        behavior_verification: Any = None,
++        validation_evidence: Any = None,
++        runtime_validation: Any = None,
++        confidence_summary: dict[str, Any] | None = None,
++    ) -> PromotionReadinessResult:
++        confidence_summary = confidence_summary or {}
++        confidence = float(confidence_summary.get("overall_confidence", 0.0))
++        blockers: list[PromotionBlocker] = []
++
++        if not self._passed(proposal_quality):
++            blockers.append(self._blocker("QUALITY_VALIDATION_FAILURE", "Proposal quality validation did not pass."))
++
++        if not self._passed(requirement_trace):
++            blockers.append(self._blocker("MISSING_REQUIREMENT_TRACE", "Requirement trace validation did not pass."))
++
++        if self._missing_test_coverage(requirement_trace):
++            blockers.append(self._blocker("MISSING_TEST_COVERAGE", "Requirement trace evidence is missing executable test coverage."))
++
++        if not self._passed(runtime_validation):
++            blockers.append(self._blocker("FAILED_RUNTIME_VALIDATION", "Runtime validation did not pass."))
++
++        if not self._passed(validation_evidence):
++            blockers.append(self._blocker("VALIDATION_EVIDENCE_FAILURE", "Validation evidence did not pass."))
++
++        if confidence < self.controls.minimum_confidence:
++            blockers.append(
++                self._blocker(
++                    "LOW_CONFIDENCE",
++                    f"Confidence {confidence:.2f} is below required minimum {self.controls.minimum_confidence:.2f}.",
++                )
++            )
++
++        if blockers and not self.controls.allow_promotion_with_blockers:
++            blockers.append(self._blocker("GOVERNANCE_POLICY_VIOLATION", "Configured governance forbids promotion with blockers."))
++
++        status = self._status_for_blockers(blockers)
++        recommendation = self._recommendation_for_status(status)
++
++        return PromotionReadinessResult(
++            status=status,
++            confidence=round(confidence, 4),
++            blockers=blockers,
++            recommendation=recommendation,
++            human_approval_required=self.controls.human_approval_required,
++        )
++
++    def summarize(self, result: PromotionReadinessResult) -> dict[str, Any]:
++        return {
++            "status": result.status,
++            "confidence": result.confidence,
++            "blockers": [blocker.model_dump() for blocker in result.blockers],
++            "recommendation": result.recommendation,
++            "human_approval_required": result.human_approval_required,
++        }
++
++    def _blocker(self, code: str, message: str) -> PromotionBlocker:
++        return PromotionBlocker(
++            code=code,  # type: ignore[arg-type]
++            severity="critical" if code == "GOVERNANCE_POLICY_VIOLATION" else "error",
++            message=message,
++            remediation=self.REMEDIATION[code],
++        )
++
++    def _status_for_blockers(self, blockers: list[PromotionBlocker]) -> str:
++        if not blockers:
++            return "ready"
++        if self.controls.allow_promotion_with_blockers:
++            return "conditional"
++        return "blocked"
++
++    def _recommendation_for_status(self, status: str) -> str:
++        if status == "ready":
++            return "promote"
++        if status == "conditional":
++            return "review"
++        return "reject"
++
++    def _passed(self, value: Any) -> bool:
++        if value is None:
++            return False
++        passed = getattr(value, "passed", None)
++        if isinstance(passed, bool):
++            return passed
++        if isinstance(value, dict):
++            status = value.get("status")
++            if status is None and isinstance(value.get("summary"), dict):
++                status = value["summary"].get("status")
++            return str(status).lower() in {"pass", "passed", "ready"}
++        status = getattr(value, "status", None)
++        return str(status).lower() in {"pass", "passed", "ready"}
++
++    def _missing_test_coverage(self, requirement_trace: Any) -> bool:
++        if requirement_trace is None:
++            return True
++        if hasattr(requirement_trace, "traces"):
++            traces = requirement_trace.traces
++            return any(not getattr(trace, "test_evidence", []) for trace in traces)
++        if isinstance(requirement_trace, dict):
++            traces = requirement_trace.get("traces", [])
++            for trace in traces:
++                if isinstance(trace, dict) and not trace.get("test_evidence", []):
++                    return True
++        return False
+diff --git a/services/staging_service.py b/services/staging_service.py
+index 80abdaa..1e6db09 100644
+--- a/services/staging_service.py
++++ b/services/staging_service.py
+@@ -50,6 +50,8 @@ class StagingService:
+         runtime_validation_summary: dict | None = None,
+         runtime_execution_evidence: dict | None = None,
+         confidence_summary: dict | None = None,
++        promotion_readiness_summary: dict | None = None,
++        governance_review_packet: dict | None = None,
+     ) -> PatchManifest:
+         patch_id = self.create_patch_id()
+         patch_dir = self.stage_root / patch_id / "files"
+@@ -99,6 +101,8 @@ class StagingService:
+             runtime_validation_summary=runtime_validation_summary,
+             runtime_execution_evidence=runtime_execution_evidence,
+             confidence_summary=confidence_summary,
++            promotion_readiness_summary=promotion_readiness_summary,
++            governance_review_packet=governance_review_packet,
+         )
+ 
+         self.manifest_root.mkdir(parents=True, exist_ok=True)
+@@ -126,6 +130,8 @@ class StagingService:
+         runtime_validation_summary: dict | None = None,
+         runtime_execution_evidence: dict | None = None,
+         confidence_summary: dict | None = None,
++        promotion_readiness_summary: dict | None = None,
++        governance_review_packet: dict | None = None,
+     ) -> PatchManifest:
+         changes = proposal.get("changes", [])
+ 
+@@ -151,6 +157,8 @@ class StagingService:
+             runtime_validation_summary=runtime_validation_summary,
+             runtime_execution_evidence=runtime_execution_evidence,
+             confidence_summary=confidence_summary,
++            promotion_readiness_summary=promotion_readiness_summary,
++            governance_review_packet=governance_review_packet,
+         )
+ 
+         stage_path = self.get_stage_path(manifest.patch_id)
+diff --git a/tests/test_chair_promotion_readiness.py b/tests/test_chair_promotion_readiness.py
+new file mode 100644
+index 0000000..8528e27
+--- /dev/null
++++ b/tests/test_chair_promotion_readiness.py
+@@ -0,0 +1,53 @@
++from chair import build_promotion_retry_packet
++from services.promotion_readiness_service import PromotionReadinessService
++
++
++class PassingResult:
++    status = "pass"
++
++    @property
++    def passed(self):
++        return True
++
++
++class FailingResult:
++    status = "fail"
++
++    @property
++    def passed(self):
++        return False
++
++
++class Trace:
++    test_evidence = ["tests/test_example.py"]
++
++
++class TraceResult:
++    status = "pass"
++    traces = [Trace()]
++
++    @property
++    def passed(self):
++        return True
++
++
++def test_chair_rejects_blocked_promotion_candidate(tmp_path):
++    readiness = PromotionReadinessService(tmp_path).evaluate(
++        proposal_quality=PassingResult(),
++        requirement_trace=TraceResult(),
++        behavior_verification=PassingResult(),
++        validation_evidence=PassingResult(),
++        runtime_validation=FailingResult(),
++        confidence_summary={"overall_confidence": 0.90},
++    )
++
++    packet = build_promotion_retry_packet(
++        devworker_packet={"constraints": {}},
++        promotion_readiness=readiness,
++    )
++
++    assert readiness.status == "blocked"
++    assert readiness.recommendation == "reject"
++    assert packet["promotion_readiness_retry"] is True
++    assert "Investigate runtime validation failures" in packet["promotion_readiness_feedback"]
++    assert packet["constraints"]["promotion_readiness_retry"] is True
+diff --git a/tests/test_controls_service.py b/tests/test_controls_service.py
+index 2ec5f19..a8afc6c 100644
+--- a/tests/test_controls_service.py
++++ b/tests/test_controls_service.py
+@@ -51,4 +51,29 @@ def test_governance_clamps_are_enforced(tmp_path: Path):
+     svc = ControlsService(tmp_path)
+ 
+     assert svc.governance.allow_auto_commit is False
+-    assert svc.governance.allow_auto_promotion is False
+\ No newline at end of file
++    assert svc.governance.allow_auto_promotion is False
++
++def test_controls_service_loads_promotion_governance(tmp_path: Path):
++    config_dir = tmp_path / ".ageix" / "config"
++    config_dir.mkdir(parents=True)
++
++    (config_dir / "controls.json").write_text(
++        """
++        {
++            "promotion_governance": {
++                "enabled": true,
++                "human_approval_required": true,
++                "minimum_confidence": 0.85,
++                "allow_promotion_with_blockers": true
++            }
++        }
++        """,
++        encoding="utf-8",
++    )
++
++    svc = ControlsService(tmp_path)
++
++    assert svc.promotion_governance.enabled is True
++    assert svc.promotion_governance.human_approval_required is True
++    assert svc.promotion_governance.minimum_confidence == 0.85
++    assert svc.promotion_governance.allow_promotion_with_blockers is False
+diff --git a/tests/test_governance_review_packet_service.py b/tests/test_governance_review_packet_service.py
+new file mode 100644
+index 0000000..e938b02
+--- /dev/null
++++ b/tests/test_governance_review_packet_service.py
+@@ -0,0 +1,77 @@
++from pathlib import Path
++
++from services.governance_review_packet_service import GovernanceReviewPacketService
++from services.promotion_readiness_service import PromotionReadinessService
++from services.staging_service import StagingService
++
++
++class PassingResult:
++    status = "pass"
++
++    @property
++    def passed(self):
++        return True
++
++
++class Trace:
++    test_evidence = ["tests/test_example.py"]
++
++
++class TraceResult:
++    status = "pass"
++    traces = [Trace()]
++
++    @property
++    def passed(self):
++        return True
++
++
++def _ready_result(tmp_path: Path):
++    return PromotionReadinessService(tmp_path).evaluate(
++        proposal_quality=PassingResult(),
++        requirement_trace=TraceResult(),
++        behavior_verification=PassingResult(),
++        validation_evidence=PassingResult(),
++        runtime_validation=PassingResult(),
++        confidence_summary={"overall_confidence": 0.93},
++    )
++
++
++def test_governance_review_packet_generation(tmp_path: Path):
++    packet = GovernanceReviewPacketService().build_packet(
++        objective="Add promotion readiness",
++        implementation_summary="Adds deterministic promotion review.",
++        changed_files=["services/promotion_readiness_service.py"],
++        requirement_trace={"traces": [{"requirement_id": "REQ-001"}]},
++        behavior_verification={"status": "pass"},
++        validation_evidence={"status": "pass"},
++        runtime_evidence={"status": "pass"},
++        confidence_summary={"overall_confidence": 0.93},
++        promotion_readiness=_ready_result(tmp_path),
++    )
++
++    assert packet.objective == "Add promotion readiness"
++    assert packet.changed_files == ["services/promotion_readiness_service.py"]
++    assert packet.requirement_traces[0]["requirement_id"] == "REQ-001"
++    assert packet.promotion_recommendation == "promote"
++
++
++def test_manifest_contains_promotion_summary(tmp_path: Path):
++    (tmp_path / "example.py").write_text("VALUE = 1\n", encoding="utf-8")
++
++    manifest = StagingService(tmp_path).create_stage(
++        files=["example.py"],
++        summary="promotion manifest test",
++        confidence_summary={"overall_confidence": 0.93},
++        promotion_readiness_summary={
++            "status": "ready",
++            "confidence": 0.93,
++            "blockers": [],
++            "recommendation": "promote",
++        },
++        governance_review_packet={"generated": True, "recommendation": "promote"},
++    )
++
++    data = manifest.to_dict()
++    assert data["promotion_readiness_summary"]["status"] == "ready"
++    assert data["governance_review_packet"]["generated"] is True
+diff --git a/tests/test_promotion_readiness_service.py b/tests/test_promotion_readiness_service.py
+new file mode 100644
+index 0000000..2325762
+--- /dev/null
++++ b/tests/test_promotion_readiness_service.py
+@@ -0,0 +1,120 @@
++from pathlib import Path
++
++from pydantic import BaseModel
++
++from services.promotion_readiness_service import PromotionReadinessService
++
++
++class PassingResult(BaseModel):
++    status: str = "pass"
++
++    @property
++    def passed(self):
++        return True
++
++
++class FailingResult(BaseModel):
++    status: str = "fail"
++
++    @property
++    def passed(self):
++        return False
++
++
++class Trace(BaseModel):
++    test_evidence: list[str] = ["tests/test_example.py"]
++
++
++class TraceResult(BaseModel):
++    status: str = "pass"
++    traces: list[Trace] = [Trace()]
++
++    @property
++    def passed(self):
++        return True
++
++
++class MissingTraceCoverageResult(BaseModel):
++    status: str = "pass"
++    traces: list[Trace] = [Trace(test_evidence=[])]
++
++    @property
++    def passed(self):
++        return True
++
++
++def test_promotion_readiness_ready(tmp_path: Path):
++    result = PromotionReadinessService(tmp_path).evaluate(
++        proposal_quality=PassingResult(),
++        requirement_trace=TraceResult(),
++        behavior_verification=PassingResult(),
++        validation_evidence=PassingResult(),
++        runtime_validation=PassingResult(),
++        confidence_summary={"overall_confidence": 0.93},
++    )
++
++    assert result.status == "ready"
++    assert result.recommendation == "promote"
++    assert result.blockers == []
++    assert result.passed is True
++
++
++def test_promotion_readiness_low_confidence(tmp_path: Path):
++    result = PromotionReadinessService(tmp_path).evaluate(
++        proposal_quality=PassingResult(),
++        requirement_trace=TraceResult(),
++        behavior_verification=PassingResult(),
++        validation_evidence=PassingResult(),
++        runtime_validation=PassingResult(),
++        confidence_summary={"overall_confidence": 0.60},
++    )
++
++    codes = [blocker.code for blocker in result.blockers]
++    assert result.status == "blocked"
++    assert result.recommendation == "reject"
++    assert "LOW_CONFIDENCE" in codes
++    assert "GOVERNANCE_POLICY_VIOLATION" in codes
++
++
++def test_promotion_readiness_detects_runtime_failure(tmp_path: Path):
++    result = PromotionReadinessService(tmp_path).evaluate(
++        proposal_quality=PassingResult(),
++        requirement_trace=TraceResult(),
++        behavior_verification=PassingResult(),
++        validation_evidence=PassingResult(),
++        runtime_validation=FailingResult(),
++        confidence_summary={"overall_confidence": 0.90},
++    )
++
++    codes = [blocker.code for blocker in result.blockers]
++    assert "FAILED_RUNTIME_VALIDATION" in codes
++    assert result.status == "blocked"
++
++
++def test_promotion_readiness_detects_missing_traceability(tmp_path: Path):
++    result = PromotionReadinessService(tmp_path).evaluate(
++        proposal_quality=PassingResult(),
++        requirement_trace=FailingResult(),
++        behavior_verification=PassingResult(),
++        validation_evidence=PassingResult(),
++        runtime_validation=PassingResult(),
++        confidence_summary={"overall_confidence": 0.90},
++    )
++
++    codes = [blocker.code for blocker in result.blockers]
++    assert "MISSING_REQUIREMENT_TRACE" in codes
++    assert result.status == "blocked"
++
++
++def test_promotion_readiness_detects_missing_test_coverage(tmp_path: Path):
++    result = PromotionReadinessService(tmp_path).evaluate(
++        proposal_quality=PassingResult(),
++        requirement_trace=MissingTraceCoverageResult(),
++        behavior_verification=PassingResult(),
++        validation_evidence=PassingResult(),
++        runtime_validation=PassingResult(),
++        confidence_summary={"overall_confidence": 0.90},
++    )
++
++    codes = [blocker.code for blocker in result.blockers]
++    assert "MISSING_TEST_COVERAGE" in codes
