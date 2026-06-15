@@ -38,6 +38,7 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+artifacts/*.json
 
 # Ollama / AI artifacts if created locally
 cache/
