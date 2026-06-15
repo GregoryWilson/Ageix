@@ -37,6 +37,24 @@ class GovernanceControls:
     allow_direct_repo_modification: bool = False
 
 
+@dataclass(frozen=True)
+class PromotionConfidenceControls:
+    enabled: bool = True
+    minimum_confidence: float = 0.80
+    ratings: dict[str, float] | None = None
+    weights: dict[str, float] | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "ratings", self.ratings or {"high": 0.90, "medium": 0.75, "low": 0.50})
+        object.__setattr__(self, "weights", self.weights or {
+            "proposal_quality": 0.20,
+            "requirement_traceability": 0.20,
+            "behavioral_verification": 0.20,
+            "validation_evidence": 0.20,
+            "runtime_execution": 0.20,
+        })
+
+
 class ControlsService:
     """
     Centralized configuration service for Ageix governance and controls.
@@ -69,6 +87,22 @@ class ControlsService:
             "allow_auto_commit": False,
             "allow_direct_repo_modification": False,
         },
+        "promotion_confidence": {
+            "enabled": True,
+            "minimum_confidence": 0.80,
+            "ratings": {
+                "high": 0.90,
+                "medium": 0.75,
+                "low": 0.50,
+            },
+            "weights": {
+                "proposal_quality": 0.20,
+                "requirement_traceability": 0.20,
+                "behavioral_verification": 0.20,
+                "validation_evidence": 0.20,
+                "runtime_execution": 0.20,
+            },
+        },
     }
 
     def __init__(self, repo_root: Path):
@@ -80,6 +114,7 @@ class ControlsService:
         self.cloud = CloudControls(**self._config["cloud"])
         self.validation = ValidationControls(**self._config["validation"])
         self.governance = GovernanceControls(**self._config["governance"])
+        self.promotion_confidence = PromotionConfidenceControls(**self._config["promotion_confidence"])
 
     def _load_config(self) -> dict[str, Any]:
         config_path = (

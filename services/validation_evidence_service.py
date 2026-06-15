@@ -10,6 +10,7 @@ from models.validation_evidence import (
 )
 from services.requirement_trace_service import RequirementTrace, RequirementTraceResult
 from services.behavioral_smoke_verifier import BehavioralSmokeResult
+from models.test_execution_evidence import TestExecutionEvidence, TestExecutionResult, TestExecutionStatus
 
 
 class ValidationEvidenceService:
@@ -21,26 +22,31 @@ class ValidationEvidenceService:
         trace_result: RequirementTraceResult,
         behavior_result: BehavioralSmokeResult | None = None,
         verification_source: str = "behavioral_smoke_verifier",
+        runtime_result: TestExecutionResult | None = None,
     ) -> list[ValidationEvidence]:
         timestamp = datetime.now(timezone.utc).isoformat()
         evidence: list[ValidationEvidence] = []
         behavior_status = self._normalize_behavior_status(behavior_result)
+        runtime_by_test = self._runtime_evidence_by_test(runtime_result)
+        runtime_required = runtime_result is not None
 
         for trace in trace_result.traces:
             for test in trace.test_evidence:
                 test_identifier = self._test_identifier(test)
+                runtime_evidence = runtime_by_test.get(test_identifier, [])
                 evidence.append(
                     ValidationEvidence(
                         requirement_id=trace.requirement_id,
                         test_identifier=test_identifier,
-                        status=behavior_status,
+                        status=self._combined_status(behavior_status, runtime_evidence, runtime_required),
                         verification_source=verification_source,
                         timestamp=timestamp,
                         details=(
-                            "Behavioral verification passed for requirement-connected test evidence."
-                            if behavior_status == "PASS"
-                            else "Behavioral verification did not pass for requirement-connected test evidence."
+                            "Behavioral and runtime verification passed for requirement-connected test evidence."
+                            if behavior_status == "PASS" and self._runtime_passed(runtime_evidence)
+                            else "Behavioral or runtime verification did not pass for requirement-connected test evidence."
                         ),
+                        runtime_evidence=runtime_evidence,
                     )
                 )
 
@@ -67,10 +73,13 @@ class ValidationEvidenceService:
         proposal: dict[str, Any],
         trace_result: RequirementTraceResult,
         behavior_result: BehavioralSmokeResult | None = None,
+        runtime_result: TestExecutionResult | None = None,
+        require_runtime_evidence: bool = False,
     ) -> ValidationEvidenceResult:
         generated = self.generate(
             trace_result=trace_result,
             behavior_result=behavior_result,
+            runtime_result=runtime_result,
         )
         self.attach_validation_evidence(
             trace_result=trace_result,
@@ -80,6 +89,7 @@ class ValidationEvidenceService:
         violations = self.validate_coverage(
             proposal=proposal,
             traces=trace_result.traces,
+            require_runtime_evidence=require_runtime_evidence,
         )
 
         return ValidationEvidenceResult(
@@ -93,6 +103,7 @@ class ValidationEvidenceService:
         *,
         proposal: dict[str, Any],
         traces: list[RequirementTrace],
+        require_runtime_evidence: bool = False,
     ) -> list[ValidationEvidenceViolation]:
         violations: list[ValidationEvidenceViolation] = []
 
@@ -133,6 +144,21 @@ class ValidationEvidenceService:
                             instruction="Fix the implementation or test so validation evidence passes.",
                         )
                     )
+
+        if require_runtime_evidence:
+            for trace in traces:
+                for evidence in trace.validation_evidence:
+                    if not evidence.runtime_evidence:
+                        violations.append(
+                        ValidationEvidenceViolation(
+                            code="NO_RUNTIME_EVIDENCE",
+                            message="Requirement validation evidence has no runtime execution evidence.",
+                            requirement_id=trace.requirement_id,
+                            expected="Runtime execution evidence attached to validation evidence.",
+                            actual="<missing>",
+                            instruction="Provide executable test coverage and runtime validation evidence.",
+                            )
+                        )
 
         mapped_tests = {
             evidence.file_path
@@ -180,8 +206,39 @@ class ValidationEvidenceService:
             "missing_validation_evidence": violations_by_code.get("MISSING_VALIDATION_EVIDENCE", 0),
             "failed_validation_evidence": violations_by_code.get("FAILED_VALIDATION_EVIDENCE", 0),
             "unmapped_test_evidence": violations_by_code.get("UNMAPPED_TEST_EVIDENCE", 0),
+            "no_runtime_evidence": violations_by_code.get("NO_RUNTIME_EVIDENCE", 0),
+            "runtime_evidence_count": sum(len(e.runtime_evidence) for e in result.validation_evidence),
             "violations": [violation.model_dump() for violation in result.violations],
         }
+
+    def _runtime_evidence_by_test(
+        self,
+        runtime_result: TestExecutionResult | None,
+    ) -> dict[str, list[TestExecutionEvidence]]:
+        by_test: dict[str, list[TestExecutionEvidence]] = {}
+        if runtime_result is None:
+            return by_test
+        for evidence in runtime_result.runtime_evidence:
+            by_test.setdefault(evidence.test_identifier, []).append(evidence)
+        return by_test
+
+    def _runtime_passed(self, runtime_evidence: list[TestExecutionEvidence]) -> bool:
+        return bool(runtime_evidence) and all(
+            evidence.status == TestExecutionStatus.PASSED
+            for evidence in runtime_evidence
+        )
+
+    def _combined_status(
+        self,
+        behavior_status: str,
+        runtime_evidence: list[TestExecutionEvidence],
+        runtime_required: bool = True,
+    ) -> str:
+        if behavior_status != "PASS":
+            return behavior_status
+        if not runtime_required:
+            return behavior_status
+        return "PASS" if self._runtime_passed(runtime_evidence) else "FAIL"
 
     def _normalize_behavior_status(
         self,
@@ -192,10 +249,7 @@ class ValidationEvidenceService:
         return "PASS" if behavior_result.passed else "FAIL"
 
     def _test_identifier(self, evidence: Any) -> str:
-        file_path = evidence.file_path or "<unknown-test>"
-        if evidence.line_start is None:
-            return file_path
-        return f"{file_path}:{evidence.line_start}"
+        return evidence.file_path or "<unknown-test>"
 
     def _proposal_test_paths(self, proposal: dict[str, Any]) -> set[str]:
         paths: set[str] = set()

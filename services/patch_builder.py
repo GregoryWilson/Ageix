@@ -22,6 +22,9 @@ class PatchBuilder:
         behavior_verification: dict | None = None,
         validation_summary: dict | None = None,
         validation_evidence: dict | None = None,
+        runtime_validation_summary: dict | None = None,
+        runtime_execution_evidence: dict | None = None,
+        confidence_summary: dict | None = None,
     ) -> dict:
         patch_id = f"patch_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
         patch_dir = self.staged_root / patch_id
@@ -76,6 +79,9 @@ class PatchBuilder:
             "behavior_verification": behavior_verification,
             "validation_summary": validation_summary,
             "validation_evidence": validation_evidence,
+            "runtime_validation_summary": runtime_validation_summary,
+            "runtime_execution_evidence": runtime_execution_evidence,
+            "confidence_summary": confidence_summary,
         }
 
         (patch_dir / "manifest.json").write_text(
@@ -125,6 +131,9 @@ class PatchBuilder:
         behavior_verification: dict | None = None,
         validation_summary: dict | None = None,
         validation_evidence: dict | None = None,
+        runtime_validation_summary: dict | None = None,
+        runtime_execution_evidence: dict | None = None,
+        confidence_summary: dict | None = None,
     ) -> dict:
         files: list[PatchFile] = []
 
@@ -167,4 +176,7 @@ class PatchBuilder:
             behavior_verification=behavior_verification,
             validation_summary=validation_summary,
             validation_evidence=validation_evidence,
+            runtime_validation_summary=runtime_validation_summary,
+            runtime_execution_evidence=runtime_execution_evidence,
+            confidence_summary=confidence_summary,
         )

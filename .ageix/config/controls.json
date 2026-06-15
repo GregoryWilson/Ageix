@@ -21,5 +21,21 @@
     "allow_auto_promotion": false,
     "allow_auto_commit": false,
     "allow_direct_repo_modification": false
+  },
+  "promotion_confidence": {
+    "enabled": true,
+    "minimum_confidence": 0.8,
+    "ratings": {
+      "high": 0.9,
+      "medium": 0.75,
+      "low": 0.5
+    },
+    "weights": {
+      "proposal_quality": 0.2,
+      "requirement_traceability": 0.2,
+      "behavioral_verification": 0.2,
+      "validation_evidence": 0.2,
+      "runtime_execution": 0.2
+    }
   }
 }

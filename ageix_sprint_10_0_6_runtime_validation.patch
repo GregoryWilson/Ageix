@@ -1,0 +1,1212 @@
+diff --git a/.ageix/config/controls.json b/.ageix/config/controls.json
+index d6a39d3..6e8017f 100644
+--- a/.ageix/config/controls.json
++++ b/.ageix/config/controls.json
+@@ -21,5 +21,21 @@
+     "allow_auto_promotion": false,
+     "allow_auto_commit": false,
+     "allow_direct_repo_modification": false
++  },
++  "promotion_confidence": {
++    "enabled": true,
++    "minimum_confidence": 0.8,
++    "ratings": {
++      "high": 0.9,
++      "medium": 0.75,
++      "low": 0.5
++    },
++    "weights": {
++      "proposal_quality": 0.2,
++      "requirement_traceability": 0.2,
++      "behavioral_verification": 0.2,
++      "validation_evidence": 0.2,
++      "runtime_execution": 0.2
++    }
+   }
+ }
+\ No newline at end of file
+diff --git a/chair.py b/chair.py
+index 98f3d65..4b272d5 100644
+--- a/chair.py
++++ b/chair.py
+@@ -13,6 +13,9 @@ from services.proposal_quality_service import ProposalQualityService
+ from services.behavioral_smoke_verifier import BehavioralSmokeVerifier
+ from services.requirement_trace_service import RequirementTraceService
+ from services.validation_evidence_service import ValidationEvidenceService
++from services.test_execution_service import TestExecutionService
++from services.confidence_scoring_service import ConfidenceScoringService
++from models.test_execution_evidence import TestExecutionResult
+ 
+ MAX_PROPOSAL_QUALITY_RETRIES = 1
+ 
+@@ -352,16 +355,17 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
+                             "patch_proposal": deliverable,
+                         }
+ 
+-                trace_result, behavior_result, validation_result = validate_patch_proof_of_delivery(
++                trace_result, behavior_result, runtime_result, validation_result = validate_patch_proof_of_delivery(
+                     deliverable=deliverable,
+                     devworker_packet=devworker_packet,
+                 )
+ 
+-                if not trace_result.passed or not behavior_result.passed or not validation_result.passed:
++                if not trace_result.passed or not behavior_result.passed or not runtime_result.passed or not validation_result.passed:
+                     retry_packet = build_delivery_retry_packet(
+                         devworker_packet=devworker_packet,
+                         trace_result=trace_result,
+                         behavior_result=behavior_result,
++                        runtime_result=runtime_result,
+                         validation_result=validation_result,
+                     )
+ 
+@@ -376,7 +380,7 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
+                             deliverable=deliverable,
+                             devworker_packet=retry_packet,
+                         )
+-                        trace_result, behavior_result, validation_result = validate_patch_proof_of_delivery(
++                        trace_result, behavior_result, runtime_result, validation_result = validate_patch_proof_of_delivery(
+                             deliverable=deliverable,
+                             devworker_packet=retry_packet,
+                         )
+@@ -385,11 +389,13 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
+                         not quality_result.passed
+                         or not trace_result.passed
+                         or not behavior_result.passed
++                        or not runtime_result.passed
+                         or not validation_result.passed
+                     ):
+                         delivery_violations = build_delivery_feedback_result(
+                             trace_result,
+                             behavior_result,
++                            runtime_result,
+                             validation_result,
+                         )
+                         return {
+@@ -402,6 +408,7 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
+                             "quality_result": quality_result.model_dump(),
+                             "requirement_trace_result": trace_result.model_dump(),
+                             "behavior_verification_result": behavior_result.model_dump(),
++                            "runtime_validation_result": runtime_result.model_dump(),
+                             "validation_evidence_result": validation_result.model_dump(),
+                             "patch_proposal": deliverable,
+                         }
+@@ -429,6 +436,15 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
+                     behavior_verification=behavior_result.model_dump(),
+             validation_summary=ValidationEvidenceService().summarize(validation_result),
+             validation_evidence=validation_result.model_dump(),
++            runtime_validation_summary=TestExecutionService(Path(".")).summarize(runtime_result),
++            runtime_execution_evidence=runtime_result.model_dump(),
++            confidence_summary=build_confidence_summary(
++                quality_result=quality_result,
++                trace_result=trace_result,
++                behavior_result=behavior_result,
++                validation_result=validation_result,
++                runtime_result=runtime_result,
++            ),
+                 )
+ 
+                 agent_result["stage_manifest"] = manifest
+@@ -778,6 +794,33 @@ def validate_patch_proposal_quality(
+         target_files=devworker_packet.get("target_files", []),
+     )
+ 
++def collect_mapped_test_identifiers(trace_result) -> list[str]:
++    identifiers: list[str] = []
++    for trace in trace_result.traces:
++        for evidence in trace.test_evidence:
++            path = evidence.file_path
++            if path and path not in identifiers:
++                identifiers.append(path)
++    return identifiers
++
++
++def build_confidence_summary(
++    *,
++    quality_result,
++    trace_result,
++    behavior_result,
++    validation_result,
++    runtime_result,
++) -> dict:
++    return ConfidenceScoringService(Path(".")).summarize(
++        proposal_quality=quality_result,
++        requirement_trace=trace_result,
++        behavior_verification=behavior_result,
++        validation_evidence=validation_result,
++        runtime_execution=runtime_result,
++    )
++
++
+ def validate_patch_proof_of_delivery(
+     *,
+     deliverable: dict,
+@@ -806,18 +849,30 @@ def validate_patch_proof_of_delivery(
+         objective=devworker_packet.get("objective", ""),
+         success_criteria=devworker_packet.get("success_criteria", []),
+     )
++    if require_test_evidence:
++        runtime_result = TestExecutionService(Path(".")).execute(
++            collect_mapped_test_identifiers(trace_result),
++            proposal=deliverable,
++        )
++    else:
++        runtime_result = TestExecutionResult(status="pass")
++
+     validation_result = ValidationEvidenceService().validate(
+         proposal=deliverable,
+         trace_result=trace_result,
+         behavior_result=behavior_result,
++        runtime_result=runtime_result,
++        require_runtime_evidence=require_test_evidence,
+     )
+-    return trace_result, behavior_result, validation_result
++    return trace_result, behavior_result, runtime_result, validation_result
+ 
+ 
+-def build_delivery_feedback_result(trace_result, behavior_result, validation_result=None):
++def build_delivery_feedback_result(trace_result, behavior_result, runtime_result=None, validation_result=None):
+     violations = []
+     violations.extend(trace_result.violations)
+     violations.extend(behavior_result.violations)
++    if runtime_result is not None:
++        violations.extend(runtime_result.violations)
+     if validation_result is not None:
+         violations.extend(validation_result.violations)
+     return violations
+@@ -857,12 +912,13 @@ def build_delivery_retry_packet(
+     devworker_packet: dict,
+     trace_result,
+     behavior_result,
++    runtime_result=None,
+     validation_result=None,
+ ) -> dict:
+     retry_packet = dict(devworker_packet)
+     violations = [
+         violation.model_dump()
+-        for violation in build_delivery_feedback_result(trace_result, behavior_result, validation_result)
++        for violation in build_delivery_feedback_result(trace_result, behavior_result, runtime_result, validation_result)
+     ]
+     retry_packet["quality_retry"] = True
+     retry_packet["proof_of_delivery_retry"] = True
+@@ -1091,16 +1147,17 @@ def run_devworker_with_evidence(
+                     "patch_proposal": deliverable,
+                 }
+ 
+-        trace_result, behavior_result, validation_result = validate_patch_proof_of_delivery(
++        trace_result, behavior_result, runtime_result, validation_result = validate_patch_proof_of_delivery(
+             deliverable=deliverable,
+             devworker_packet=devworker_packet,
+         )
+ 
+-        if not trace_result.passed or not behavior_result.passed or not validation_result.passed:
++        if not trace_result.passed or not behavior_result.passed or not runtime_result.passed or not validation_result.passed:
+             retry_packet = build_delivery_retry_packet(
+                 devworker_packet=devworker_packet,
+                 trace_result=trace_result,
+                 behavior_result=behavior_result,
++                runtime_result=runtime_result,
+                 validation_result=validation_result,
+             )
+ 
+@@ -1115,7 +1172,7 @@ def run_devworker_with_evidence(
+                     deliverable=deliverable,
+                     devworker_packet=retry_packet,
+                 )
+-                trace_result, behavior_result, validation_result = validate_patch_proof_of_delivery(
++                trace_result, behavior_result, runtime_result, validation_result = validate_patch_proof_of_delivery(
+                     deliverable=deliverable,
+                     devworker_packet=retry_packet,
+                 )
+@@ -1124,11 +1181,13 @@ def run_devworker_with_evidence(
+                 not quality_result.passed
+                 or not trace_result.passed
+                 or not behavior_result.passed
++                or not runtime_result.passed
+                 or not validation_result.passed
+             ):
+                 delivery_violations = build_delivery_feedback_result(
+                     trace_result,
+                     behavior_result,
++                    runtime_result,
+                     validation_result,
+                 )
+                 return {
+@@ -1141,6 +1200,7 @@ def run_devworker_with_evidence(
+                     "quality_result": quality_result.model_dump(),
+                     "requirement_trace_result": trace_result.model_dump(),
+                     "behavior_verification_result": behavior_result.model_dump(),
++                    "runtime_validation_result": runtime_result.model_dump(),
+                     "validation_evidence_result": validation_result.model_dump(),
+                     "patch_proposal": deliverable,
+                 }
+@@ -1170,6 +1230,15 @@ def run_devworker_with_evidence(
+             behavior_verification=behavior_result.model_dump(),
+             validation_summary=ValidationEvidenceService().summarize(validation_result),
+             validation_evidence=validation_result.model_dump(),
++            runtime_validation_summary=TestExecutionService(Path(".")).summarize(runtime_result),
++            runtime_execution_evidence=runtime_result.model_dump(),
++            confidence_summary=build_confidence_summary(
++                quality_result=quality_result,
++                trace_result=trace_result,
++                behavior_result=behavior_result,
++                validation_result=validation_result,
++                runtime_result=runtime_result,
++            ),
+         )
+ 
+         agent_result["stage_manifest"] = stage_manifest.to_dict()
+diff --git a/models/patch_manifest.py b/models/patch_manifest.py
+index d49b436..c3ac05d 100644
+--- a/models/patch_manifest.py
++++ b/models/patch_manifest.py
+@@ -42,6 +42,9 @@ class PatchManifest:
+     behavior_verification: dict[str, Any] | None = None
+     validation_summary: dict[str, Any] | None = None
+     validation_evidence: dict[str, Any] | None = None
++    runtime_validation_summary: dict[str, Any] | None = None
++    runtime_execution_evidence: dict[str, Any] | None = None
++    confidence_summary: dict[str, Any] | None = None
+     git_commit: str | None = None
+     created_at: str = field(
+         default_factory=lambda: datetime.now(timezone.utc).isoformat()
+diff --git a/b/models/test_execution_evidence.py b/models/test_execution_evidence.py
+new file mode 100644
+index 0000000..83c68ab
+--- /dev/null
++++ b/models/test_execution_evidence.py
+@@ -0,0 +1,51 @@
++from __future__ import annotations
++
++from enum import Enum
++from typing import Literal
++
++from pydantic import BaseModel, Field
++
++
++class TestExecutionStatus(str, Enum):
++    __test__ = False
++    PASSED = "passed"
++    FAILED = "failed"
++    TIMEOUT = "timeout"
++    NOT_FOUND = "not_found"
++
++
++class TestExecutionEvidence(BaseModel):
++    __test__ = False
++    test_identifier: str
++    status: TestExecutionStatus
++    duration_seconds: float
++    timestamp: str
++    stdout: str = ""
++    stderr: str = ""
++    returncode: int | None = None
++
++
++class TestExecutionViolation(BaseModel):
++    __test__ = False
++    code: Literal[
++        "TEST_EXECUTION_FAILED",
++        "TEST_NOT_FOUND",
++        "TEST_TIMEOUT",
++        "NO_RUNTIME_EVIDENCE",
++    ]
++    message: str
++    test_identifier: str | None = None
++    expected: str | None = None
++    actual: str | None = None
++    instruction: str | None = None
++
++
++class TestExecutionResult(BaseModel):
++    __test__ = False
++    status: Literal["pass", "fail"]
++    runtime_evidence: list[TestExecutionEvidence] = Field(default_factory=list)
++    violations: list[TestExecutionViolation] = Field(default_factory=list)
++
++    @property
++    def passed(self) -> bool:
++        return self.status == "pass"
+diff --git a/models/validation_evidence.py b/models/validation_evidence.py
+index 516b00b..dc7ea4e 100644
+--- a/models/validation_evidence.py
++++ b/models/validation_evidence.py
+@@ -4,6 +4,8 @@ from typing import Literal
+ 
+ from pydantic import BaseModel, Field
+ 
++from models.test_execution_evidence import TestExecutionEvidence
++
+ 
+ class ValidationEvidence(BaseModel):
+     requirement_id: str
+@@ -12,6 +14,7 @@ class ValidationEvidence(BaseModel):
+     verification_source: str
+     timestamp: str
+     details: str | None = None
++    runtime_evidence: list[TestExecutionEvidence] = Field(default_factory=list)
+ 
+ 
+ class ValidationEvidenceViolation(BaseModel):
+diff --git a/b/services/confidence_scoring_service.py b/services/confidence_scoring_service.py
+new file mode 100644
+index 0000000..0b75b10
+--- /dev/null
++++ b/services/confidence_scoring_service.py
+@@ -0,0 +1,64 @@
++from __future__ import annotations
++
++from pathlib import Path
++from typing import Any
++
++from services.controls_service import ControlsService
++
++
++class ConfidenceScoringService:
++    """Calculates confidence from governance-controlled validation weights."""
++
++    def __init__(self, repo_root: Path | str = ".") -> None:
++        self.controls = ControlsService(Path(repo_root)).promotion_confidence
++
++    def summarize(
++        self,
++        *,
++        proposal_quality: Any,
++        requirement_trace: Any,
++        behavior_verification: Any,
++        validation_evidence: Any,
++        runtime_execution: Any,
++    ) -> dict[str, Any]:
++        component_scores = {
++            "proposal_quality": self._score_passed(proposal_quality),
++            "requirement_traceability": self._score_passed(requirement_trace),
++            "behavioral_verification": self._score_passed(behavior_verification),
++            "validation_evidence": self._score_passed(validation_evidence),
++            "runtime_execution": self._score_passed(runtime_execution),
++        }
++        weights = self.controls.weights or {}
++        weighted_total = sum(component_scores[name] * float(weights.get(name, 0.0)) for name in component_scores)
++        weight_total = sum(float(weights.get(name, 0.0)) for name in component_scores)
++        overall = weighted_total / weight_total if weight_total else 0.0
++        return {
++            "enabled": self.controls.enabled,
++            "minimum_confidence": self.controls.minimum_confidence,
++            "overall_confidence": round(overall, 4),
++            "rating": self._rating(overall),
++            "meets_minimum": overall >= self.controls.minimum_confidence,
++            "weights": dict(weights),
++            "components": component_scores,
++        }
++
++    def _score_passed(self, value: Any) -> float:
++        if value is None:
++            return 0.0
++        passed = getattr(value, "passed", None)
++        if isinstance(passed, bool):
++            return 1.0 if passed else 0.0
++        status = getattr(value, "status", None)
++        if status is None and isinstance(value, dict):
++            status = value.get("status")
++        return 1.0 if str(status).lower() in {"pass", "passed"} else 0.0
++
++    def _rating(self, score: float) -> str:
++        ratings = self.controls.ratings or {}
++        if score >= float(ratings.get("high", 0.90)):
++            return "high"
++        if score >= float(ratings.get("medium", 0.75)):
++            return "medium"
++        if score >= float(ratings.get("low", 0.50)):
++            return "low"
++        return "untrusted"
+diff --git a/services/controls_service.py b/services/controls_service.py
+index e3aae2b..c2e1e18 100644
+--- a/services/controls_service.py
++++ b/services/controls_service.py
+@@ -37,6 +37,24 @@ class GovernanceControls:
+     allow_direct_repo_modification: bool = False
+ 
+ 
++@dataclass(frozen=True)
++class PromotionConfidenceControls:
++    enabled: bool = True
++    minimum_confidence: float = 0.80
++    ratings: dict[str, float] | None = None
++    weights: dict[str, float] | None = None
++
++    def __post_init__(self) -> None:
++        object.__setattr__(self, "ratings", self.ratings or {"high": 0.90, "medium": 0.75, "low": 0.50})
++        object.__setattr__(self, "weights", self.weights or {
++            "proposal_quality": 0.20,
++            "requirement_traceability": 0.20,
++            "behavioral_verification": 0.20,
++            "validation_evidence": 0.20,
++            "runtime_execution": 0.20,
++        })
++
++
+ class ControlsService:
+     """
+     Centralized configuration service for Ageix governance and controls.
+@@ -69,6 +87,22 @@ class ControlsService:
+             "allow_auto_commit": False,
+             "allow_direct_repo_modification": False,
+         },
++        "promotion_confidence": {
++            "enabled": True,
++            "minimum_confidence": 0.80,
++            "ratings": {
++                "high": 0.90,
++                "medium": 0.75,
++                "low": 0.50,
++            },
++            "weights": {
++                "proposal_quality": 0.20,
++                "requirement_traceability": 0.20,
++                "behavioral_verification": 0.20,
++                "validation_evidence": 0.20,
++                "runtime_execution": 0.20,
++            },
++        },
+     }
+ 
+     def __init__(self, repo_root: Path):
+@@ -80,6 +114,7 @@ class ControlsService:
+         self.cloud = CloudControls(**self._config["cloud"])
+         self.validation = ValidationControls(**self._config["validation"])
+         self.governance = GovernanceControls(**self._config["governance"])
++        self.promotion_confidence = PromotionConfidenceControls(**self._config["promotion_confidence"])
+ 
+     def _load_config(self) -> dict[str, Any]:
+         config_path = (
+diff --git a/services/patch_builder.py b/services/patch_builder.py
+index 54bc3f3..c87b9fb 100644
+--- a/services/patch_builder.py
++++ b/services/patch_builder.py
+@@ -22,6 +22,9 @@ class PatchBuilder:
+         behavior_verification: dict | None = None,
+         validation_summary: dict | None = None,
+         validation_evidence: dict | None = None,
++        runtime_validation_summary: dict | None = None,
++        runtime_execution_evidence: dict | None = None,
++        confidence_summary: dict | None = None,
+     ) -> dict:
+         patch_id = f"patch_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
+         patch_dir = self.staged_root / patch_id
+@@ -76,6 +79,9 @@ class PatchBuilder:
+             "behavior_verification": behavior_verification,
+             "validation_summary": validation_summary,
+             "validation_evidence": validation_evidence,
++            "runtime_validation_summary": runtime_validation_summary,
++            "runtime_execution_evidence": runtime_execution_evidence,
++            "confidence_summary": confidence_summary,
+         }
+ 
+         (patch_dir / "manifest.json").write_text(
+@@ -125,6 +131,9 @@ class PatchBuilder:
+         behavior_verification: dict | None = None,
+         validation_summary: dict | None = None,
+         validation_evidence: dict | None = None,
++        runtime_validation_summary: dict | None = None,
++        runtime_execution_evidence: dict | None = None,
++        confidence_summary: dict | None = None,
+     ) -> dict:
+         files: list[PatchFile] = []
+ 
+@@ -167,4 +176,7 @@ class PatchBuilder:
+             behavior_verification=behavior_verification,
+             validation_summary=validation_summary,
+             validation_evidence=validation_evidence,
++            runtime_validation_summary=runtime_validation_summary,
++            runtime_execution_evidence=runtime_execution_evidence,
++            confidence_summary=confidence_summary,
+         )
+\ No newline at end of file
+diff --git a/services/staging_service.py b/services/staging_service.py
+index 4468572..80abdaa 100644
+--- a/services/staging_service.py
++++ b/services/staging_service.py
+@@ -47,6 +47,9 @@ class StagingService:
+         behavior_verification: dict | None = None,
+         validation_summary: dict | None = None,
+         validation_evidence: dict | None = None,
++        runtime_validation_summary: dict | None = None,
++        runtime_execution_evidence: dict | None = None,
++        confidence_summary: dict | None = None,
+     ) -> PatchManifest:
+         patch_id = self.create_patch_id()
+         patch_dir = self.stage_root / patch_id / "files"
+@@ -93,6 +96,9 @@ class StagingService:
+             behavior_verification=behavior_verification,
+             validation_summary=validation_summary,
+             validation_evidence=validation_evidence,
++            runtime_validation_summary=runtime_validation_summary,
++            runtime_execution_evidence=runtime_execution_evidence,
++            confidence_summary=confidence_summary,
+         )
+ 
+         self.manifest_root.mkdir(parents=True, exist_ok=True)
+@@ -117,6 +123,9 @@ class StagingService:
+         behavior_verification: dict | None = None,
+         validation_summary: dict | None = None,
+         validation_evidence: dict | None = None,
++        runtime_validation_summary: dict | None = None,
++        runtime_execution_evidence: dict | None = None,
++        confidence_summary: dict | None = None,
+     ) -> PatchManifest:
+         changes = proposal.get("changes", [])
+ 
+@@ -139,6 +148,9 @@ class StagingService:
+             behavior_verification=behavior_verification,
+             validation_summary=validation_summary,
+             validation_evidence=validation_evidence,
++            runtime_validation_summary=runtime_validation_summary,
++            runtime_execution_evidence=runtime_execution_evidence,
++            confidence_summary=confidence_summary,
+         )
+ 
+         stage_path = self.get_stage_path(manifest.patch_id)
+diff --git a/services/test_execution_service.py b/services/test_execution_service.py
+index 752c80a..5944332 100644
+--- a/services/test_execution_service.py
++++ b/services/test_execution_service.py
+@@ -1,13 +1,17 @@
+ from __future__ import annotations
+ 
++import shutil
+ import subprocess
++import sys
++import tempfile
+ import time
+ from dataclasses import dataclass
++from datetime import datetime, timezone
+ from pathlib import Path
+-
++from typing import Any
+ 
+ @dataclass(frozen=True)
+-class TestCommandResult:
++class CommandExecutionResult:
+     command: str
+     return_code: int
+     duration_seconds: float
+@@ -19,37 +23,242 @@ class TestCommandResult:
+         return self.return_code == 0
+ 
+ 
++from models.test_execution_evidence import (
++    TestExecutionEvidence,
++    TestExecutionResult,
++    TestExecutionStatus,
++    TestExecutionViolation,
++)
++
++
+ class TestExecutionService:
++    __test__ = False
++    """Executes repository-discovered pytest tests and records runtime evidence."""
++
++    def __init__(self, repo_root: Path | str = ".", timeout_seconds: float = 10.0) -> None:
++        self.repo_root = Path(repo_root).resolve()
++        self.timeout_seconds = timeout_seconds
++
++
+     def run_commands(
+         self,
+-        workspace_path: Path,
++        *,
++        workspace_path: Path | str,
+         commands: list[str],
+-        timeout_seconds: int = 120,
+-    ) -> list[TestCommandResult]:
+-        results: list[TestCommandResult] = []
++    ) -> list[CommandExecutionResult]:
++        """Backward-compatible command runner for legacy staged-patch validation.
+ 
++        Runtime validation for proposal acceptance is restricted to pytest identifiers
++        through execute(). This method preserves the older ValidationService API.
++        """
++        results: list[CommandExecutionResult] = []
++        workspace = Path(workspace_path).resolve()
+         for command in commands:
+-            started = time.perf_counter()
+-
++            started = time.monotonic()
+             completed = subprocess.run(
+                 command,
+-                cwd=workspace_path,
++                cwd=workspace,
+                 shell=True,
+                 capture_output=True,
+                 text=True,
+-                timeout=timeout_seconds,
++                timeout=self.timeout_seconds,
+             )
+-
+-            duration = time.perf_counter() - started
+-
+             results.append(
+-                TestCommandResult(
++                CommandExecutionResult(
+                     command=command,
+                     return_code=completed.returncode,
+-                    duration_seconds=round(duration, 3),
++                    duration_seconds=round(time.monotonic() - started, 4),
+                     stdout=completed.stdout,
+                     stderr=completed.stderr,
+                 )
+             )
++        return results
++
++    def execute(
++        self,
++        test_identifiers: list[str],
++        *,
++        proposal: dict[str, Any] | None = None,
++    ) -> TestExecutionResult:
++        normalized = self._normalize_identifiers(test_identifiers)
++        if not normalized:
++            violation = TestExecutionViolation(
++                code="NO_RUNTIME_EVIDENCE",
++                message="No executable pytest test identifiers were available for runtime validation.",
++                expected="At least one mapped pytest test identifier.",
++                actual="<missing>",
++                instruction="Provide executable test coverage and runtime validation evidence.",
++            )
++            return TestExecutionResult(status="fail", violations=[violation])
++
++        runtime_evidence: list[TestExecutionEvidence] = []
++        violations: list[TestExecutionViolation] = []
++
++        with self._execution_workspace(proposal) as workspace:
++            for identifier in normalized:
++                evidence = self._run_pytest_identifier(workspace, identifier)
++                runtime_evidence.append(evidence)
++                violation = self._violation_for_evidence(evidence)
++                if violation is not None:
++                    violations.append(violation)
++
++        return TestExecutionResult(
++            status="fail" if violations else "pass",
++            runtime_evidence=runtime_evidence,
++            violations=violations,
++        )
++
++    def summarize(self, result: TestExecutionResult) -> dict[str, Any]:
++        passed = sum(1 for item in result.runtime_evidence if item.status == TestExecutionStatus.PASSED)
++        failed = sum(1 for item in result.runtime_evidence if item.status == TestExecutionStatus.FAILED)
++        timed_out = sum(1 for item in result.runtime_evidence if item.status == TestExecutionStatus.TIMEOUT)
++        not_found = sum(1 for item in result.runtime_evidence if item.status == TestExecutionStatus.NOT_FOUND)
++        return {
++            "status": result.status,
++            "tests_executed": len(result.runtime_evidence),
++            "tests_passed": passed,
++            "tests_failed": failed,
++            "tests_timed_out": timed_out,
++            "tests_not_found": not_found,
++            "violations": [violation.model_dump() for violation in result.violations],
++        }
++
++    def _run_pytest_identifier(self, cwd: Path, test_identifier: str) -> TestExecutionEvidence:
++        started = time.monotonic()
++        timestamp = datetime.now(timezone.utc).isoformat()
++        try:
++            completed = subprocess.run(
++                [sys.executable, "-m", "pytest", test_identifier, "-q"],
++                cwd=cwd,
++                capture_output=True,
++                text=True,
++                timeout=self.timeout_seconds,
++            )
++            duration = time.monotonic() - started
++            status = TestExecutionStatus.PASSED if completed.returncode == 0 else TestExecutionStatus.FAILED
++            combined = f"{completed.stdout}\n{completed.stderr}"
++            if completed.returncode != 0 and self._looks_not_found(combined):
++                status = TestExecutionStatus.NOT_FOUND
++            return TestExecutionEvidence(
++                test_identifier=test_identifier,
++                status=status,
++                duration_seconds=round(duration, 4),
++                timestamp=timestamp,
++                stdout=completed.stdout,
++                stderr=completed.stderr,
++                returncode=completed.returncode,
++            )
++        except subprocess.TimeoutExpired as exc:
++            duration = time.monotonic() - started
++            return TestExecutionEvidence(
++                test_identifier=test_identifier,
++                status=TestExecutionStatus.TIMEOUT,
++                duration_seconds=round(duration, 4),
++                timestamp=timestamp,
++                stdout=self._decode_timeout_stream(exc.stdout),
++                stderr=self._decode_timeout_stream(exc.stderr),
++                returncode=None,
++            )
++
++    def _violation_for_evidence(self, evidence: TestExecutionEvidence) -> TestExecutionViolation | None:
++        if evidence.status == TestExecutionStatus.PASSED:
++            return None
++        if evidence.status == TestExecutionStatus.NOT_FOUND:
++            return TestExecutionViolation(
++                code="TEST_NOT_FOUND",
++                message="Mapped pytest test identifier could not be found.",
++                test_identifier=evidence.test_identifier,
++                expected="pytest can collect the mapped test identifier",
++                actual="not_found",
++                instruction="Provide an executable mapped pytest test identifier.",
++            )
++        if evidence.status == TestExecutionStatus.TIMEOUT:
++            return TestExecutionViolation(
++                code="TEST_TIMEOUT",
++                message="Mapped pytest test timed out during runtime validation.",
++                test_identifier=evidence.test_identifier,
++                expected="test completes before timeout",
++                actual="timeout",
++                instruction="Investigate the timeout and provide a deterministic, bounded test.",
++            )
++        return TestExecutionViolation(
++            code="TEST_EXECUTION_FAILED",
++            message="Mapped pytest test failed during runtime validation.",
++            test_identifier=evidence.test_identifier,
++            expected="PASS",
++            actual=evidence.status.value,
++            instruction="Investigate the failing test and provide a corrected implementation.",
++        )
++
++    def _normalize_identifiers(self, identifiers: list[str]) -> list[str]:
++        normalized: list[str] = []
++        for identifier in identifiers:
++            if not isinstance(identifier, str):
++                continue
++            cleaned = identifier.strip()
++            if not cleaned or not self._is_allowed_pytest_identifier(cleaned):
++                continue
++            if cleaned not in normalized:
++                normalized.append(cleaned)
++        return normalized
++
++    def _is_allowed_pytest_identifier(self, identifier: str) -> bool:
++        path = identifier.split("::", 1)[0].split(":", 1)[0].replace("\\", "/")
++        return path.startswith("tests/") and path.endswith(".py")
++
++    def _looks_not_found(self, output: str) -> bool:
++        lowered = output.lower()
++        return "not found" in lowered or "no tests ran" in lowered or "file or directory not found" in lowered
++
++    def _decode_timeout_stream(self, value: str | bytes | None) -> str:
++        if value is None:
++            return ""
++        if isinstance(value, bytes):
++            return value.decode("utf-8", errors="replace")
++        return value
++
++    def _execution_workspace(self, proposal: dict[str, Any] | None):
++        service = self
++
++        class WorkspaceContext:
++            path: Path
++
++            def __enter__(self) -> Path:
++                if proposal is None:
++                    self.path = service.repo_root
++                    return self.path
++                temp_dir = Path(tempfile.mkdtemp(prefix="ageix_runtime_validation_"))
++                shutil.copytree(
++                    service.repo_root,
++                    temp_dir,
++                    dirs_exist_ok=True,
++                    ignore=shutil.ignore_patterns(".git", ".ageix", "__pycache__", ".pytest_cache", "*.pyc", "ageix.db", "run.log"),
++                )
++                service._apply_proposal_overlay(temp_dir, proposal)
++                self.path = temp_dir
++                return self.path
++
++            def __exit__(self, exc_type, exc, tb) -> None:
++                if proposal is not None:
++                    shutil.rmtree(self.path, ignore_errors=True)
++
++        return WorkspaceContext()
+ 
+-        return results
+\ No newline at end of file
++    def _apply_proposal_overlay(self, workspace: Path, proposal: dict[str, Any]) -> None:
++        for change in proposal.get("changes", []):
++            if not isinstance(change, dict):
++                continue
++            operation = change.get("operation")
++            if operation not in {"replace_file", "create_file"}:
++                continue
++            raw_path = change.get("path")
++            content = change.get("content")
++            if not isinstance(raw_path, str) or not isinstance(content, str):
++                continue
++            target = (workspace / raw_path).resolve()
++            if not target.is_relative_to(workspace):
++                raise ValueError(f"Path escapes runtime validation workspace: {raw_path}")
++            target.parent.mkdir(parents=True, exist_ok=True)
++            if not content.endswith("\n"):
++                content += "\n"
++            target.write_text(content, encoding="utf-8")
+diff --git a/services/validation_evidence_service.py b/services/validation_evidence_service.py
+index c5cfe7f..404b258 100644
+--- a/services/validation_evidence_service.py
++++ b/services/validation_evidence_service.py
+@@ -10,6 +10,7 @@ from models.validation_evidence import (
+ )
+ from services.requirement_trace_service import RequirementTrace, RequirementTraceResult
+ from services.behavioral_smoke_verifier import BehavioralSmokeResult
++from models.test_execution_evidence import TestExecutionEvidence, TestExecutionResult, TestExecutionStatus
+ 
+ 
+ class ValidationEvidenceService:
+@@ -21,26 +22,31 @@ class ValidationEvidenceService:
+         trace_result: RequirementTraceResult,
+         behavior_result: BehavioralSmokeResult | None = None,
+         verification_source: str = "behavioral_smoke_verifier",
++        runtime_result: TestExecutionResult | None = None,
+     ) -> list[ValidationEvidence]:
+         timestamp = datetime.now(timezone.utc).isoformat()
+         evidence: list[ValidationEvidence] = []
+         behavior_status = self._normalize_behavior_status(behavior_result)
++        runtime_by_test = self._runtime_evidence_by_test(runtime_result)
++        runtime_required = runtime_result is not None
+ 
+         for trace in trace_result.traces:
+             for test in trace.test_evidence:
+                 test_identifier = self._test_identifier(test)
++                runtime_evidence = runtime_by_test.get(test_identifier, [])
+                 evidence.append(
+                     ValidationEvidence(
+                         requirement_id=trace.requirement_id,
+                         test_identifier=test_identifier,
+-                        status=behavior_status,
++                        status=self._combined_status(behavior_status, runtime_evidence, runtime_required),
+                         verification_source=verification_source,
+                         timestamp=timestamp,
+                         details=(
+-                            "Behavioral verification passed for requirement-connected test evidence."
+-                            if behavior_status == "PASS"
+-                            else "Behavioral verification did not pass for requirement-connected test evidence."
++                            "Behavioral and runtime verification passed for requirement-connected test evidence."
++                            if behavior_status == "PASS" and self._runtime_passed(runtime_evidence)
++                            else "Behavioral or runtime verification did not pass for requirement-connected test evidence."
+                         ),
++                        runtime_evidence=runtime_evidence,
+                     )
+                 )
+ 
+@@ -67,10 +73,13 @@ class ValidationEvidenceService:
+         proposal: dict[str, Any],
+         trace_result: RequirementTraceResult,
+         behavior_result: BehavioralSmokeResult | None = None,
++        runtime_result: TestExecutionResult | None = None,
++        require_runtime_evidence: bool = False,
+     ) -> ValidationEvidenceResult:
+         generated = self.generate(
+             trace_result=trace_result,
+             behavior_result=behavior_result,
++            runtime_result=runtime_result,
+         )
+         self.attach_validation_evidence(
+             trace_result=trace_result,
+@@ -80,6 +89,7 @@ class ValidationEvidenceService:
+         violations = self.validate_coverage(
+             proposal=proposal,
+             traces=trace_result.traces,
++            require_runtime_evidence=require_runtime_evidence,
+         )
+ 
+         return ValidationEvidenceResult(
+@@ -93,6 +103,7 @@ class ValidationEvidenceService:
+         *,
+         proposal: dict[str, Any],
+         traces: list[RequirementTrace],
++        require_runtime_evidence: bool = False,
+     ) -> list[ValidationEvidenceViolation]:
+         violations: list[ValidationEvidenceViolation] = []
+ 
+@@ -134,6 +145,21 @@ class ValidationEvidenceService:
+                         )
+                     )
+ 
++        if require_runtime_evidence:
++            for trace in traces:
++                for evidence in trace.validation_evidence:
++                    if not evidence.runtime_evidence:
++                        violations.append(
++                        ValidationEvidenceViolation(
++                            code="NO_RUNTIME_EVIDENCE",
++                            message="Requirement validation evidence has no runtime execution evidence.",
++                            requirement_id=trace.requirement_id,
++                            expected="Runtime execution evidence attached to validation evidence.",
++                            actual="<missing>",
++                            instruction="Provide executable test coverage and runtime validation evidence.",
++                            )
++                        )
++
+         mapped_tests = {
+             evidence.file_path
+             for trace in traces
+@@ -180,9 +206,40 @@ class ValidationEvidenceService:
+             "missing_validation_evidence": violations_by_code.get("MISSING_VALIDATION_EVIDENCE", 0),
+             "failed_validation_evidence": violations_by_code.get("FAILED_VALIDATION_EVIDENCE", 0),
+             "unmapped_test_evidence": violations_by_code.get("UNMAPPED_TEST_EVIDENCE", 0),
++            "no_runtime_evidence": violations_by_code.get("NO_RUNTIME_EVIDENCE", 0),
++            "runtime_evidence_count": sum(len(e.runtime_evidence) for e in result.validation_evidence),
+             "violations": [violation.model_dump() for violation in result.violations],
+         }
+ 
++    def _runtime_evidence_by_test(
++        self,
++        runtime_result: TestExecutionResult | None,
++    ) -> dict[str, list[TestExecutionEvidence]]:
++        by_test: dict[str, list[TestExecutionEvidence]] = {}
++        if runtime_result is None:
++            return by_test
++        for evidence in runtime_result.runtime_evidence:
++            by_test.setdefault(evidence.test_identifier, []).append(evidence)
++        return by_test
++
++    def _runtime_passed(self, runtime_evidence: list[TestExecutionEvidence]) -> bool:
++        return bool(runtime_evidence) and all(
++            evidence.status == TestExecutionStatus.PASSED
++            for evidence in runtime_evidence
++        )
++
++    def _combined_status(
++        self,
++        behavior_status: str,
++        runtime_evidence: list[TestExecutionEvidence],
++        runtime_required: bool = True,
++    ) -> str:
++        if behavior_status != "PASS":
++            return behavior_status
++        if not runtime_required:
++            return behavior_status
++        return "PASS" if self._runtime_passed(runtime_evidence) else "FAIL"
++
+     def _normalize_behavior_status(
+         self,
+         behavior_result: BehavioralSmokeResult | None,
+@@ -192,10 +249,7 @@ class ValidationEvidenceService:
+         return "PASS" if behavior_result.passed else "FAIL"
+ 
+     def _test_identifier(self, evidence: Any) -> str:
+-        file_path = evidence.file_path or "<unknown-test>"
+-        if evidence.line_start is None:
+-            return file_path
+-        return f"{file_path}:{evidence.line_start}"
++        return evidence.file_path or "<unknown-test>"
+ 
+     def _proposal_test_paths(self, proposal: dict[str, Any]) -> set[str]:
+         paths: set[str] = set()
+diff --git a/b/tests/test_runtime_manifest_and_confidence.py b/tests/test_runtime_manifest_and_confidence.py
+new file mode 100644
+index 0000000..4f0e934
+--- /dev/null
++++ b/tests/test_runtime_manifest_and_confidence.py
+@@ -0,0 +1,55 @@
++from pathlib import Path
++
++from services.confidence_scoring_service import ConfidenceScoringService
++from services.staging_service import StagingService
++
++
++class PassingResult:
++    status = "pass"
++
++    @property
++    def passed(self):
++        return True
++
++
++class FailingResult:
++    status = "fail"
++
++    @property
++    def passed(self):
++        return False
++
++
++def test_confidence_summary_generated(tmp_path: Path):
++    summary = ConfidenceScoringService(tmp_path).summarize(
++        proposal_quality=PassingResult(),
++        requirement_trace=PassingResult(),
++        behavior_verification=PassingResult(),
++        validation_evidence=PassingResult(),
++        runtime_execution=FailingResult(),
++    )
++
++    assert summary["overall_confidence"] == 0.8
++    assert summary["meets_minimum"] is True
++    assert summary["components"]["runtime_execution"] == 0.0
++
++
++def test_manifest_contains_runtime_summary(tmp_path: Path):
++    (tmp_path / "example.py").write_text("VALUE = 1\n", encoding="utf-8")
++
++    manifest = StagingService(tmp_path).create_stage(
++        files=["example.py"],
++        summary="runtime manifest test",
++        runtime_validation_summary={
++            "tests_executed": 1,
++            "tests_passed": 1,
++            "tests_failed": 0,
++            "tests_timed_out": 0,
++        },
++        runtime_execution_evidence={"runtime_evidence": []},
++        confidence_summary={"overall_confidence": 1.0},
++    )
++
++    data = manifest.to_dict()
++    assert data["runtime_validation_summary"]["tests_executed"] == 1
++    assert data["confidence_summary"]["overall_confidence"] == 1.0
+diff --git a/b/tests/test_test_execution_service.py b/tests/test_test_execution_service.py
+new file mode 100644
+index 0000000..1986ba4
+--- /dev/null
++++ b/tests/test_test_execution_service.py
+@@ -0,0 +1,87 @@
++from pathlib import Path
++import subprocess
++
++from services.test_execution_service import TestExecutionService
++
++
++def write_repo(tmp_path: Path, test_body: str = "def test_sample():\n    assert True\n") -> None:
++    (tmp_path / "pytest.ini").write_text("[pytest]\npythonpath = .\n", encoding="utf-8")
++    tests_dir = tmp_path / "tests"
++    tests_dir.mkdir(exist_ok=True)
++    (tests_dir / "test_runtime_sample.py").write_text(test_body, encoding="utf-8")
++
++
++def patch_run(monkeypatch, *, returncode: int, stdout: str = "", stderr: str = ""):
++    def fake_run(*args, **kwargs):
++        return subprocess.CompletedProcess(args=args[0], returncode=returncode, stdout=stdout, stderr=stderr)
++
++    monkeypatch.setattr(subprocess, "run", fake_run)
++
++
++def test_execution_service_runs_passing_test(tmp_path: Path, monkeypatch):
++    write_repo(tmp_path)
++    patch_run(monkeypatch, returncode=0, stdout="1 passed")
++
++    result = TestExecutionService(tmp_path).execute(["tests/test_runtime_sample.py::test_sample"])
++
++    assert result.passed
++    assert result.runtime_evidence[0].status == "passed"
++    assert result.runtime_evidence[0].duration_seconds >= 0
++
++
++def test_execution_service_reports_failure(tmp_path: Path, monkeypatch):
++    write_repo(tmp_path)
++    patch_run(monkeypatch, returncode=1, stdout="1 failed")
++
++    result = TestExecutionService(tmp_path).execute(["tests/test_runtime_sample.py::test_sample"])
++
++    assert not result.passed
++    assert result.violations[0].code == "TEST_EXECUTION_FAILED"
++
++
++def test_execution_service_reports_missing_test(tmp_path: Path, monkeypatch):
++    write_repo(tmp_path)
++    patch_run(monkeypatch, returncode=4, stderr="ERROR: not found: tests/test_runtime_sample.py::test_missing")
++
++    result = TestExecutionService(tmp_path).execute(["tests/test_runtime_sample.py::test_missing"])
++
++    assert not result.passed
++    assert result.violations[0].code == "TEST_NOT_FOUND"
++
++
++def test_execution_service_handles_timeout(tmp_path: Path, monkeypatch):
++    write_repo(tmp_path)
++
++    def raise_timeout(*args, **kwargs):
++        raise subprocess.TimeoutExpired(cmd=args[0], timeout=kwargs.get("timeout", 1))
++
++    monkeypatch.setattr(subprocess, "run", raise_timeout)
++
++    result = TestExecutionService(tmp_path, timeout_seconds=0.1).execute(
++        ["tests/test_runtime_sample.py::test_sample"]
++    )
++
++    assert not result.passed
++    assert result.violations[0].code == "TEST_TIMEOUT"
++
++
++def test_execution_service_applies_proposal_overlay(tmp_path: Path):
++    proposal = {
++        "changes": [
++            {
++                "operation": "create_file",
++                "path": "services/runtime_sample.py",
++                "content": "def message():\n    return 'observed'\n",
++            },
++            {
++                "operation": "create_file",
++                "path": "tests/test_runtime_overlay.py",
++                "content": "from services.runtime_sample import message\n\ndef test_runtime_overlay():\n    assert message() == 'observed'\n",
++            },
++        ]
++    }
++
++    service = TestExecutionService(tmp_path)
++    with service._execution_workspace(proposal) as workspace:
++        assert (workspace / "services" / "runtime_sample.py").exists()
++        assert (workspace / "tests" / "test_runtime_overlay.py").exists()
+diff --git a/tests/test_validation_evidence_service.py b/tests/test_validation_evidence_service.py
+index f54f3a9..7908b8b 100644
+--- a/tests/test_validation_evidence_service.py
++++ b/tests/test_validation_evidence_service.py
+@@ -149,3 +149,52 @@ def test_validation_summary_is_manifest_ready():
+     assert summary["requirements"] == 1
+     assert summary["evidence_count"] == 1
+     assert summary["unmapped_test_evidence"] == 0
++
++
++def test_validation_evidence_includes_runtime_results():
++    proposal = build_proposal(valid_changes())
++    trace_result, behavior_result = build_trace_and_behavior(proposal)
++    from models.test_execution_evidence import (
++        TestExecutionEvidence,
++        TestExecutionResult,
++        TestExecutionStatus,
++    )
++
++    runtime_result = TestExecutionResult(
++        status='pass',
++        runtime_evidence=[
++            TestExecutionEvidence(
++                test_identifier='tests/test_smoke_service.py',
++                status=TestExecutionStatus.PASSED,
++                duration_seconds=0.01,
++                timestamp='2026-06-15T00:00:00+00:00',
++            )
++        ],
++    )
++
++    result = ValidationEvidenceService().validate(
++        proposal=proposal,
++        trace_result=trace_result,
++        behavior_result=behavior_result,
++        runtime_result=runtime_result,
++        require_runtime_evidence=True,
++    )
++
++    assert result.passed
++    assert result.validation_evidence[0].runtime_evidence
++    assert result.validation_evidence[0].runtime_evidence[0].status == 'passed'
++
++
++def test_validation_evidence_requires_runtime_when_requested():
++    proposal = build_proposal(valid_changes())
++    trace_result, behavior_result = build_trace_and_behavior(proposal)
++
++    result = ValidationEvidenceService().validate(
++        proposal=proposal,
++        trace_result=trace_result,
++        behavior_result=behavior_result,
++        require_runtime_evidence=True,
++    )
++
++    assert not result.passed
++    assert 'NO_RUNTIME_EVIDENCE' in {violation.code for violation in result.violations}

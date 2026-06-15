@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from models.test_execution_evidence import TestExecutionEvidence
+
 
 class ValidationEvidence(BaseModel):
     requirement_id: str
@@ -12,6 +14,7 @@ class ValidationEvidence(BaseModel):
     verification_source: str
     timestamp: str
     details: str | None = None
+    runtime_evidence: list[TestExecutionEvidence] = Field(default_factory=list)
 
 
 class ValidationEvidenceViolation(BaseModel):

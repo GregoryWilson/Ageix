@@ -149,3 +149,52 @@ def test_validation_summary_is_manifest_ready():
     assert summary["requirements"] == 1
     assert summary["evidence_count"] == 1
     assert summary["unmapped_test_evidence"] == 0
+
+
+def test_validation_evidence_includes_runtime_results():
+    proposal = build_proposal(valid_changes())
+    trace_result, behavior_result = build_trace_and_behavior(proposal)
+    from models.test_execution_evidence import (
+        TestExecutionEvidence,
+        TestExecutionResult,
+        TestExecutionStatus,
+    )
+
+    runtime_result = TestExecutionResult(
+        status='pass',
+        runtime_evidence=[
+            TestExecutionEvidence(
+                test_identifier='tests/test_smoke_service.py',
+                status=TestExecutionStatus.PASSED,
+                duration_seconds=0.01,
+                timestamp='2026-06-15T00:00:00+00:00',
+            )
+        ],
+    )
+
+    result = ValidationEvidenceService().validate(
+        proposal=proposal,
+        trace_result=trace_result,
+        behavior_result=behavior_result,
+        runtime_result=runtime_result,
+        require_runtime_evidence=True,
+    )
+
+    assert result.passed
+    assert result.validation_evidence[0].runtime_evidence
+    assert result.validation_evidence[0].runtime_evidence[0].status == 'passed'
+
+
+def test_validation_evidence_requires_runtime_when_requested():
+    proposal = build_proposal(valid_changes())
+    trace_result, behavior_result = build_trace_and_behavior(proposal)
+
+    result = ValidationEvidenceService().validate(
+        proposal=proposal,
+        trace_result=trace_result,
+        behavior_result=behavior_result,
+        require_runtime_evidence=True,
+    )
+
+    assert not result.passed
+    assert 'NO_RUNTIME_EVIDENCE' in {violation.code for violation in result.violations}

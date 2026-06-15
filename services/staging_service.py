@@ -47,6 +47,9 @@ class StagingService:
         behavior_verification: dict | None = None,
         validation_summary: dict | None = None,
         validation_evidence: dict | None = None,
+        runtime_validation_summary: dict | None = None,
+        runtime_execution_evidence: dict | None = None,
+        confidence_summary: dict | None = None,
     ) -> PatchManifest:
         patch_id = self.create_patch_id()
         patch_dir = self.stage_root / patch_id / "files"
@@ -93,6 +96,9 @@ class StagingService:
             behavior_verification=behavior_verification,
             validation_summary=validation_summary,
             validation_evidence=validation_evidence,
+            runtime_validation_summary=runtime_validation_summary,
+            runtime_execution_evidence=runtime_execution_evidence,
+            confidence_summary=confidence_summary,
         )
 
         self.manifest_root.mkdir(parents=True, exist_ok=True)
@@ -117,6 +123,9 @@ class StagingService:
         behavior_verification: dict | None = None,
         validation_summary: dict | None = None,
         validation_evidence: dict | None = None,
+        runtime_validation_summary: dict | None = None,
+        runtime_execution_evidence: dict | None = None,
+        confidence_summary: dict | None = None,
     ) -> PatchManifest:
         changes = proposal.get("changes", [])
 
@@ -139,6 +148,9 @@ class StagingService:
             behavior_verification=behavior_verification,
             validation_summary=validation_summary,
             validation_evidence=validation_evidence,
+            runtime_validation_summary=runtime_validation_summary,
+            runtime_execution_evidence=runtime_execution_evidence,
+            confidence_summary=confidence_summary,
         )
 
         stage_path = self.get_stage_path(manifest.patch_id)
