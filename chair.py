@@ -257,6 +257,8 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
                         "objective": step.get("objective", ""),
                         "instructions": step.get("instructions", ""),
                         "target_files": step.get("target_files", []),
+                        "requested_operation": "create_file" if step.get("constraints", {}).get("allow_create_files") else "replace_file",
+                        "constraints": step.get("constraints", {}),
                         "mode": "evidence_gathering",
                         "include_dependency_hints": True,
                     },
@@ -302,11 +304,19 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
                         "executed_count": expansion_attempt + 1,
                     }
 
-                requested_files = [
-                    item.get("path")
-                    for item in deliverable.get("requested_files", [])
-                    if item.get("path")
-                ]
+                requested_files = filter_context_requested_files(
+                    deliverable.get("requested_files", []),
+                    devworker_packet.get("repo_evidence", []),
+                    devworker_packet.get("constraints", {}),
+                )
+
+                if not requested_files:
+                    return {
+                        "chair_action": "create_file_target_context_loop",
+                        "status": "blocked",
+                        "context_request": deliverable,
+                        "retry_feedback": "Do not request contents for a missing file when the requested operation is create_file.",
+                    }
 
                 step["target_files"] = sorted(
                     set(step.get("target_files", [])) | set(requested_files)
@@ -709,6 +719,14 @@ def build_devworker_packet(
         "success_criteria": success_criteria or [],
         "repo_evidence": repo_evidence,
         "dependency_hints": repository_result.get("dependency_hints", []),
+        "repository_discovery": {
+            "requested_operation": repository_result.get("requested_operation"),
+            "missing_allowed_for_create": [
+                item.get("path")
+                for item in repo_evidence
+                if item.get("repository_evidence_status") == "missing_allowed_for_create"
+            ],
+        },
         "constraints": constraints,
     }
 
@@ -1066,11 +1084,25 @@ def compact_repo_evidence(item: dict[str, Any]) -> dict[str, Any]:
     if not summary and isinstance(content, str):
         summary = content[:1000]
 
-    return {
+    compacted = {
         "file": item.get("path") or item.get("file"),
+        "path": item.get("path") or item.get("file"),
         "lines": line_range,
         "summary": summary or "Repository file read.",
     }
+
+    for key in [
+        "exists",
+        "requested_operation",
+        "target_file_missing",
+        "file_missing_create_allowed",
+        "repository_evidence_status",
+        "error",
+    ]:
+        if key in item:
+            compacted[key] = item[key]
+
+    return compacted
 
 def evidence_has_full_file(evidence_packet: dict, path: str) -> bool:
     for item in evidence_packet.get("evidence", []):
@@ -1097,6 +1129,32 @@ def validate_replace_file_evidence(patch_proposal: dict, evidence_packet: dict) 
     return errors
 
 
+def filter_context_requested_files(
+    requested_file_items: list[dict[str, Any]],
+    repo_evidence: list[dict[str, Any]],
+    constraints: dict[str, Any] | None = None,
+) -> list[str]:
+    constraints = constraints or {}
+    allow_create = constraints.get("allow_create_files") is True or "create_file" in constraints.get("allowed_operations", [])
+    missing_allowed = {
+        item.get("path") or item.get("file")
+        for item in repo_evidence
+        if item.get("repository_evidence_status") == "missing_allowed_for_create"
+        or item.get("file_missing_create_allowed") is True
+    }
+
+    requested_files: list[str] = []
+    for item in requested_file_items:
+        path = item.get("path") if isinstance(item, dict) else None
+        if not path:
+            continue
+        if allow_create and path in missing_allowed:
+            continue
+        if path not in requested_files:
+            requested_files.append(path)
+    return requested_files
+
+
 def handle_context_request(
     context_request: dict,
     original_evidence_packet: dict,
@@ -1110,11 +1168,11 @@ def handle_context_request(
             "context_request": context_request,
         }
 
-    requested_files = [
-        item["path"]
-        for item in context_request.get("requested_files", [])
-        if item.get("path")
-    ]
+    requested_files = filter_context_requested_files(
+        context_request.get("requested_files", []),
+        original_evidence_packet.get("evidence", []),
+        {"allow_create_files": True, "allowed_operations": ["replace_file", "create_file"]},
+    )
 
     if not requested_files:
         return {
@@ -1161,6 +1219,7 @@ def gather_repository_evidence_for_files(paths: list[str]) -> dict:
             "objective": "Gather expanded repository context.",
             "instructions": "Return full-file repository evidence for the requested files.",
             "target_files": paths,
+            "requested_operation": "replace_file",
             "mode": "evidence_gathering",
             "context_mode": "full_file",
             "include_dependency_hints": True,
@@ -1394,6 +1453,13 @@ if __name__ == "__main__":
         "title": "Ageix Sprint 10.0",
         "description": sprint_prompt,
     }
+
+    if args.objective and args.objective_file:
+        task["target_files"] = [args.objective_file]
+        task["metadata"] = {
+            "objective_file_as_target_hint": True,
+            "target_files": [args.objective_file],
+        }
 
     plan_result = build_plan_for_task(task=task)
     state = create_chair_state(task, plan_result)

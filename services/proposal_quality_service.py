@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import ast
 import re
+import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -124,6 +126,12 @@ class ProposalQualityService:
 
             requirement_trace.append(trace)
 
+        research_required = False
+        escalation_recommended = False
+        escalation: dict[str, Any] = {}
+
+        allowed_dependencies = self._load_allowed_dependencies()
+
         for change in changes:
             path = change.get("path")
             content = change.get("content")
@@ -135,8 +143,9 @@ class ProposalQualityService:
                 violations.append(placeholder_violation)
 
             if path.endswith(".py"):
+                tree = None
                 try:
-                    ast.parse(content)
+                    tree = ast.parse(content)
                 except SyntaxError as ex:
                     violations.append(
                         ProposalQualityViolation(
@@ -148,6 +157,30 @@ class ProposalQualityService:
                         )
                     )
 
+                if tree is not None:
+                    for import_name in self._iter_import_roots(tree):
+                        if self._is_supported_import(import_name, allowed_dependencies):
+                            continue
+
+                        violations.append(
+                            ProposalQualityViolation(
+                                code=ProposalQualityFailureCode.UNSUPPORTED_DEPENDENCY_REFERENCE,
+                                message=f"Unsupported dependency reference in {path}: {import_name}.",
+                                file_path=path,
+                                actual=import_name,
+                                instruction="Remove unsupported dependencies or add explicit dependency manifest evidence before referencing them.",
+                            )
+                        )
+
+                        if self._looks_like_external_api(import_name, objective, content):
+                            research_required = True
+                            escalation_recommended = True
+                            escalation = {
+                                "recommended": True,
+                                "reason": "External API usage could not be verified from repository evidence.",
+                                "target": "research",
+                            }
+
             if self._is_test_path(path) and not self._has_meaningful_assertion(content):
                 violations.append(
                     ProposalQualityViolation(
@@ -157,10 +190,24 @@ class ProposalQualityService:
                     )
                 )
 
+        if not escalation and self._objective_mentions_external_api(objective):
+            known_content = combined_content.lower()
+            if not any(name.lower() in known_content for name in allowed_dependencies):
+                research_required = True
+                escalation_recommended = True
+                escalation = {
+                    "recommended": True,
+                    "reason": "External API usage could not be verified from repository evidence.",
+                    "target": "research",
+                }
+
         return ProposalQualityResult(
             status="fail" if violations else "pass",
             violations=violations,
             requirement_trace=requirement_trace,
+            research_required=research_required,
+            escalation_recommended=escalation_recommended,
+            escalation=escalation,
         )
 
     def _extract_required_literals(self, sources: list[str]) -> set[str]:
@@ -249,3 +296,120 @@ class ProposalQualityService:
         if match:
             return match.group(2)
         return None
+
+    def _iter_import_roots(self, tree: ast.AST) -> list[str]:
+        roots: list[str] = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    root = alias.name.split(".")[0]
+                    if root not in roots:
+                        roots.append(root)
+            elif isinstance(node, ast.ImportFrom):
+                if node.level:
+                    continue
+                if node.module:
+                    root = node.module.split(".")[0]
+                    if root not in roots:
+                        roots.append(root)
+        return roots
+
+    def _is_supported_import(self, root: str, allowed_dependencies: set[str]) -> bool:
+        if root in sys.builtin_module_names:
+            return True
+        if root in getattr(sys, "stdlib_module_names", set()):
+            return True
+        if root in allowed_dependencies:
+            return True
+        if self._is_repository_module(root):
+            return True
+        return False
+
+    def _is_repository_module(self, root: str) -> bool:
+        return (self.repo_root / f"{root}.py").exists() or (
+            (self.repo_root / root).is_dir()
+            and (self.repo_root / root / "__init__.py").exists()
+        )
+
+    def _load_allowed_dependencies(self) -> set[str]:
+        dependencies: set[str] = set()
+        dependencies.update(self._read_requirements_txt())
+        dependencies.update(self._read_pyproject_dependencies())
+        dependencies.update(self._read_dependency_allowlist())
+        return dependencies
+
+    def _read_requirements_txt(self) -> set[str]:
+        path = self.repo_root / "requirements.txt"
+        if not path.exists():
+            return set()
+        deps: set[str] = set()
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            cleaned = line.strip()
+            if not cleaned or cleaned.startswith("#") or cleaned.startswith("-"):
+                continue
+            name = re.split(r"[<>=!~;\[]", cleaned, maxsplit=1)[0].strip()
+            if name:
+                deps.add(self._normalize_dependency_name(name))
+        return deps
+
+    def _read_pyproject_dependencies(self) -> set[str]:
+        path = self.repo_root / "pyproject.toml"
+        if not path.exists():
+            return set()
+        try:
+            data = tomllib.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return set()
+
+        raw_deps: list[str] = []
+        project = data.get("project", {})
+        if isinstance(project.get("dependencies"), list):
+            raw_deps.extend(str(item) for item in project["dependencies"])
+        optional = project.get("optional-dependencies", {})
+        if isinstance(optional, dict):
+            for values in optional.values():
+                if isinstance(values, list):
+                    raw_deps.extend(str(item) for item in values)
+
+        poetry_deps = (
+            data.get("tool", {})
+            .get("poetry", {})
+            .get("dependencies", {})
+        )
+        if isinstance(poetry_deps, dict):
+            raw_deps.extend(str(key) for key in poetry_deps if key.lower() != "python")
+
+        deps: set[str] = set()
+        for item in raw_deps:
+            name = re.split(r"[<>=!~;\[]", item.strip(), maxsplit=1)[0].strip()
+            if name:
+                deps.add(self._normalize_dependency_name(name))
+        return deps
+
+    def _read_dependency_allowlist(self) -> set[str]:
+        candidates = [
+            self.repo_root / ".ageix" / "config" / "dependency_allowlist.txt",
+            self.repo_root / ".ageix" / "dependency_allowlist.txt",
+        ]
+        deps: set[str] = set()
+        for path in candidates:
+            if not path.exists():
+                continue
+            for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+                cleaned = line.strip()
+                if cleaned and not cleaned.startswith("#"):
+                    deps.add(self._normalize_dependency_name(cleaned))
+        return deps
+
+    def _normalize_dependency_name(self, name: str) -> str:
+        return name.strip().lower().replace("-", "_")
+
+    def _objective_mentions_external_api(self, objective: str) -> bool:
+        lowered = objective.lower()
+        return any(term in lowered for term in [" api", "library", "sdk", "octoprint", "octopi", "external"])
+
+    def _looks_like_external_api(self, import_name: str, objective: str, content: str) -> bool:
+        lowered = " ".join([objective, content, import_name]).lower()
+        if import_name in {"dependency_injection"}:
+            return False
+        return self._objective_mentions_external_api(lowered)

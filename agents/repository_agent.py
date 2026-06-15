@@ -45,7 +45,11 @@ def _list_files() -> list[str]:
     return sorted(files)
 
 
-def _read_file(path_text: str, max_chars: int = 12000) -> dict[str, Any]:
+def _read_file(
+    path_text: str,
+    max_chars: int = 12000,
+    requested_operation: str | None = None,
+) -> dict[str, Any]:
     path = (REPO_ROOT / path_text).resolve()
 
     if not path.is_relative_to(REPO_ROOT):
@@ -55,8 +59,24 @@ def _read_file(path_text: str, max_chars: int = 12000) -> dict[str, Any]:
         }
 
     if not path.exists():
+        if requested_operation == "create_file":
+            return {
+                "path": path_text,
+                "exists": False,
+                "requested_operation": "create_file",
+                "target_file_missing": True,
+                "file_missing_create_allowed": True,
+                "repository_evidence_status": "missing_allowed_for_create",
+                "summary": "Target file does not exist and is valid evidence for create_file.",
+            }
+
         return {
             "path": path_text,
+            "exists": False,
+            "requested_operation": requested_operation or "replace_file",
+            "target_file_missing": True,
+            "file_missing_create_allowed": False,
+            "repository_evidence_status": "missing_violation",
             "error": "File does not exist.",
         }
 
@@ -71,6 +91,11 @@ def _read_file(path_text: str, max_chars: int = 12000) -> dict[str, Any]:
 
     return {
         "path": path_text,
+        "exists": True,
+        "requested_operation": requested_operation,
+        "target_file_missing": False,
+        "file_missing_create_allowed": False,
+        "repository_evidence_status": "available",
         "content": limited,
         "content_mode": "partial_file" if len(text) > max_chars else "full_file",
         "lines": [
@@ -136,11 +161,20 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
 
     read_targets = []
     target_files = payload.get("target_files", [])
+    constraints = payload.get("constraints", {}) or {}
+    requested_operation = payload.get("requested_operation")
+
+    if requested_operation is None:
+        allowed_operations = constraints.get("allowed_operations", [])
+        if constraints.get("allow_create_files") or "create_file" in allowed_operations:
+            requested_operation = "create_file"
+        else:
+            requested_operation = "replace_file"
 
     read_targets = sorted(set(read_targets + target_files))
 
     file_reads = [
-        _read_file(path)
+        _read_file(path, requested_operation=requested_operation)
         for path in read_targets
     ]
 
@@ -172,6 +206,7 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
         "file_count": len(files),
         "read_files": file_reads,
         "evidence": file_reads,
+        "requested_operation": requested_operation,
         "searches": searches,
         "risks": [
             "Read-only inspection only. No files modified.",

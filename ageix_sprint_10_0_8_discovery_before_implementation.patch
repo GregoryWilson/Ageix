@@ -1,0 +1,649 @@
+diff --git a/agents/repository_agent.py b/agents/repository_agent.py
+index ea13b46..738b502 100644
+--- a/agents/repository_agent.py
++++ b/agents/repository_agent.py
+@@ -45,7 +45,11 @@ def _list_files() -> list[str]:
+     return sorted(files)
+ 
+ 
+-def _read_file(path_text: str, max_chars: int = 12000) -> dict[str, Any]:
++def _read_file(
++    path_text: str,
++    max_chars: int = 12000,
++    requested_operation: str | None = None,
++) -> dict[str, Any]:
+     path = (REPO_ROOT / path_text).resolve()
+ 
+     if not path.is_relative_to(REPO_ROOT):
+@@ -55,8 +59,24 @@ def _read_file(path_text: str, max_chars: int = 12000) -> dict[str, Any]:
+         }
+ 
+     if not path.exists():
++        if requested_operation == "create_file":
++            return {
++                "path": path_text,
++                "exists": False,
++                "requested_operation": "create_file",
++                "target_file_missing": True,
++                "file_missing_create_allowed": True,
++                "repository_evidence_status": "missing_allowed_for_create",
++                "summary": "Target file does not exist and is valid evidence for create_file.",
++            }
++
+         return {
+             "path": path_text,
++            "exists": False,
++            "requested_operation": requested_operation or "replace_file",
++            "target_file_missing": True,
++            "file_missing_create_allowed": False,
++            "repository_evidence_status": "missing_violation",
+             "error": "File does not exist.",
+         }
+ 
+@@ -71,6 +91,11 @@ def _read_file(path_text: str, max_chars: int = 12000) -> dict[str, Any]:
+ 
+     return {
+         "path": path_text,
++        "exists": True,
++        "requested_operation": requested_operation,
++        "target_file_missing": False,
++        "file_missing_create_allowed": False,
++        "repository_evidence_status": "available",
+         "content": limited,
+         "content_mode": "partial_file" if len(text) > max_chars else "full_file",
+         "lines": [
+@@ -136,11 +161,20 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
+ 
+     read_targets = []
+     target_files = payload.get("target_files", [])
++    constraints = payload.get("constraints", {}) or {}
++    requested_operation = payload.get("requested_operation")
++
++    if requested_operation is None:
++        allowed_operations = constraints.get("allowed_operations", [])
++        if constraints.get("allow_create_files") or "create_file" in allowed_operations:
++            requested_operation = "create_file"
++        else:
++            requested_operation = "replace_file"
+ 
+     read_targets = sorted(set(read_targets + target_files))
+ 
+     file_reads = [
+-        _read_file(path)
++        _read_file(path, requested_operation=requested_operation)
+         for path in read_targets
+     ]
+ 
+@@ -172,6 +206,7 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
+         "file_count": len(files),
+         "read_files": file_reads,
+         "evidence": file_reads,
++        "requested_operation": requested_operation,
+         "searches": searches,
+         "risks": [
+             "Read-only inspection only. No files modified.",
+diff --git a/chair.py b/chair.py
+index b082938..aef1278 100644
+--- a/chair.py
++++ b/chair.py
+@@ -257,6 +257,8 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
+                         "objective": step.get("objective", ""),
+                         "instructions": step.get("instructions", ""),
+                         "target_files": step.get("target_files", []),
++                        "requested_operation": "create_file" if step.get("constraints", {}).get("allow_create_files") else "replace_file",
++                        "constraints": step.get("constraints", {}),
+                         "mode": "evidence_gathering",
+                         "include_dependency_hints": True,
+                     },
+@@ -302,11 +304,19 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
+                         "executed_count": expansion_attempt + 1,
+                     }
+ 
+-                requested_files = [
+-                    item.get("path")
+-                    for item in deliverable.get("requested_files", [])
+-                    if item.get("path")
+-                ]
++                requested_files = filter_context_requested_files(
++                    deliverable.get("requested_files", []),
++                    devworker_packet.get("repo_evidence", []),
++                    devworker_packet.get("constraints", {}),
++                )
++
++                if not requested_files:
++                    return {
++                        "chair_action": "create_file_target_context_loop",
++                        "status": "blocked",
++                        "context_request": deliverable,
++                        "retry_feedback": "Do not request contents for a missing file when the requested operation is create_file.",
++                    }
+ 
+                 step["target_files"] = sorted(
+                     set(step.get("target_files", [])) | set(requested_files)
+@@ -709,6 +719,14 @@ def build_devworker_packet(
+         "success_criteria": success_criteria or [],
+         "repo_evidence": repo_evidence,
+         "dependency_hints": repository_result.get("dependency_hints", []),
++        "repository_discovery": {
++            "requested_operation": repository_result.get("requested_operation"),
++            "missing_allowed_for_create": [
++                item.get("path")
++                for item in repo_evidence
++                if item.get("repository_evidence_status") == "missing_allowed_for_create"
++            ],
++        },
+         "constraints": constraints,
+     }
+ 
+@@ -1066,12 +1084,26 @@ def compact_repo_evidence(item: dict[str, Any]) -> dict[str, Any]:
+     if not summary and isinstance(content, str):
+         summary = content[:1000]
+ 
+-    return {
++    compacted = {
+         "file": item.get("path") or item.get("file"),
++        "path": item.get("path") or item.get("file"),
+         "lines": line_range,
+         "summary": summary or "Repository file read.",
+     }
+ 
++    for key in [
++        "exists",
++        "requested_operation",
++        "target_file_missing",
++        "file_missing_create_allowed",
++        "repository_evidence_status",
++        "error",
++    ]:
++        if key in item:
++            compacted[key] = item[key]
++
++    return compacted
++
+ def evidence_has_full_file(evidence_packet: dict, path: str) -> bool:
+     for item in evidence_packet.get("evidence", []):
+         if item.get("path") == path and item.get("content_mode") == "full_file":
+@@ -1097,6 +1129,32 @@ def validate_replace_file_evidence(patch_proposal: dict, evidence_packet: dict)
+     return errors
+ 
+ 
++def filter_context_requested_files(
++    requested_file_items: list[dict[str, Any]],
++    repo_evidence: list[dict[str, Any]],
++    constraints: dict[str, Any] | None = None,
++) -> list[str]:
++    constraints = constraints or {}
++    allow_create = constraints.get("allow_create_files") is True or "create_file" in constraints.get("allowed_operations", [])
++    missing_allowed = {
++        item.get("path") or item.get("file")
++        for item in repo_evidence
++        if item.get("repository_evidence_status") == "missing_allowed_for_create"
++        or item.get("file_missing_create_allowed") is True
++    }
++
++    requested_files: list[str] = []
++    for item in requested_file_items:
++        path = item.get("path") if isinstance(item, dict) else None
++        if not path:
++            continue
++        if allow_create and path in missing_allowed:
++            continue
++        if path not in requested_files:
++            requested_files.append(path)
++    return requested_files
++
++
+ def handle_context_request(
+     context_request: dict,
+     original_evidence_packet: dict,
+@@ -1110,11 +1168,11 @@ def handle_context_request(
+             "context_request": context_request,
+         }
+ 
+-    requested_files = [
+-        item["path"]
+-        for item in context_request.get("requested_files", [])
+-        if item.get("path")
+-    ]
++    requested_files = filter_context_requested_files(
++        context_request.get("requested_files", []),
++        original_evidence_packet.get("evidence", []),
++        {"allow_create_files": True, "allowed_operations": ["replace_file", "create_file"]},
++    )
+ 
+     if not requested_files:
+         return {
+@@ -1161,6 +1219,7 @@ def gather_repository_evidence_for_files(paths: list[str]) -> dict:
+             "objective": "Gather expanded repository context.",
+             "instructions": "Return full-file repository evidence for the requested files.",
+             "target_files": paths,
++            "requested_operation": "replace_file",
+             "mode": "evidence_gathering",
+             "context_mode": "full_file",
+             "include_dependency_hints": True,
+@@ -1395,6 +1454,13 @@ if __name__ == "__main__":
+         "description": sprint_prompt,
+     }
+ 
++    if args.objective and args.objective_file:
++        task["target_files"] = [args.objective_file]
++        task["metadata"] = {
++            "objective_file_as_target_hint": True,
++            "target_files": [args.objective_file],
++        }
++
+     plan_result = build_plan_for_task(task=task)
+     state = create_chair_state(task, plan_result)
+ 
+diff --git a/models/proposal_quality_models.py b/models/proposal_quality_models.py
+index 7789a30..8eceab9 100644
+--- a/models/proposal_quality_models.py
++++ b/models/proposal_quality_models.py
+@@ -14,6 +14,8 @@ class ProposalQualityFailureCode(str, Enum):
+     TEST_WITHOUT_ASSERTION = "test_without_assertion"
+     PLACEHOLDER_CONTENT = "placeholder_content"
+     SUCCESS_CRITERIA_NOT_ADDRESSED = "success_criteria_not_addressed"
++    UNSUPPORTED_DEPENDENCY_REFERENCE = "unsupported_dependency_reference"
++    UNVERIFIED_EXTERNAL_API_USAGE = "unverified_external_api_usage"
+ 
+ 
+ class ProposalQualityViolation(BaseModel):
+@@ -36,6 +38,9 @@ class ProposalQualityResult(BaseModel):
+     status: Literal["pass", "fail"]
+     violations: list[ProposalQualityViolation] = Field(default_factory=list)
+     requirement_trace: list[RequirementTrace] = Field(default_factory=list)
++    research_required: bool = False
++    escalation_recommended: bool = False
++    escalation: dict = Field(default_factory=dict)
+ 
+     @property
+     def passed(self) -> bool:
+diff --git a/services/proposal_quality_service.py b/services/proposal_quality_service.py
+index 75a88b3..4c1a7f2 100644
+--- a/services/proposal_quality_service.py
++++ b/services/proposal_quality_service.py
+@@ -2,6 +2,8 @@ from __future__ import annotations
+ 
+ import ast
+ import re
++import sys
++import tomllib
+ from pathlib import Path
+ from typing import Any
+ 
+@@ -124,6 +126,12 @@ class ProposalQualityService:
+ 
+             requirement_trace.append(trace)
+ 
++        research_required = False
++        escalation_recommended = False
++        escalation: dict[str, Any] = {}
++
++        allowed_dependencies = self._load_allowed_dependencies()
++
+         for change in changes:
+             path = change.get("path")
+             content = change.get("content")
+@@ -135,8 +143,9 @@ class ProposalQualityService:
+                 violations.append(placeholder_violation)
+ 
+             if path.endswith(".py"):
++                tree = None
+                 try:
+-                    ast.parse(content)
++                    tree = ast.parse(content)
+                 except SyntaxError as ex:
+                     violations.append(
+                         ProposalQualityViolation(
+@@ -148,6 +157,30 @@ class ProposalQualityService:
+                         )
+                     )
+ 
++                if tree is not None:
++                    for import_name in self._iter_import_roots(tree):
++                        if self._is_supported_import(import_name, allowed_dependencies):
++                            continue
++
++                        violations.append(
++                            ProposalQualityViolation(
++                                code=ProposalQualityFailureCode.UNSUPPORTED_DEPENDENCY_REFERENCE,
++                                message=f"Unsupported dependency reference in {path}: {import_name}.",
++                                file_path=path,
++                                actual=import_name,
++                                instruction="Remove unsupported dependencies or add explicit dependency manifest evidence before referencing them.",
++                            )
++                        )
++
++                        if self._looks_like_external_api(import_name, objective, content):
++                            research_required = True
++                            escalation_recommended = True
++                            escalation = {
++                                "recommended": True,
++                                "reason": "External API usage could not be verified from repository evidence.",
++                                "target": "research",
++                            }
++
+             if self._is_test_path(path) and not self._has_meaningful_assertion(content):
+                 violations.append(
+                     ProposalQualityViolation(
+@@ -157,10 +190,24 @@ class ProposalQualityService:
+                     )
+                 )
+ 
++        if not escalation and self._objective_mentions_external_api(objective):
++            known_content = combined_content.lower()
++            if not any(name.lower() in known_content for name in allowed_dependencies):
++                research_required = True
++                escalation_recommended = True
++                escalation = {
++                    "recommended": True,
++                    "reason": "External API usage could not be verified from repository evidence.",
++                    "target": "research",
++                }
++
+         return ProposalQualityResult(
+             status="fail" if violations else "pass",
+             violations=violations,
+             requirement_trace=requirement_trace,
++            research_required=research_required,
++            escalation_recommended=escalation_recommended,
++            escalation=escalation,
+         )
+ 
+     def _extract_required_literals(self, sources: list[str]) -> set[str]:
+@@ -249,3 +296,120 @@ class ProposalQualityService:
+         if match:
+             return match.group(2)
+         return None
++
++    def _iter_import_roots(self, tree: ast.AST) -> list[str]:
++        roots: list[str] = []
++        for node in ast.walk(tree):
++            if isinstance(node, ast.Import):
++                for alias in node.names:
++                    root = alias.name.split(".")[0]
++                    if root not in roots:
++                        roots.append(root)
++            elif isinstance(node, ast.ImportFrom):
++                if node.level:
++                    continue
++                if node.module:
++                    root = node.module.split(".")[0]
++                    if root not in roots:
++                        roots.append(root)
++        return roots
++
++    def _is_supported_import(self, root: str, allowed_dependencies: set[str]) -> bool:
++        if root in sys.builtin_module_names:
++            return True
++        if root in getattr(sys, "stdlib_module_names", set()):
++            return True
++        if root in allowed_dependencies:
++            return True
++        if self._is_repository_module(root):
++            return True
++        return False
++
++    def _is_repository_module(self, root: str) -> bool:
++        return (self.repo_root / f"{root}.py").exists() or (
++            (self.repo_root / root).is_dir()
++            and (self.repo_root / root / "__init__.py").exists()
++        )
++
++    def _load_allowed_dependencies(self) -> set[str]:
++        dependencies: set[str] = set()
++        dependencies.update(self._read_requirements_txt())
++        dependencies.update(self._read_pyproject_dependencies())
++        dependencies.update(self._read_dependency_allowlist())
++        return dependencies
++
++    def _read_requirements_txt(self) -> set[str]:
++        path = self.repo_root / "requirements.txt"
++        if not path.exists():
++            return set()
++        deps: set[str] = set()
++        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
++            cleaned = line.strip()
++            if not cleaned or cleaned.startswith("#") or cleaned.startswith("-"):
++                continue
++            name = re.split(r"[<>=!~;\[]", cleaned, maxsplit=1)[0].strip()
++            if name:
++                deps.add(self._normalize_dependency_name(name))
++        return deps
++
++    def _read_pyproject_dependencies(self) -> set[str]:
++        path = self.repo_root / "pyproject.toml"
++        if not path.exists():
++            return set()
++        try:
++            data = tomllib.loads(path.read_text(encoding="utf-8"))
++        except Exception:
++            return set()
++
++        raw_deps: list[str] = []
++        project = data.get("project", {})
++        if isinstance(project.get("dependencies"), list):
++            raw_deps.extend(str(item) for item in project["dependencies"])
++        optional = project.get("optional-dependencies", {})
++        if isinstance(optional, dict):
++            for values in optional.values():
++                if isinstance(values, list):
++                    raw_deps.extend(str(item) for item in values)
++
++        poetry_deps = (
++            data.get("tool", {})
++            .get("poetry", {})
++            .get("dependencies", {})
++        )
++        if isinstance(poetry_deps, dict):
++            raw_deps.extend(str(key) for key in poetry_deps if key.lower() != "python")
++
++        deps: set[str] = set()
++        for item in raw_deps:
++            name = re.split(r"[<>=!~;\[]", item.strip(), maxsplit=1)[0].strip()
++            if name:
++                deps.add(self._normalize_dependency_name(name))
++        return deps
++
++    def _read_dependency_allowlist(self) -> set[str]:
++        candidates = [
++            self.repo_root / ".ageix" / "config" / "dependency_allowlist.txt",
++            self.repo_root / ".ageix" / "dependency_allowlist.txt",
++        ]
++        deps: set[str] = set()
++        for path in candidates:
++            if not path.exists():
++                continue
++            for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
++                cleaned = line.strip()
++                if cleaned and not cleaned.startswith("#"):
++                    deps.add(self._normalize_dependency_name(cleaned))
++        return deps
++
++    def _normalize_dependency_name(self, name: str) -> str:
++        return name.strip().lower().replace("-", "_")
++
++    def _objective_mentions_external_api(self, objective: str) -> bool:
++        lowered = objective.lower()
++        return any(term in lowered for term in [" api", "library", "sdk", "octoprint", "octopi", "external"])
++
++    def _looks_like_external_api(self, import_name: str, objective: str, content: str) -> bool:
++        lowered = " ".join([objective, content, import_name]).lower()
++        if import_name in {"dependency_injection"}:
++            return False
++        return self._objective_mentions_external_api(lowered)
+diff --git a/tests/test_sprint_10_0_8_discovery_and_dependencies.py b/tests/test_sprint_10_0_8_discovery_and_dependencies.py
+new file mode 100644
+index 0000000..ca1a0de
+--- /dev/null
++++ b/tests/test_sprint_10_0_8_discovery_and_dependencies.py
+@@ -0,0 +1,169 @@
++from pathlib import Path
++
++from agents import repository_agent
++from chair import build_devworker_packet, filter_context_requested_files
++from models.proposal_quality_models import ProposalQualityFailureCode
++from services.proposal_quality_service import ProposalQualityService
++
++
++def test_create_file_missing_target_is_valid_repository_evidence(tmp_path, monkeypatch):
++    monkeypatch.setattr(repository_agent, "REPO_ROOT", tmp_path.resolve())
++
++    result = repository_agent.run(
++        {
++            "target_files": ["agents/3D_printer_agent.py"],
++            "requested_operation": "create_file",
++        }
++    )
++
++    evidence = result["evidence"][0]
++    assert evidence["path"] == "agents/3D_printer_agent.py"
++    assert evidence["target_file_missing"] is True
++    assert evidence["file_missing_create_allowed"] is True
++    assert evidence["repository_evidence_status"] == "missing_allowed_for_create"
++
++
++def test_replace_file_missing_target_remains_violation(tmp_path, monkeypatch):
++    monkeypatch.setattr(repository_agent, "REPO_ROOT", tmp_path.resolve())
++
++    result = repository_agent.run(
++        {
++            "target_files": ["agents/3D_printer_agent.py"],
++            "requested_operation": "replace_file",
++        }
++    )
++
++    evidence = result["evidence"][0]
++    assert evidence["target_file_missing"] is True
++    assert evidence["file_missing_create_allowed"] is False
++    assert evidence["repository_evidence_status"] == "missing_violation"
++
++
++def test_create_file_does_not_request_missing_target_again():
++    requested = [{"path": "agents/3D_printer_agent.py"}]
++    evidence = [
++        {
++            "path": "agents/3D_printer_agent.py",
++            "repository_evidence_status": "missing_allowed_for_create",
++            "file_missing_create_allowed": True,
++        }
++    ]
++
++    files = filter_context_requested_files(
++        requested,
++        evidence,
++        {"allow_create_files": True, "allowed_operations": ["replace_file", "create_file"]},
++    )
++
++    assert files == []
++
++
++def test_create_file_preserves_requested_target_path():
++    repository_result = {
++        "evidence": [
++            {
++                "path": "agents/3D_printer_agent.py",
++                "repository_evidence_status": "missing_allowed_for_create",
++                "file_missing_create_allowed": True,
++            }
++        ],
++        "requested_operation": "create_file",
++        "dependency_hints": [],
++    }
++
++    packet = build_devworker_packet(
++        objective="Create a 3D printer agent",
++        target_files=["agents/3D_printer_agent.py"],
++        repository_result=repository_result,
++        step_constraints={"allow_create_files": True},
++    )
++
++    assert packet["target_files"] == ["agents/3D_printer_agent.py"]
++    assert packet["repository_discovery"]["missing_allowed_for_create"] == [
++        "agents/3D_printer_agent.py"
++    ]
++
++
++def _proposal_with_content(content: str) -> dict:
++    return {
++        "changes": [
++            {
++                "operation": "create_file",
++                "path": "services/example_service.py",
++                "content": content,
++            }
++        ]
++    }
++
++
++def test_dependency_validation_allows_stdlib_import(tmp_path):
++    result = ProposalQualityService(tmp_path).validate(
++        proposal=_proposal_with_content("import json\nfrom pathlib import Path\n"),
++        objective="Create service",
++        target_files=["services/example_service.py"],
++    )
++
++    assert result.passed
++
++
++def test_dependency_validation_allows_repository_import(tmp_path):
++    (tmp_path / "services").mkdir()
++    (tmp_path / "services" / "__init__.py").write_text("")
++
++    result = ProposalQualityService(tmp_path).validate(
++        proposal=_proposal_with_content("from services.controls_service import ControlsService\n"),
++        objective="Create service",
++        target_files=["services/example_service.py"],
++    )
++
++    assert result.passed
++
++
++def test_dependency_validation_rejects_unknown_third_party_import(tmp_path):
++    result = ProposalQualityService(tmp_path).validate(
++        proposal=_proposal_with_content("from dependency_injection import inject\n"),
++        objective="Create service",
++        target_files=["services/example_service.py"],
++    )
++
++    assert not result.passed
++    assert result.violations[0].code == ProposalQualityFailureCode.UNSUPPORTED_DEPENDENCY_REFERENCE
++
++
++def test_dependency_validation_reads_requirements_txt(tmp_path):
++    (tmp_path / "requirements.txt").write_text("requests>=2\n")
++
++    result = ProposalQualityService(tmp_path).validate(
++        proposal=_proposal_with_content("import requests\n"),
++        objective="Create service",
++        target_files=["services/example_service.py"],
++    )
++
++    assert result.passed
++
++
++def test_dependency_validation_reads_pyproject_toml(tmp_path):
++    (tmp_path / "pyproject.toml").write_text(
++        '[project]\ndependencies = ["octoprint-client>=1.0"]\n'
++    )
++
++    result = ProposalQualityService(tmp_path).validate(
++        proposal=_proposal_with_content("import octoprint_client\n"),
++        objective="Create service",
++        target_files=["services/example_service.py"],
++    )
++
++    assert result.passed
++
++
++def test_external_api_usage_marks_research_required(tmp_path):
++    result = ProposalQualityService(tmp_path).validate(
++        proposal=_proposal_with_content("class OctoPrintAgent:\n    def status(self):\n        return \"unknown\"\n"),
++        objective="Create a worker using the OctoPrint API library",
++        target_files=["services/example_service.py"],
++    )
++
++    assert result.passed
++    assert result.research_required is True
++    assert result.escalation_recommended is True
++    assert result.escalation["target"] == "research"
