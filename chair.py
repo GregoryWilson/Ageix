@@ -15,6 +15,8 @@ from services.requirement_trace_service import RequirementTraceService
 from services.validation_evidence_service import ValidationEvidenceService
 from services.test_execution_service import TestExecutionService
 from services.confidence_scoring_service import ConfidenceScoringService
+from services.promotion_readiness_service import PromotionReadinessService
+from services.governance_review_packet_service import GovernanceReviewPacketService
 from models.test_execution_evidence import TestExecutionResult
 
 MAX_PROPOSAL_QUALITY_RETRIES = 1
@@ -429,22 +431,79 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
                         "patch_proposal": deliverable,
                     }
 
+                requirement_trace_summary = RequirementTraceService().summarize(trace_result)
+                validation_summary = ValidationEvidenceService().summarize(validation_result)
+                runtime_validation_summary = TestExecutionService(Path(".")).summarize(runtime_result)
+                confidence_summary = build_confidence_summary(
+                    quality_result=quality_result,
+                    trace_result=trace_result,
+                    behavior_result=behavior_result,
+                    validation_result=validation_result,
+                    runtime_result=runtime_result,
+                )
+                promotion_readiness = build_promotion_readiness(
+                    quality_result=quality_result,
+                    trace_result=trace_result,
+                    behavior_result=behavior_result,
+                    validation_result=validation_result,
+                    runtime_result=runtime_result,
+                    confidence_summary=confidence_summary,
+                )
+                promotion_readiness_summary = PromotionReadinessService(Path(".")).summarize(promotion_readiness)
+
+                if not promotion_readiness.passed:
+                    promotion_violations = [
+                        blocker.model_dump()
+                        for blocker in promotion_readiness.blockers
+                    ]
+                    return {
+                        "chair_action": "patch_promotion_readiness_rejected",
+                        "status": "rejected",
+                        "errors": [
+                            blocker.message
+                            for blocker in promotion_readiness.blockers
+                        ],
+                        "promotion_readiness_result": promotion_readiness.model_dump(),
+                        "promotion_retry_packet": build_promotion_retry_packet(
+                            devworker_packet=devworker_packet,
+                            promotion_readiness=promotion_readiness,
+                        ),
+                        "quality_result": quality_result.model_dump(),
+                        "requirement_trace_result": trace_result.model_dump(),
+                        "behavior_verification_result": behavior_result.model_dump(),
+                        "runtime_validation_result": runtime_result.model_dump(),
+                        "validation_evidence_result": validation_result.model_dump(),
+                        "patch_proposal": deliverable,
+                    }
+
+                governance_packet = GovernanceReviewPacketService().build_packet(
+                    objective=deliverable.get("objective", ""),
+                    implementation_summary=deliverable.get("summary", ""),
+                    changed_files=[
+                        change.get("path", "")
+                        for change in deliverable.get("changes", [])
+                        if change.get("path")
+                    ],
+                    requirement_trace=requirement_trace_summary,
+                    behavior_verification=behavior_result.model_dump(),
+                    validation_evidence=validation_result.model_dump(),
+                    runtime_evidence=runtime_result.model_dump(),
+                    confidence_summary=confidence_summary,
+                    promotion_readiness=promotion_readiness,
+                )
+
                 manifest = PatchBuilder(Path(".")).stage_patch_from_deliverable(
                     deliverable,
                     proposal_quality=quality_result.model_dump(),
-                    requirement_trace=RequirementTraceService().summarize(trace_result),
+                    requirement_trace=requirement_trace_summary,
                     behavior_verification=behavior_result.model_dump(),
-            validation_summary=ValidationEvidenceService().summarize(validation_result),
-            validation_evidence=validation_result.model_dump(),
-            runtime_validation_summary=TestExecutionService(Path(".")).summarize(runtime_result),
-            runtime_execution_evidence=runtime_result.model_dump(),
-            confidence_summary=build_confidence_summary(
-                quality_result=quality_result,
-                trace_result=trace_result,
-                behavior_result=behavior_result,
-                validation_result=validation_result,
-                runtime_result=runtime_result,
-            ),
+                    validation_summary=validation_summary,
+                    validation_evidence=validation_result.model_dump(),
+                    runtime_validation_summary=runtime_validation_summary,
+                    runtime_execution_evidence=runtime_result.model_dump(),
+                    confidence_summary=confidence_summary,
+                    promotion_readiness_summary=promotion_readiness_summary,
+                    governance_review_packet=GovernanceReviewPacketService().metadata(governance_packet),
                 )
 
                 agent_result["stage_manifest"] = manifest
@@ -820,6 +879,49 @@ def build_confidence_summary(
         runtime_execution=runtime_result,
     )
 
+
+
+def build_promotion_readiness(
+    *,
+    quality_result,
+    trace_result,
+    behavior_result,
+    validation_result,
+    runtime_result,
+    confidence_summary: dict,
+):
+    return PromotionReadinessService(Path(".")).evaluate(
+        proposal_quality=quality_result,
+        requirement_trace=trace_result,
+        behavior_verification=behavior_result,
+        validation_evidence=validation_result,
+        runtime_validation=runtime_result,
+        confidence_summary=confidence_summary,
+    )
+
+
+def build_promotion_retry_packet(
+    *,
+    devworker_packet: dict,
+    promotion_readiness,
+) -> dict:
+    retry_packet = dict(devworker_packet)
+    blockers = [blocker.model_dump() for blocker in promotion_readiness.blockers]
+    retry_packet["promotion_readiness_retry"] = True
+    retry_packet["promotion_readiness_feedback"] = "\n".join(
+        blocker.get("remediation", "")
+        for blocker in blockers
+        if blocker.get("remediation")
+    )
+    retry_packet["promotion_readiness_feedback_structured"] = {
+        "result": promotion_readiness.status,
+        "recommendation": promotion_readiness.recommendation,
+        "blockers": blockers,
+    }
+    retry_packet["constraints"] = dict(retry_packet.get("constraints", {}))
+    retry_packet["constraints"]["promotion_readiness_retry"] = True
+    retry_packet["constraints"]["require_requirement_trace"] = True
+    return retry_packet
 
 def validate_patch_proof_of_delivery(
     *,

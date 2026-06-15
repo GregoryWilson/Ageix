@@ -25,6 +25,8 @@ class PatchBuilder:
         runtime_validation_summary: dict | None = None,
         runtime_execution_evidence: dict | None = None,
         confidence_summary: dict | None = None,
+        promotion_readiness_summary: dict | None = None,
+        governance_review_packet: dict | None = None,
     ) -> dict:
         patch_id = f"patch_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
         patch_dir = self.staged_root / patch_id
@@ -82,6 +84,8 @@ class PatchBuilder:
             "runtime_validation_summary": runtime_validation_summary,
             "runtime_execution_evidence": runtime_execution_evidence,
             "confidence_summary": confidence_summary,
+            "promotion_readiness_summary": promotion_readiness_summary,
+            "governance_review_packet": governance_review_packet,
         }
 
         (patch_dir / "manifest.json").write_text(
@@ -134,6 +138,8 @@ class PatchBuilder:
         runtime_validation_summary: dict | None = None,
         runtime_execution_evidence: dict | None = None,
         confidence_summary: dict | None = None,
+        promotion_readiness_summary: dict | None = None,
+        governance_review_packet: dict | None = None,
     ) -> dict:
         files: list[PatchFile] = []
 
@@ -179,4 +185,6 @@ class PatchBuilder:
             runtime_validation_summary=runtime_validation_summary,
             runtime_execution_evidence=runtime_execution_evidence,
             confidence_summary=confidence_summary,
+            promotion_readiness_summary=promotion_readiness_summary,
+            governance_review_packet=governance_review_packet,
         )

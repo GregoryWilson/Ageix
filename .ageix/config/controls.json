@@ -37,5 +37,11 @@
       "validation_evidence": 0.2,
       "runtime_execution": 0.2
     }
+  },
+  "promotion_governance": {
+    "enabled": true,
+    "human_approval_required": true,
+    "minimum_confidence": 0.8,
+    "allow_promotion_with_blockers": false
   }
 }

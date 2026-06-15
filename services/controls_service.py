@@ -55,6 +55,16 @@ class PromotionConfidenceControls:
         })
 
 
+
+
+@dataclass(frozen=True)
+class PromotionGovernanceControls:
+    enabled: bool = True
+    human_approval_required: bool = True
+    minimum_confidence: float = 0.80
+    allow_promotion_with_blockers: bool = False
+
+
 class ControlsService:
     """
     Centralized configuration service for Ageix governance and controls.
@@ -103,6 +113,12 @@ class ControlsService:
                 "runtime_execution": 0.20,
             },
         },
+        "promotion_governance": {
+            "enabled": True,
+            "human_approval_required": True,
+            "minimum_confidence": 0.80,
+            "allow_promotion_with_blockers": False,
+        },
     }
 
     def __init__(self, repo_root: Path):
@@ -115,6 +131,7 @@ class ControlsService:
         self.validation = ValidationControls(**self._config["validation"])
         self.governance = GovernanceControls(**self._config["governance"])
         self.promotion_confidence = PromotionConfidenceControls(**self._config["promotion_confidence"])
+        self.promotion_governance = PromotionGovernanceControls(**self._config["promotion_governance"])
 
     def _load_config(self) -> dict[str, Any]:
         config_path = (
@@ -162,12 +179,14 @@ class ControlsService:
     ) -> None:
         governance = config.setdefault("governance", {})
         validation = config.setdefault("validation", {})
+        promotion_governance = config.setdefault("promotion_governance", {})
 
         governance["allow_auto_promotion"] = False
         governance["allow_auto_commit"] = False
         governance["allow_direct_repo_modification"] = False
 
         validation["allow_validation_bypass"] = False
+        promotion_governance["allow_promotion_with_blockers"] = False
 
     def get_raw_config(self) -> dict[str, Any]:
         return deepcopy(self._config)
