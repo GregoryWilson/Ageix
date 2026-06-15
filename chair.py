@@ -12,6 +12,7 @@ from services.objective_source_service import ObjectiveSourceService
 from services.proposal_quality_service import ProposalQualityService
 from services.behavioral_smoke_verifier import BehavioralSmokeVerifier
 from services.requirement_trace_service import RequirementTraceService
+from services.validation_evidence_service import ValidationEvidenceService
 
 MAX_PROPOSAL_QUALITY_RETRIES = 1
 
@@ -351,16 +352,17 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
                             "patch_proposal": deliverable,
                         }
 
-                trace_result, behavior_result = validate_patch_proof_of_delivery(
+                trace_result, behavior_result, validation_result = validate_patch_proof_of_delivery(
                     deliverable=deliverable,
                     devworker_packet=devworker_packet,
                 )
 
-                if not trace_result.passed or not behavior_result.passed:
+                if not trace_result.passed or not behavior_result.passed or not validation_result.passed:
                     retry_packet = build_delivery_retry_packet(
                         devworker_packet=devworker_packet,
                         trace_result=trace_result,
                         behavior_result=behavior_result,
+                        validation_result=validation_result,
                     )
 
                     agent_result = dispatch_agent("dev_worker", retry_packet)
@@ -374,7 +376,7 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
                             deliverable=deliverable,
                             devworker_packet=retry_packet,
                         )
-                        trace_result, behavior_result = validate_patch_proof_of_delivery(
+                        trace_result, behavior_result, validation_result = validate_patch_proof_of_delivery(
                             deliverable=deliverable,
                             devworker_packet=retry_packet,
                         )
@@ -383,10 +385,12 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
                         not quality_result.passed
                         or not trace_result.passed
                         or not behavior_result.passed
+                        or not validation_result.passed
                     ):
                         delivery_violations = build_delivery_feedback_result(
                             trace_result,
                             behavior_result,
+                            validation_result,
                         )
                         return {
                             "chair_action": "patch_proposal_quality_rejected",
@@ -398,6 +402,7 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
                             "quality_result": quality_result.model_dump(),
                             "requirement_trace_result": trace_result.model_dump(),
                             "behavior_verification_result": behavior_result.model_dump(),
+                            "validation_evidence_result": validation_result.model_dump(),
                             "patch_proposal": deliverable,
                         }
 
@@ -422,6 +427,8 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
                     proposal_quality=quality_result.model_dump(),
                     requirement_trace=RequirementTraceService().summarize(trace_result),
                     behavior_verification=behavior_result.model_dump(),
+            validation_summary=ValidationEvidenceService().summarize(validation_result),
+            validation_evidence=validation_result.model_dump(),
                 )
 
                 agent_result["stage_manifest"] = manifest
@@ -799,13 +806,20 @@ def validate_patch_proof_of_delivery(
         objective=devworker_packet.get("objective", ""),
         success_criteria=devworker_packet.get("success_criteria", []),
     )
-    return trace_result, behavior_result
+    validation_result = ValidationEvidenceService().validate(
+        proposal=deliverable,
+        trace_result=trace_result,
+        behavior_result=behavior_result,
+    )
+    return trace_result, behavior_result, validation_result
 
 
-def build_delivery_feedback_result(trace_result, behavior_result):
+def build_delivery_feedback_result(trace_result, behavior_result, validation_result=None):
     violations = []
     violations.extend(trace_result.violations)
     violations.extend(behavior_result.violations)
+    if validation_result is not None:
+        violations.extend(validation_result.violations)
     return violations
 
 
@@ -843,11 +857,12 @@ def build_delivery_retry_packet(
     devworker_packet: dict,
     trace_result,
     behavior_result,
+    validation_result=None,
 ) -> dict:
     retry_packet = dict(devworker_packet)
     violations = [
         violation.model_dump()
-        for violation in build_delivery_feedback_result(trace_result, behavior_result)
+        for violation in build_delivery_feedback_result(trace_result, behavior_result, validation_result)
     ]
     retry_packet["quality_retry"] = True
     retry_packet["proof_of_delivery_retry"] = True
@@ -1076,16 +1091,17 @@ def run_devworker_with_evidence(
                     "patch_proposal": deliverable,
                 }
 
-        trace_result, behavior_result = validate_patch_proof_of_delivery(
+        trace_result, behavior_result, validation_result = validate_patch_proof_of_delivery(
             deliverable=deliverable,
             devworker_packet=devworker_packet,
         )
 
-        if not trace_result.passed or not behavior_result.passed:
+        if not trace_result.passed or not behavior_result.passed or not validation_result.passed:
             retry_packet = build_delivery_retry_packet(
                 devworker_packet=devworker_packet,
                 trace_result=trace_result,
                 behavior_result=behavior_result,
+                validation_result=validation_result,
             )
 
             agent_result = dispatch_agent("dev_worker", retry_packet)
@@ -1099,7 +1115,7 @@ def run_devworker_with_evidence(
                     deliverable=deliverable,
                     devworker_packet=retry_packet,
                 )
-                trace_result, behavior_result = validate_patch_proof_of_delivery(
+                trace_result, behavior_result, validation_result = validate_patch_proof_of_delivery(
                     deliverable=deliverable,
                     devworker_packet=retry_packet,
                 )
@@ -1108,10 +1124,12 @@ def run_devworker_with_evidence(
                 not quality_result.passed
                 or not trace_result.passed
                 or not behavior_result.passed
+                or not validation_result.passed
             ):
                 delivery_violations = build_delivery_feedback_result(
                     trace_result,
                     behavior_result,
+                    validation_result,
                 )
                 return {
                     "chair_action": "patch_proposal_quality_rejected",
@@ -1123,6 +1141,7 @@ def run_devworker_with_evidence(
                     "quality_result": quality_result.model_dump(),
                     "requirement_trace_result": trace_result.model_dump(),
                     "behavior_verification_result": behavior_result.model_dump(),
+                    "validation_evidence_result": validation_result.model_dump(),
                     "patch_proposal": deliverable,
                 }
 
@@ -1149,6 +1168,8 @@ def run_devworker_with_evidence(
             proposal_quality=quality_result.model_dump(),
             requirement_trace=RequirementTraceService().summarize(trace_result),
             behavior_verification=behavior_result.model_dump(),
+            validation_summary=ValidationEvidenceService().summarize(validation_result),
+            validation_evidence=validation_result.model_dump(),
         )
 
         agent_result["stage_manifest"] = stage_manifest.to_dict()

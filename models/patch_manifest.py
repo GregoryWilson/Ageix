@@ -40,6 +40,8 @@ class PatchManifest:
     proposal_quality: dict[str, Any] | None = None
     requirement_trace: dict[str, Any] | None = None
     behavior_verification: dict[str, Any] | None = None
+    validation_summary: dict[str, Any] | None = None
+    validation_evidence: dict[str, Any] | None = None
     git_commit: str | None = None
     created_at: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()

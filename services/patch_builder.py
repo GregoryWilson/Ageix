@@ -20,6 +20,8 @@ class PatchBuilder:
         proposal_quality: dict | None = None,
         requirement_trace: dict | None = None,
         behavior_verification: dict | None = None,
+        validation_summary: dict | None = None,
+        validation_evidence: dict | None = None,
     ) -> dict:
         patch_id = f"patch_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
         patch_dir = self.staged_root / patch_id
@@ -72,6 +74,8 @@ class PatchBuilder:
             "proposal_quality": proposal_quality,
             "requirement_trace": requirement_trace,
             "behavior_verification": behavior_verification,
+            "validation_summary": validation_summary,
+            "validation_evidence": validation_evidence,
         }
 
         (patch_dir / "manifest.json").write_text(
@@ -119,6 +123,8 @@ class PatchBuilder:
         proposal_quality: dict | None = None,
         requirement_trace: dict | None = None,
         behavior_verification: dict | None = None,
+        validation_summary: dict | None = None,
+        validation_evidence: dict | None = None,
     ) -> dict:
         files: list[PatchFile] = []
 
@@ -159,4 +165,6 @@ class PatchBuilder:
             proposal_quality=proposal_quality,
             requirement_trace=requirement_trace,
             behavior_verification=behavior_verification,
+            validation_summary=validation_summary,
+            validation_evidence=validation_evidence,
         )

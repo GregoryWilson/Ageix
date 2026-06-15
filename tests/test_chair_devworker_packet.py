@@ -147,7 +147,14 @@ def test_run_devworker_with_evidence_retries_failed_quality_validation(monkeypat
                         "operation": "create_file",
                         "path": "services/smoke_service.py",
                         "content": f"def smoke_message():\n    return \"{literal}\"\n",
-                    }
+                    },
+                    *([] if len(calls) == 1 else [
+                        {
+                            "operation": "create_file",
+                            "path": "tests/test_smoke_service.py",
+                            "content": "from services.smoke_service import smoke_message\n\ndef test_smoke_message():\n    assert smoke_message() == \"create_file smoke passed\"\n",
+                        }
+                    ]),
                 ],
                 "test_plan": ["pytest"],
                 "notes": [],
@@ -160,7 +167,7 @@ def test_run_devworker_with_evidence_retries_failed_quality_validation(monkeypat
     result = run_devworker_with_evidence(
         evidence_packet={
             "objective": 'smoke_message returns "create_file smoke passed"',
-            "target_files": ["services/smoke_service.py"],
+            "target_files": ["services/smoke_service.py", "tests/test_smoke_service.py"],
             "success_criteria": ['smoke_message returns "create_file smoke passed"'],
             "evidence": [],
             "dependency_hints": [],

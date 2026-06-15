@@ -5,6 +5,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from services.proposal_quality_service import ProposalQualityService
+from models.validation_evidence import ValidationEvidence
 
 
 class RequirementEvidence(BaseModel):
@@ -20,7 +21,7 @@ class RequirementTrace(BaseModel):
     requirement_text: str
     implementation_evidence: list[RequirementEvidence] = Field(default_factory=list)
     test_evidence: list[RequirementEvidence] = Field(default_factory=list)
-    validation_evidence: list[RequirementEvidence] = Field(default_factory=list)
+    validation_evidence: list[ValidationEvidence] = Field(default_factory=list)
     status: Literal["traced", "incomplete"] = "incomplete"
 
 
@@ -89,13 +90,6 @@ class RequirementTraceService:
                     else:
                         trace.implementation_evidence.append(evidence)
 
-            if validation_summary:
-                trace.validation_evidence.append(
-                    RequirementEvidence(
-                        evidence_type="validation",
-                        description=str(validation_summary.get("summary", "Validation completed.")),
-                    )
-                )
 
             trace.status = "traced" if trace.implementation_evidence and trace.test_evidence else "incomplete"
             traces.append(trace)
