@@ -40,7 +40,6 @@ build/
 *.egg-info/
 
 # Ollama / AI artifacts if created locally
-models/
 cache/
 
 # Staging and manifests
