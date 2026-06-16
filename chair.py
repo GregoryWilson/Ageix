@@ -20,6 +20,7 @@ from services.governance_review_packet_service import GovernanceReviewPacketServ
 from services.discovery_service import DiscoveryService
 from services.discovery_resolution_service import DiscoveryResolutionService
 from services.planner_work_packet_service import PlannerWorkPacketService
+from services.patch_proposal_contract_service import PatchProposalContractService
 from models.test_execution_evidence import TestExecutionResult
 
 MAX_PROPOSAL_QUALITY_RETRIES = 1
@@ -344,6 +345,8 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
             deliverable = agent_result.get("deliverable", {})
 
             if deliverable.get("result_type") == "patch_proposal":
+                deliverable = normalize_patch_proposal_deliverable(deliverable)
+                agent_result["deliverable"] = deliverable
                 print(
                     "[Chair] DevWorker deliverable:",
                     json.dumps(deliverable, indent=2),
@@ -380,6 +383,8 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
                     if deliverable.get("result_type") != "patch_proposal":
                         validate_devworker_deliverable(deliverable)
                     else:
+                        deliverable = normalize_patch_proposal_deliverable(deliverable, retry_count=1)
+                        agent_result["deliverable"] = deliverable
                         validate_patch_proposal_deliverable(deliverable)
                         quality_result = validate_patch_proposal_quality(
                             deliverable=deliverable,
@@ -418,6 +423,8 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
                     if deliverable.get("result_type") != "patch_proposal":
                         validate_devworker_deliverable(deliverable)
                     else:
+                        deliverable = normalize_patch_proposal_deliverable(deliverable, retry_count=1)
+                        agent_result["deliverable"] = deliverable
                         validate_patch_proposal_deliverable(deliverable)
                         quality_result = validate_patch_proposal_quality(
                             deliverable=deliverable,
@@ -820,23 +827,24 @@ def validate_devworker_deliverable(deliverable: dict[str, Any]) -> None:
     if deliverable["no_write_confirmation"] is not True:
         raise ValueError("DevWorker must confirm no writes.")
     
+def normalize_patch_proposal_deliverable(
+    deliverable: dict[str, Any],
+    *,
+    retry_count: int = 0,
+) -> dict[str, Any]:
+    normalized, _evidence = PatchProposalContractService().normalize(
+        deliverable,
+        source_agent=deliverable.get("agent") or "devworker",
+        retry_count=retry_count,
+    )
+    return normalized
+
+
 def validate_patch_proposal_deliverable(
     deliverable: dict[str, Any]
 ) -> None:
 
-    required = [
-        "result_type",
-        "objective",
-        "summary",
-        "files_considered",
-        "evidence_used",
-        "dependency_hints_used",
-        "assumptions",
-        "dependency_risks",
-        "changes",
-        "test_plan",
-        "no_write_confirmation",
-    ]
+    required = PatchProposalContractService.REQUIRED_FIELDS
 
     forbidden = [
         "<new file content",
@@ -854,6 +862,9 @@ def validate_patch_proposal_deliverable(
         raise ValueError(
             f"Patch proposal missing fields: {missing}"
         )
+
+    if not isinstance(deliverable.get("changes"), list) or not deliverable.get("changes"):
+        raise ValueError("Patch proposal must include at least one change.")
 
     seen_paths: set[str] = set()
 
@@ -1331,6 +1342,8 @@ def run_devworker_with_evidence(
         )
     
     if deliverable.get("result_type") == "patch_proposal":
+        deliverable = normalize_patch_proposal_deliverable(deliverable)
+        agent_result["deliverable"] = deliverable
         print(
             "[Chair] DevWorker deliverable:",
             json.dumps(deliverable, indent=2),
@@ -1355,6 +1368,8 @@ def run_devworker_with_evidence(
             if deliverable.get("result_type") != "patch_proposal":
                 validate_devworker_deliverable(deliverable)
             else:
+                deliverable = normalize_patch_proposal_deliverable(deliverable, retry_count=1)
+                agent_result["deliverable"] = deliverable
                 validate_patch_proposal_deliverable(deliverable)
                 quality_result = validate_patch_proposal_quality(
                     deliverable=deliverable,
@@ -1393,6 +1408,8 @@ def run_devworker_with_evidence(
             if deliverable.get("result_type") != "patch_proposal":
                 validate_devworker_deliverable(deliverable)
             else:
+                deliverable = normalize_patch_proposal_deliverable(deliverable, retry_count=1)
+                agent_result["deliverable"] = deliverable
                 validate_patch_proposal_deliverable(deliverable)
                 quality_result = validate_patch_proposal_quality(
                     deliverable=deliverable,
