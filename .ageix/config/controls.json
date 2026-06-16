@@ -43,5 +43,21 @@
     "human_approval_required": true,
     "minimum_confidence": 0.8,
     "allow_promotion_with_blockers": false
+  },
+  "dependency_intelligence": {
+    "enabled": true,
+    "max_depth": 2,
+    "max_nodes": 50,
+    "max_imports_per_file": 25,
+    "follow_test_imports": true,
+    "follow_runtime_imports": true,
+    "allow_proposed_local_imports": true,
+    "allow_existing_local_imports": true,
+    "allow_stdlib_imports": true,
+    "allowed_test_dependencies": [
+      "pytest"
+    ],
+    "blocked_dependencies": [],
+    "unknown_dependency_policy": "fail"
   }
 }

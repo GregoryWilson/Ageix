@@ -13,6 +13,11 @@ from models.proposal_quality_models import (
     ProposalQualityViolation,
     RequirementTrace,
 )
+from services.dependency_intelligence_service import DependencyIntelligenceService
+from models.dependency_intelligence import (
+    DependencyClassification,
+    DependencyValidationOutcome,
+)
 
 _QUOTED_LITERAL_PATTERN = re.compile(r"(['\"])(.+?)\1")
 
@@ -131,6 +136,21 @@ class ProposalQualityService:
         escalation: dict[str, Any] = {}
 
         allowed_dependencies = self._load_allowed_dependencies()
+        dependency_result = DependencyIntelligenceService(self.repo_root).analyze(
+            proposal=proposal,
+            repository_state={},
+        )
+        dependency_evidence = dependency_result.evidence
+
+        for dependency_violation in dependency_result.violations:
+            violations.append(
+                ProposalQualityViolation(
+                    code=ProposalQualityFailureCode.UNSUPPORTED_DEPENDENCY_REFERENCE,
+                    message=f"Dependency validation failed: {dependency_violation}.",
+                    actual=dependency_violation,
+                    instruction="Use stdlib, repository, proposed, manifest-approved, or controls-approved test dependencies only.",
+                )
+            )
 
         for change in changes:
             path = change.get("path")
@@ -143,9 +163,8 @@ class ProposalQualityService:
                 violations.append(placeholder_violation)
 
             if path.endswith(".py"):
-                tree = None
                 try:
-                    tree = ast.parse(content)
+                    ast.parse(content)
                 except SyntaxError as ex:
                     violations.append(
                         ProposalQualityViolation(
@@ -153,27 +172,17 @@ class ProposalQualityService:
                             message=f"Python content does not compile: {ex.msg} at line {ex.lineno}.",
                             file_path=path,
                             actual=str(ex),
-                        instruction="Return syntactically valid Python content for the full file.",
+                            instruction="Return syntactically valid Python content for the full file.",
                         )
                     )
 
-                import_roots = self._iter_import_roots(tree) if tree is not None else self._iter_import_roots_from_text(content)
-
-                for import_name in import_roots:
-                    if self._is_supported_import(import_name, allowed_dependencies):
+                for evidence in dependency_evidence:
+                    if evidence.source_file != path:
                         continue
-
-                    violations.append(
-                        ProposalQualityViolation(
-                            code=ProposalQualityFailureCode.UNSUPPORTED_DEPENDENCY_REFERENCE,
-                            message=f"Unsupported dependency reference in {path}: {import_name}.",
-                            file_path=path,
-                            actual=import_name,
-                            instruction="Remove unsupported dependencies or add explicit dependency manifest evidence before referencing them.",
-                        )
-                    )
-
-                    if self._looks_like_external_api(import_name, objective, content):
+                    if evidence.classification in {
+                        DependencyClassification.UNKNOWN_EXTERNAL_DEPENDENCY,
+                        DependencyClassification.BLOCKED_DEPENDENCY,
+                    } and self._looks_like_external_api(evidence.dependency, objective, content):
                         research_required = True
                         escalation_recommended = True
                         escalation = {
@@ -209,6 +218,7 @@ class ProposalQualityService:
             research_required=research_required,
             escalation_recommended=escalation_recommended,
             escalation=escalation,
+            dependency_evidence=dependency_evidence,
         )
 
     def _extract_required_literals(self, sources: list[str]) -> set[str]:

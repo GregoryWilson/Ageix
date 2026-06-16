@@ -119,6 +119,20 @@ class ControlsService:
             "minimum_confidence": 0.80,
             "allow_promotion_with_blockers": False,
         },
+        "dependency_intelligence": {
+            "enabled": True,
+            "max_depth": 2,
+            "max_nodes": 50,
+            "max_imports_per_file": 25,
+            "follow_test_imports": True,
+            "follow_runtime_imports": True,
+            "allow_proposed_local_imports": True,
+            "allow_existing_local_imports": True,
+            "allow_stdlib_imports": True,
+            "allowed_test_dependencies": ["pytest"],
+            "blocked_dependencies": [],
+            "unknown_dependency_policy": "fail",
+        },
     }
 
     def __init__(self, repo_root: Path):

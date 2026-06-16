@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from models.dependency_intelligence import DependencyValidationEvidence
+
 
 class ProposalQualityFailureCode(str, Enum):
     REQUIRED_LITERAL_MISSING = "required_literal_missing"
@@ -38,6 +40,7 @@ class ProposalQualityResult(BaseModel):
     status: Literal["pass", "fail"]
     violations: list[ProposalQualityViolation] = Field(default_factory=list)
     requirement_trace: list[RequirementTrace] = Field(default_factory=list)
+    dependency_evidence: list[DependencyValidationEvidence] = Field(default_factory=list)
     research_required: bool = False
     escalation_recommended: bool = False
     escalation: dict = Field(default_factory=dict)
