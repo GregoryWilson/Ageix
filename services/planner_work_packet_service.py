@@ -279,9 +279,11 @@ class PlannerWorkPacketService:
             "create ",
             "create a ",
             "create new",
-            "add ",
+            "new file",
+            "new module",
             "new service",
             "new worker",
+            "new agent",
         ])
 
     def _objective_requests_tests(self, objective: str) -> bool:

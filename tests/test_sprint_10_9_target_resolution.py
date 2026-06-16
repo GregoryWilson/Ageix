@@ -210,3 +210,40 @@ def test_grounded_targets_reduce_hallucinated_files(tmp_path):
     assert "planner/router.py" not in packet.approved_scope
     assert "repository/not_real.py" not in packet.approved_scope
     assert packet.planner_revisit_required is True
+
+
+
+def test_add_validation_tests_does_not_forgive_unresolved_planner_targets(tmp_path):
+    root = repo(tmp_path)
+
+    packet = PlannerWorkPacketService(root).build(
+        objective="Update config handling logic for worker configuration and add validation tests",
+        planner_data={
+            "target_files": [
+                "config/worker_config.py",
+                "services/config_service.py",
+                "validators/config_validator.py",
+                "tests/test_worker_config.py",
+                "tests/test_config_validator.py",
+            ]
+        },
+    )
+
+    assert packet.planner_revisit_required is True
+    assert packet.approved_scope == []
+    assert packet.resolved_target_files == []
+    assert packet.unresolved_target_files == [
+        "config/worker_config.py",
+        "services/config_service.py",
+        "validators/config_validator.py",
+        "tests/test_worker_config.py",
+        "tests/test_config_validator.py",
+    ]
+
+
+def test_creation_intent_requires_stronger_create_signal_than_add(tmp_path):
+    root = repo(tmp_path)
+    service = PlannerWorkPacketService(root)
+
+    assert service._objective_intends_creation("Update config handling and add validation tests") is False
+    assert service._objective_intends_creation("Create a new Jira worker agent") is True
