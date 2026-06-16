@@ -157,29 +157,30 @@ class ProposalQualityService:
                         )
                     )
 
-                if tree is not None:
-                    for import_name in self._iter_import_roots(tree):
-                        if self._is_supported_import(import_name, allowed_dependencies):
-                            continue
+                import_roots = self._iter_import_roots(tree) if tree is not None else self._iter_import_roots_from_text(content)
 
-                        violations.append(
-                            ProposalQualityViolation(
-                                code=ProposalQualityFailureCode.UNSUPPORTED_DEPENDENCY_REFERENCE,
-                                message=f"Unsupported dependency reference in {path}: {import_name}.",
-                                file_path=path,
-                                actual=import_name,
-                                instruction="Remove unsupported dependencies or add explicit dependency manifest evidence before referencing them.",
-                            )
+                for import_name in import_roots:
+                    if self._is_supported_import(import_name, allowed_dependencies):
+                        continue
+
+                    violations.append(
+                        ProposalQualityViolation(
+                            code=ProposalQualityFailureCode.UNSUPPORTED_DEPENDENCY_REFERENCE,
+                            message=f"Unsupported dependency reference in {path}: {import_name}.",
+                            file_path=path,
+                            actual=import_name,
+                            instruction="Remove unsupported dependencies or add explicit dependency manifest evidence before referencing them.",
                         )
+                    )
 
-                        if self._looks_like_external_api(import_name, objective, content):
-                            research_required = True
-                            escalation_recommended = True
-                            escalation = {
-                                "recommended": True,
-                                "reason": "External API usage could not be verified from repository evidence.",
-                                "target": "research",
-                            }
+                    if self._looks_like_external_api(import_name, objective, content):
+                        research_required = True
+                        escalation_recommended = True
+                        escalation = {
+                            "recommended": True,
+                            "reason": "External API usage could not be verified from repository evidence.",
+                            "target": "research",
+                        }
 
             if self._is_test_path(path) and not self._has_meaningful_assertion(content):
                 violations.append(
@@ -312,6 +313,19 @@ class ProposalQualityService:
                     root = node.module.split(".")[0]
                     if root not in roots:
                         roots.append(root)
+        return roots
+
+    def _iter_import_roots_from_text(self, content: str) -> list[str]:
+        roots: list[str] = []
+        patterns = [
+            re.compile(r"^\s*import\s+([A-Za-z_][A-Za-z0-9_\.]*)", re.MULTILINE),
+            re.compile(r"^\s*from\s+([A-Za-z_][A-Za-z0-9_\.]*)\s+import\s+", re.MULTILINE),
+        ]
+        for pattern in patterns:
+            for match in pattern.finditer(content):
+                root = match.group(1).split(".")[0]
+                if root not in roots:
+                    roots.append(root)
         return roots
 
     def _is_supported_import(self, root: str, allowed_dependencies: set[str]) -> bool:

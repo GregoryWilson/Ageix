@@ -48,16 +48,58 @@ Known Project Files:
 def extract_json(raw: str) -> dict:
     cleaned = raw.strip()
 
-    if cleaned.startswith("```json"):
-        cleaned = cleaned.removeprefix("```json").strip()
+    if cleaned.startswith("```json") or cleaned.startswith("```"):
+        lines = cleaned.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        fenced: list[str] = []
+        for line in lines:
+            if line.strip().startswith("```"):
+                break
+            fenced.append(line)
+        cleaned = "\n".join(fenced).strip()
 
-    if cleaned.startswith("```"):
-        cleaned = cleaned.removeprefix("```").strip()
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        extracted = extract_first_json_object(cleaned)
+        return json.loads(extracted)
 
-    if cleaned.endswith("```"):
-        cleaned = cleaned.removesuffix("```").strip()
 
-    return json.loads(cleaned)
+def extract_first_json_object(text: str) -> str:
+    start = text.find("{")
+    if start == -1:
+        start = text.find("[")
+    if start == -1:
+        raise ValueError("No JSON object or array found in planner response.")
+
+    opening = text[start]
+    closing = "}" if opening == "{" else "]"
+    depth = 0
+    in_string = False
+    escaped = False
+
+    for idx in range(start, len(text)):
+        char = text[idx]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+        elif char == opening:
+            depth += 1
+        elif char == closing:
+            depth -= 1
+            if depth == 0:
+                return text[start:idx + 1]
+
+    raise ValueError("Planner response contained unterminated JSON.")
 
 
 def execute_planner_agent(

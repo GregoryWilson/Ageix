@@ -17,6 +17,7 @@ from services.test_execution_service import TestExecutionService
 from services.confidence_scoring_service import ConfidenceScoringService
 from services.promotion_readiness_service import PromotionReadinessService
 from services.governance_review_packet_service import GovernanceReviewPacketService
+from services.discovery_service import DiscoveryService
 from models.test_execution_evidence import TestExecutionResult
 
 MAX_PROPOSAL_QUALITY_RETRIES = 1
@@ -1427,11 +1428,29 @@ def validate_no_placeholder_patch_content(path: str, content: str) -> None:
         raise ValueError(f"{path} test file contains no assertions.")
 
 
+def extract_target_file_hints(objective: str) -> list[str]:
+    if not isinstance(objective, str):
+        return []
+    hints: list[str] = []
+    for token in objective.replace("\n", " ").split():
+        cleaned = token.strip("`'\".,;:()[]{}")
+        if "/" not in cleaned:
+            continue
+        if not cleaned.endswith((".py", ".json", ".toml", ".md", ".txt", ".yaml", ".yml")):
+            continue
+        if cleaned.startswith("/") or ".." in cleaned.split("/"):
+            continue
+        if cleaned not in hints:
+            hints.append(cleaned)
+    return hints
+
 def parse_chair_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the Ageix Chair orchestrator.")
     parser.add_argument("--objective", help="Objective text to execute.")
     parser.add_argument("--objective-file", help="Path to a file containing the objective.")
     parser.add_argument("--project-id", default="ageix", help="Project identifier.")
+    parser.add_argument("--answer-file", help="JSON file containing structured discovery answers.")
+    parser.add_argument("--allow-assumptions", action="store_true", help="Allow planning to proceed with explicit assumptions when only user clarification is missing.")
     return parser.parse_args()
 
 #-----------------------------------------------------------------------#
@@ -1454,15 +1473,41 @@ if __name__ == "__main__":
         "description": sprint_prompt,
     }
 
-    if args.objective and args.objective_file:
-        task["target_files"] = [args.objective_file]
+    target_files = []
+    if args.objective_file:
+        target_files = [args.objective_file]
+    elif args.objective:
+        target_files = extract_target_file_hints(args.objective)
+
+    if target_files:
+        task["target_files"] = target_files
         task["metadata"] = {
-            "objective_file_as_target_hint": True,
-            "target_files": [args.objective_file],
+            "objective_file_as_target_hint": bool(args.objective_file),
+            "target_files": target_files,
         }
+
+    discovery_service = DiscoveryService()
+    discovery_answers = discovery_service.load_answers(args.answer_file)
+    discovery_result = discovery_service.analyze(
+        objective=sprint_prompt,
+        target_files=target_files,
+        answers=discovery_answers,
+        allow_assumptions=args.allow_assumptions,
+    )
+
+    if not discovery_result.ready:
+        print(json.dumps({
+            "chair_action": "discovery_required",
+            "status": "discovery_required",
+            "task": task,
+            "discovery": discovery_result.model_dump(),
+            "executed_count": 0,
+        }, indent=2))
+        raise SystemExit(0)
 
     plan_result = build_plan_for_task(task=task)
     state = create_chair_state(task, plan_result)
+    state["discovery"] = discovery_result.model_dump()
 
     state = execute_ready_steps_until_blocked_or_done(state)
 

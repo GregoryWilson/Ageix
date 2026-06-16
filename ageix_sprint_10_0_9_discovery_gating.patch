@@ -1,0 +1,776 @@
+diff --git a/agents/planner_agent.py b/agents/planner_agent.py
+index e101560..bef6176 100644
+--- a/agents/planner_agent.py
++++ b/agents/planner_agent.py
+@@ -48,16 +48,58 @@ Known Project Files:
+ def extract_json(raw: str) -> dict:
+     cleaned = raw.strip()
+ 
+-    if cleaned.startswith("```json"):
+-        cleaned = cleaned.removeprefix("```json").strip()
++    if cleaned.startswith("```json") or cleaned.startswith("```"):
++        lines = cleaned.splitlines()
++        if lines and lines[0].startswith("```"):
++            lines = lines[1:]
++        fenced: list[str] = []
++        for line in lines:
++            if line.strip().startswith("```"):
++                break
++            fenced.append(line)
++        cleaned = "\n".join(fenced).strip()
+ 
+-    if cleaned.startswith("```"):
+-        cleaned = cleaned.removeprefix("```").strip()
+-
+-    if cleaned.endswith("```"):
+-        cleaned = cleaned.removesuffix("```").strip()
+-
+-    return json.loads(cleaned)
++    try:
++        return json.loads(cleaned)
++    except json.JSONDecodeError:
++        extracted = extract_first_json_object(cleaned)
++        return json.loads(extracted)
++
++
++def extract_first_json_object(text: str) -> str:
++    start = text.find("{")
++    if start == -1:
++        start = text.find("[")
++    if start == -1:
++        raise ValueError("No JSON object or array found in planner response.")
++
++    opening = text[start]
++    closing = "}" if opening == "{" else "]"
++    depth = 0
++    in_string = False
++    escaped = False
++
++    for idx in range(start, len(text)):
++        char = text[idx]
++        if in_string:
++            if escaped:
++                escaped = False
++            elif char == "\\":
++                escaped = True
++            elif char == '"':
++                in_string = False
++            continue
++
++        if char == '"':
++            in_string = True
++        elif char == opening:
++            depth += 1
++        elif char == closing:
++            depth -= 1
++            if depth == 0:
++                return text[start:idx + 1]
++
++    raise ValueError("Planner response contained unterminated JSON.")
+ 
+ 
+ def execute_planner_agent(
+diff --git a/chair.py b/chair.py
+index aef1278..93adf22 100644
+--- a/chair.py
++++ b/chair.py
+@@ -17,6 +17,7 @@ from services.test_execution_service import TestExecutionService
+ from services.confidence_scoring_service import ConfidenceScoringService
+ from services.promotion_readiness_service import PromotionReadinessService
+ from services.governance_review_packet_service import GovernanceReviewPacketService
++from services.discovery_service import DiscoveryService
+ from models.test_execution_evidence import TestExecutionResult
+ 
+ MAX_PROPOSAL_QUALITY_RETRIES = 1
+@@ -1427,11 +1428,29 @@ def validate_no_placeholder_patch_content(path: str, content: str) -> None:
+         raise ValueError(f"{path} test file contains no assertions.")
+ 
+ 
++def extract_target_file_hints(objective: str) -> list[str]:
++    if not isinstance(objective, str):
++        return []
++    hints: list[str] = []
++    for token in objective.replace("\n", " ").split():
++        cleaned = token.strip("`'\".,;:()[]{}")
++        if "/" not in cleaned:
++            continue
++        if not cleaned.endswith((".py", ".json", ".toml", ".md", ".txt", ".yaml", ".yml")):
++            continue
++        if cleaned.startswith("/") or ".." in cleaned.split("/"):
++            continue
++        if cleaned not in hints:
++            hints.append(cleaned)
++    return hints
++
+ def parse_chair_args() -> argparse.Namespace:
+     parser = argparse.ArgumentParser(description="Run the Ageix Chair orchestrator.")
+     parser.add_argument("--objective", help="Objective text to execute.")
+     parser.add_argument("--objective-file", help="Path to a file containing the objective.")
+     parser.add_argument("--project-id", default="ageix", help="Project identifier.")
++    parser.add_argument("--answer-file", help="JSON file containing structured discovery answers.")
++    parser.add_argument("--allow-assumptions", action="store_true", help="Allow planning to proceed with explicit assumptions when only user clarification is missing.")
+     return parser.parse_args()
+ 
+ #-----------------------------------------------------------------------#
+@@ -1454,15 +1473,41 @@ if __name__ == "__main__":
+         "description": sprint_prompt,
+     }
+ 
+-    if args.objective and args.objective_file:
+-        task["target_files"] = [args.objective_file]
++    target_files = []
++    if args.objective_file:
++        target_files = [args.objective_file]
++    elif args.objective:
++        target_files = extract_target_file_hints(args.objective)
++
++    if target_files:
++        task["target_files"] = target_files
+         task["metadata"] = {
+-            "objective_file_as_target_hint": True,
+-            "target_files": [args.objective_file],
++            "objective_file_as_target_hint": bool(args.objective_file),
++            "target_files": target_files,
+         }
+ 
++    discovery_service = DiscoveryService()
++    discovery_answers = discovery_service.load_answers(args.answer_file)
++    discovery_result = discovery_service.analyze(
++        objective=sprint_prompt,
++        target_files=target_files,
++        answers=discovery_answers,
++        allow_assumptions=args.allow_assumptions,
++    )
++
++    if not discovery_result.ready:
++        print(json.dumps({
++            "chair_action": "discovery_required",
++            "status": "discovery_required",
++            "task": task,
++            "discovery": discovery_result.model_dump(),
++            "executed_count": 0,
++        }, indent=2))
++        raise SystemExit(0)
++
+     plan_result = build_plan_for_task(task=task)
+     state = create_chair_state(task, plan_result)
++    state["discovery"] = discovery_result.model_dump()
+ 
+     state = execute_ready_steps_until_blocked_or_done(state)
+ 
+diff --git a/models/discovery.py b/models/discovery.py
+new file mode 100644
+index 0000000..79fb321
+--- /dev/null
++++ b/models/discovery.py
+@@ -0,0 +1,64 @@
++from __future__ import annotations
++
++from typing import Literal, Any
++
++from pydantic import BaseModel, Field
++
++
++class DiscoveryQuestion(BaseModel):
++    id: str
++    question: str
++    allowed_values: list[str] = Field(default_factory=list)
++    guidance: str | None = None
++    required: bool = True
++    resolver: Literal["user", "repository", "research", "cloud_architect", "human_reviewer"] = "user"
++
++
++class DiscoveryBlocker(BaseModel):
++    code: str
++    message: str
++    resolver: Literal["user", "repository", "research", "cloud_architect", "human_reviewer"]
++    question_id: str | None = None
++
++
++class DiscoveryAnswerValidation(BaseModel):
++    question_id: str
++    status: Literal["accepted", "accepted_uncertain", "invalid", "guidance_requested", "missing"]
++    received: Any = None
++    normalized_value: Any = None
++    message: str
++    guidance: str | None = None
++    confidence_delta: float = 0.0
++
++
++class ArchitectureReviewSignal(BaseModel):
++    confidence: float
++    review_recommended: bool
++    review_required: bool
++    preferred_reviewer: Literal["cloud_architect", "human_reviewer", "none"] = "none"
++    reasons: list[str] = Field(default_factory=list)
++
++
++class DiscoveryConfidence(BaseModel):
++    objective: float
++    repository: float
++    external_api: float
++    dependency: float
++    architecture: float
++    overall: float
++    required: float = 0.75
++
++
++class DiscoveryResult(BaseModel):
++    status: Literal["ready_for_planning", "discovery_required"]
++    confidence: DiscoveryConfidence
++    blockers: list[DiscoveryBlocker] = Field(default_factory=list)
++    questions: list[DiscoveryQuestion] = Field(default_factory=list)
++    answer_validation: list[DiscoveryAnswerValidation] = Field(default_factory=list)
++    architecture: ArchitectureReviewSignal
++    research_required: bool = False
++    next_action: str | None = None
++
++    @property
++    def ready(self) -> bool:
++        return self.status == "ready_for_planning"
+diff --git a/services/discovery_service.py b/services/discovery_service.py
+new file mode 100644
+index 0000000..c9de4a9
+--- /dev/null
++++ b/services/discovery_service.py
+@@ -0,0 +1,319 @@
++from __future__ import annotations
++
++import json
++from pathlib import Path
++from typing import Any
++
++from models.discovery import (
++    ArchitectureReviewSignal,
++    DiscoveryAnswerValidation,
++    DiscoveryBlocker,
++    DiscoveryConfidence,
++    DiscoveryQuestion,
++    DiscoveryResult,
++)
++
++
++class DiscoveryService:
++    """Deterministic readiness gate before planning/implementation.
++
++    This is intentionally lightweight. It does not perform research or cloud review yet;
++    it identifies when those inputs are required so 10.1 can plug in execution.
++    """
++
++    REQUIRED_CONFIDENCE = 0.75
++
++    def analyze(
++        self,
++        *,
++        objective: str,
++        target_files: list[str] | None = None,
++        answers: dict[str, Any] | None = None,
++        allow_assumptions: bool = False,
++    ) -> DiscoveryResult:
++        answers = answers or {}
++        objective_l = objective.lower()
++        target_files = target_files or []
++        is_external = self._mentions_external_integration(objective_l)
++        is_jira = "jira" in objective_l
++        is_new_worker = any(term in objective_l for term in ["new worker", "worker agent", "new agent", "agent"])
++
++        questions = self._build_questions(is_jira=is_jira, is_external=is_external)
++        answer_validation = [self._validate_answer(question, answers) for question in questions]
++
++        blockers: list[DiscoveryBlocker] = []
++        for question, validation in zip(questions, answer_validation):
++            if not question.required:
++                continue
++            if validation.status in {"accepted", "accepted_uncertain"}:
++                continue
++            blockers.append(
++                DiscoveryBlocker(
++                    code=f"{question.id}_unresolved",
++                    message=validation.message,
++                    resolver=question.resolver,
++                    question_id=question.id,
++                )
++            )
++
++        if is_external and not self._has_research_evidence(answers):
++            blockers.append(
++                DiscoveryBlocker(
++                    code="external_api_research_required",
++                    message="External API usage requires documentation or research evidence before implementation.",
++                    resolver="research",
++                )
++            )
++
++        architecture = self._architecture_signal(
++            objective_l=objective_l,
++            is_external=is_external,
++            is_new_worker=is_new_worker,
++            answers=answers,
++        )
++        if architecture.review_required:
++            blockers.append(
++                DiscoveryBlocker(
++                    code="architecture_review_required",
++                    message="Architecture confidence is below the review threshold for this kind of change.",
++                    resolver="cloud_architect",
++                )
++            )
++
++        confidence = self._score_confidence(
++            objective=objective,
++            target_files=target_files,
++            is_external=is_external,
++            is_new_worker=is_new_worker,
++            answer_validation=answer_validation,
++            architecture=architecture,
++            has_research_evidence=self._has_research_evidence(answers),
++        )
++
++        blocking = bool(blockers) or confidence.overall < confidence.required
++        if allow_assumptions:
++            # Assumptions can bypass user clarification, but not explicit architecture review.
++            blocking = any(blocker.resolver in {"research", "cloud_architect", "human_reviewer"} for blocker in blockers)
++
++        return DiscoveryResult(
++            status="discovery_required" if blocking else "ready_for_planning",
++            confidence=confidence,
++            blockers=blockers,
++            questions=questions,
++            answer_validation=answer_validation,
++            architecture=architecture,
++            research_required=any(blocker.resolver == "research" for blocker in blockers),
++            next_action=self._next_action(blockers),
++        )
++
++    def load_answers(self, path: str | Path | None) -> dict[str, Any]:
++        if not path:
++            return {}
++        data = json.loads(Path(path).read_text(encoding="utf-8"))
++        if not isinstance(data, dict):
++            raise ValueError("Discovery answer file must contain a JSON object.")
++        return data
++
++    def _build_questions(self, *, is_jira: bool, is_external: bool) -> list[DiscoveryQuestion]:
++        if not is_external:
++            return []
++
++        questions = [
++            DiscoveryQuestion(
++                id="integration_use_case",
++                question="What is the first useful capability this worker should provide?",
++                allowed_values=["read_only", "create", "update", "search", "create_and_comment", "unknown"],
++                guidance="Pick the smallest useful first increment. For Jira, create_issue plus add_comment is a reasonable first write-capable scaffold.",
++            ),
++            DiscoveryQuestion(
++                id="dependency_policy",
++                question="What dependency policy should this implementation follow?",
++                allowed_values=["stdlib_only", "allow_existing_manifest_only", "allow_new_dependencies_with_manifest_update", "ask_before_new_dependency", "unknown"],
++                guidance="For a safe first pass, use stdlib_only or existing manifest dependencies and mock all network calls.",
++            ),
++            DiscoveryQuestion(
++                id="config_location",
++                question="Where should credentials and endpoint configuration live?",
++                allowed_values=["environment_variables", "controls_json", "project_config", "existing_repo_pattern", "unknown"],
++                guidance="Environment variables are usually safest for credentials. controls.json can govern policy, not secret values.",
++            ),
++        ]
++
++        if is_jira:
++            questions.insert(
++                0,
++                DiscoveryQuestion(
++                    id="jira_platform",
++                    question="Which Jira platform is the target?",
++                    allowed_values=["jira_cloud", "jira_data_center", "existing_repo_pattern", "unknown"],
++                    guidance="Jira Cloud commonly uses email plus API token for simple scripts. Jira Data Center often supports Personal Access Tokens.",
++                ),
++            )
++            questions.insert(
++                1,
++                DiscoveryQuestion(
++                    id="jira_auth_method",
++                    question="How should Jira authenticate?",
++                    allowed_values=["api_token", "oauth2", "personal_access_token", "existing_repo_pattern", "unknown"],
++                    guidance="For Jira Cloud, common options are API token with email/basic auth, OAuth 2.0, or Atlassian app auth. For Jira Data Center, common options include Personal Access Token, basic auth if enabled, or OAuth depending on server configuration.",
++                ),
++            )
++
++        return questions
++
++    def _validate_answer(self, question: DiscoveryQuestion, answers: dict[str, Any]) -> DiscoveryAnswerValidation:
++        if question.id not in answers:
++            return DiscoveryAnswerValidation(
++                question_id=question.id,
++                status="missing",
++                message=f"Required discovery answer is missing: {question.id}.",
++                guidance=question.guidance,
++            )
++
++        received = answers.get(question.id)
++        if isinstance(received, str) and self._is_guidance_request(received):
++            return DiscoveryAnswerValidation(
++                question_id=question.id,
++                status="guidance_requested",
++                received=received,
++                message=f"Guidance requested for {question.id}.",
++                guidance=question.guidance,
++            )
++
++        values = received if isinstance(received, list) else [received]
++        normalized = [str(value).strip().lower().replace("-", "_").replace(" ", "_") for value in values]
++
++        if "unknown" in normalized or "not_sure" in normalized:
++            return DiscoveryAnswerValidation(
++                question_id=question.id,
++                status="accepted_uncertain",
++                received=received,
++                normalized_value="unknown",
++                message=f"Answer accepted as uncertain for {question.id}; confidence was not raised.",
++                guidance=question.guidance,
++                confidence_delta=0.0,
++            )
++
++        allowed = set(question.allowed_values)
++        invalid = [value for value in normalized if value not in allowed]
++        if invalid:
++            return DiscoveryAnswerValidation(
++                question_id=question.id,
++                status="invalid",
++                received=received,
++                message=f"Unsupported answer for {question.id}: {', '.join(invalid)}.",
++                guidance=question.guidance,
++            )
++
++        normalized_value: Any = normalized if isinstance(received, list) else normalized[0]
++        return DiscoveryAnswerValidation(
++            question_id=question.id,
++            status="accepted",
++            received=received,
++            normalized_value=normalized_value,
++            message=f"Answer accepted for {question.id}.",
++            confidence_delta=0.10,
++        )
++
++    def _score_confidence(
++        self,
++        *,
++        objective: str,
++        target_files: list[str],
++        is_external: bool,
++        is_new_worker: bool,
++        answer_validation: list[DiscoveryAnswerValidation],
++        architecture: ArchitectureReviewSignal,
++        has_research_evidence: bool,
++    ) -> DiscoveryConfidence:
++        objective_score = 0.45
++        if len(objective.strip()) >= 60:
++            objective_score += 0.15
++        if target_files:
++            objective_score += 0.10
++        accepted = sum(1 for item in answer_validation if item.status == "accepted")
++        total = len(answer_validation) or 1
++        objective_score += min(0.20, accepted * 0.05)
++        objective_score = min(objective_score, 0.95)
++
++        repository_score = 0.80 if target_files else 0.60
++        dependency_score = 0.45 if is_external else 0.80
++        if any(item.question_id == "dependency_policy" and item.status == "accepted" for item in answer_validation):
++            dependency_score = 0.75
++
++        external_api_score = 0.90 if not is_external else 0.35
++        if has_research_evidence:
++            external_api_score = 0.80
++
++        overall = min(
++            objective_score,
++            repository_score,
++            dependency_score,
++            external_api_score,
++            architecture.confidence,
++        )
++
++        return DiscoveryConfidence(
++            objective=round(objective_score, 2),
++            repository=round(repository_score, 2),
++            external_api=round(external_api_score, 2),
++            dependency=round(dependency_score, 2),
++            architecture=round(architecture.confidence, 2),
++            overall=round(overall, 2),
++            required=self.REQUIRED_CONFIDENCE,
++        )
++
++    def _architecture_signal(
++        self,
++        *,
++        objective_l: str,
++        is_external: bool,
++        is_new_worker: bool,
++        answers: dict[str, Any],
++    ) -> ArchitectureReviewSignal:
++        reasons: list[str] = []
++        confidence = 0.85
++
++        if is_new_worker:
++            confidence -= 0.20
++            reasons.append("New worker or agent type")
++        if is_external:
++            confidence -= 0.20
++            reasons.append("New external integration")
++        if any(term in objective_l for term in ["auth", "authenticate", "credential", "api token", "oauth"]):
++            confidence -= 0.10
++            reasons.append("Authentication or credential strategy involved")
++        if "architecture_review" in answers and str(answers["architecture_review"]).lower() in {"complete", "approved"}:
++            confidence = max(confidence, 0.85)
++            reasons = [reason for reason in reasons if reason]
++
++        confidence = max(0.0, round(confidence, 2))
++        review_recommended = confidence < 0.85 or bool(reasons)
++        review_required = confidence < 0.75 and not str(answers.get("architecture_review", "")).lower() in {"complete", "approved"}
++        return ArchitectureReviewSignal(
++            confidence=confidence,
++            review_recommended=review_recommended,
++            review_required=review_required,
++            preferred_reviewer="cloud_architect" if review_recommended else "none",
++            reasons=reasons,
++        )
++
++    def _mentions_external_integration(self, objective_l: str) -> bool:
++        terms = ["api", "sdk", "library", "jira", "octoprint", "octopi", "salesforce", "github", "external", "connects"]
++        return any(term in objective_l for term in terms)
++
++    def _has_research_evidence(self, answers: dict[str, Any]) -> bool:
++        return bool(answers.get("research_evidence") or answers.get("external_api_evidence"))
++
++    def _is_guidance_request(self, value: str) -> bool:
++        lowered = value.lower()
++        return "option" in lowered or "what are" in lowered or "help" in lowered or "guidance" in lowered
++
++    def _next_action(self, blockers: list[DiscoveryBlocker]) -> str:
++        if not blockers:
++            return "Proceed to planning."
++        if any(blocker.resolver == "cloud_architect" for blocker in blockers):
++            return "Resolve architecture review before implementation."
++        if any(blocker.resolver == "research" for blocker in blockers):
++            return "Provide research evidence or route to a research worker."
++        return "Provide structured discovery answers."
+diff --git a/services/proposal_quality_service.py b/services/proposal_quality_service.py
+index 4c1a7f2..1d75197 100644
+--- a/services/proposal_quality_service.py
++++ b/services/proposal_quality_service.py
+@@ -157,29 +157,30 @@ class ProposalQualityService:
+                         )
+                     )
+ 
+-                if tree is not None:
+-                    for import_name in self._iter_import_roots(tree):
+-                        if self._is_supported_import(import_name, allowed_dependencies):
+-                            continue
++                import_roots = self._iter_import_roots(tree) if tree is not None else self._iter_import_roots_from_text(content)
++
++                for import_name in import_roots:
++                    if self._is_supported_import(import_name, allowed_dependencies):
++                        continue
+ 
+-                        violations.append(
+-                            ProposalQualityViolation(
+-                                code=ProposalQualityFailureCode.UNSUPPORTED_DEPENDENCY_REFERENCE,
+-                                message=f"Unsupported dependency reference in {path}: {import_name}.",
+-                                file_path=path,
+-                                actual=import_name,
+-                                instruction="Remove unsupported dependencies or add explicit dependency manifest evidence before referencing them.",
+-                            )
++                    violations.append(
++                        ProposalQualityViolation(
++                            code=ProposalQualityFailureCode.UNSUPPORTED_DEPENDENCY_REFERENCE,
++                            message=f"Unsupported dependency reference in {path}: {import_name}.",
++                            file_path=path,
++                            actual=import_name,
++                            instruction="Remove unsupported dependencies or add explicit dependency manifest evidence before referencing them.",
+                         )
++                    )
+ 
+-                        if self._looks_like_external_api(import_name, objective, content):
+-                            research_required = True
+-                            escalation_recommended = True
+-                            escalation = {
+-                                "recommended": True,
+-                                "reason": "External API usage could not be verified from repository evidence.",
+-                                "target": "research",
+-                            }
++                    if self._looks_like_external_api(import_name, objective, content):
++                        research_required = True
++                        escalation_recommended = True
++                        escalation = {
++                            "recommended": True,
++                            "reason": "External API usage could not be verified from repository evidence.",
++                            "target": "research",
++                        }
+ 
+             if self._is_test_path(path) and not self._has_meaningful_assertion(content):
+                 violations.append(
+@@ -314,6 +315,19 @@ class ProposalQualityService:
+                         roots.append(root)
+         return roots
+ 
++    def _iter_import_roots_from_text(self, content: str) -> list[str]:
++        roots: list[str] = []
++        patterns = [
++            re.compile(r"^\s*import\s+([A-Za-z_][A-Za-z0-9_\.]*)", re.MULTILINE),
++            re.compile(r"^\s*from\s+([A-Za-z_][A-Za-z0-9_\.]*)\s+import\s+", re.MULTILINE),
++        ]
++        for pattern in patterns:
++            for match in pattern.finditer(content):
++                root = match.group(1).split(".")[0]
++                if root not in roots:
++                    roots.append(root)
++        return roots
++
+     def _is_supported_import(self, root: str, allowed_dependencies: set[str]) -> bool:
+         if root in sys.builtin_module_names:
+             return True
+diff --git a/tests/test_sprint_10_0_9_discovery_gating.py b/tests/test_sprint_10_0_9_discovery_gating.py
+new file mode 100644
+index 0000000..77bd060
+--- /dev/null
++++ b/tests/test_sprint_10_0_9_discovery_gating.py
+@@ -0,0 +1,140 @@
++import json
++
++import chair
++from agents.planner_agent import extract_json
++from models.proposal_quality_models import ProposalQualityFailureCode
++from services.discovery_service import DiscoveryService
++from services.proposal_quality_service import ProposalQualityService
++
++
++def test_discovery_gate_blocks_underspecified_jira_worker_before_planning():
++    result = DiscoveryService().analyze(
++        objective="Create a new Jira worker agent.",
++        target_files=["agents/jira_agent.py"],
++    )
++
++    assert result.status == "discovery_required"
++    assert result.confidence.overall < result.confidence.required
++    assert result.research_required is True
++    assert result.architecture.review_required is True
++    assert result.architecture.preferred_reviewer == "cloud_architect"
++    assert any(question.id == "jira_auth_method" for question in result.questions)
++
++
++def test_discovery_answer_request_for_options_returns_guidance():
++    result = DiscoveryService().analyze(
++        objective="Create a new Jira worker agent.",
++        answers={"jira_auth_method": "What are my auth options?"},
++    )
++
++    auth = next(item for item in result.answer_validation if item.question_id == "jira_auth_method")
++    assert auth.status == "guidance_requested"
++    assert "Jira Cloud" in auth.guidance
++
++
++def test_discovery_invalid_answer_is_rejected():
++    result = DiscoveryService().analyze(
++        objective="Create a new Jira worker agent.",
++        answers={"jira_auth_method": "dongle"},
++    )
++
++    auth = next(item for item in result.answer_validation if item.question_id == "jira_auth_method")
++    assert auth.status == "invalid"
++    assert "Unsupported answer" in auth.message
++
++
++def test_discovery_unknown_answer_is_accepted_without_confidence_gain():
++    result = DiscoveryService().analyze(
++        objective="Create a new Jira worker agent.",
++        answers={"jira_auth_method": "unknown"},
++    )
++
++    auth = next(item for item in result.answer_validation if item.question_id == "jira_auth_method")
++    assert auth.status == "accepted_uncertain"
++    assert auth.confidence_delta == 0.0
++
++
++def test_discovery_scripted_answers_raise_confidence_and_can_clear_gate():
++    answers = {
++        "jira_platform": "jira_cloud",
++        "jira_auth_method": "api_token",
++        "integration_use_case": "create_and_comment",
++        "dependency_policy": "stdlib_only",
++        "config_location": "environment_variables",
++        "research_evidence": True,
++        "architecture_review": "approved",
++    }
++
++    result = DiscoveryService().analyze(
++        objective="Create a new Jira worker agent at agents/jira_agent.py with mocked network tests.",
++        target_files=["agents/jira_agent.py", "tests/test_jira_agent.py"],
++        answers=answers,
++    )
++
++    assert result.status == "ready_for_planning"
++    assert result.confidence.overall >= result.confidence.required
++    assert result.architecture.review_required is False
++
++
++def test_chair_discovery_gate_prevents_planner_and_devworker(monkeypatch):
++    calls = []
++
++    def fake_dispatch(agent_key, payload):
++        calls.append(agent_key)
++        raise AssertionError("No agents should be dispatched when discovery is blocking.")
++
++    monkeypatch.setattr(chair, "dispatch_agent", fake_dispatch)
++
++    result = DiscoveryService().analyze(
++        objective="Create a new Jira worker agent.",
++        target_files=["agents/jira_agent.py"],
++    )
++
++    assert result.status == "discovery_required"
++    assert calls == []
++
++
++def test_planner_recovers_json_from_fenced_response_with_trailing_explanation():
++    raw = """```json
++{"steps": [{"id": "step_1", "agent": "repository"}]}
++```
++
++### Explanation
++Ignore this.
++"""
++
++    assert extract_json(raw) == {"steps": [{"id": "step_1", "agent": "repository"}]}
++
++
++def test_dependency_validation_reports_unsupported_import_with_syntax_error_present(tmp_path):
++    proposal = {
++        "changes": [
++            {
++                "operation": "create_file",
++                "path": "tests/test_3D_printer_agent.py",
++                "content": "from dependency_injection import inject\nfrom agents.3D_printer_agent import Agent\nassert True\n",
++            }
++        ]
++    }
++
++    result = ProposalQualityService(tmp_path).validate(
++        proposal=proposal,
++        objective="Create test",
++        target_files=["tests/test_3D_printer_agent.py"],
++    )
++
++    codes = {violation.code for violation in result.violations}
++    assert ProposalQualityFailureCode.PYTHON_SYNTAX_ERROR in codes
++    assert ProposalQualityFailureCode.UNSUPPORTED_DEPENDENCY_REFERENCE in codes
++
++
++def test_architecture_review_stub_routes_new_external_worker_to_cloud_architect():
++    result = DiscoveryService().analyze(
++        objective="Create a new worker agent that integrates with Jira and handles authentication.",
++        target_files=["agents/jira_agent.py"],
++    )
++
++    assert result.architecture.review_recommended is True
++    assert result.architecture.review_required is True
++    assert result.architecture.preferred_reviewer == "cloud_architect"
++    assert "New external integration" in result.architecture.reasons
