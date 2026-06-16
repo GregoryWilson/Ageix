@@ -7,6 +7,7 @@ from typing import Any
 from models.work_packet import WorkPacket
 from services.repository_evidence_service import RepositoryEvidenceService
 from services.repository_impact_service import RepositoryImpactService
+from services.target_resolution_service import TargetResolutionService
 
 
 class PlannerWorkPacketService:
@@ -39,20 +40,83 @@ class PlannerWorkPacketService:
             [] if explicit_targets else self._infer_target_files(objective),
         )
         objective_requests_tests = self._objective_requests_tests(objective)
+        target_resolution = TargetResolutionService(self.repo_root).resolve_targets(
+            target_files,
+            repository_evidence=planner_data.get("repository_evidence", []),
+            persist=True,
+        )
+        initial_unresolved = [] if self._objective_intends_creation(objective) else target_resolution.unresolved_targets
+        target_files = self._merge_strings(
+            target_resolution.resolved_targets,
+            target_resolution.unresolved_targets if self._objective_intends_creation(objective) else [],
+        )
+
+        grounded_targets = list(target_files)
         target_files = self.expand_target_files(
             target_files,
             include_generic_tests=objective_requests_tests,
+        )
+        generated_companion_targets = set(target_files) - set(grounded_targets)
+        companion_resolution = TargetResolutionService(self.repo_root).resolve_targets(
+            target_files,
+            repository_evidence=planner_data.get("repository_evidence", []),
+            persist=False,
+        )
+        allowed_companion_creates = [
+            path for path in companion_resolution.unresolved_targets
+            if path in generated_companion_targets
+        ]
+        companion_unresolved = [] if self._objective_intends_creation(objective) else [
+            path for path in companion_resolution.unresolved_targets
+            if path not in generated_companion_targets
+        ]
+        target_files = self._merge_strings(
+            companion_resolution.resolved_targets,
+            companion_resolution.unresolved_targets if self._objective_intends_creation(objective) else [],
+            allowed_companion_creates,
         )
 
         impact_result = RepositoryImpactService(self.repo_root).analyze(
             target_files=target_files,
             proposal={"changes": []},
         )
-        target_files = self._merge_strings(
+        pre_impact_targets = list(target_files)
+        post_impact_targets = self._merge_strings(
             target_files,
             impact_result.companion_files,
             impact_result.impacted_tests,
         )
+        generated_impact_targets = set(post_impact_targets) - set(pre_impact_targets)
+        post_impact_resolution = TargetResolutionService(self.repo_root).resolve_targets(
+            post_impact_targets,
+            repository_evidence=planner_data.get("repository_evidence", []),
+            impact_evidence=impact_result.summary,
+            persist=False,
+        )
+        allowed_impact_creates = [
+            path for path in post_impact_resolution.unresolved_targets
+            if path in generated_impact_targets or path in pre_impact_targets
+        ]
+        post_impact_unresolved = [] if self._objective_intends_creation(objective) else [
+            path for path in post_impact_resolution.unresolved_targets
+            if path not in generated_impact_targets and path not in pre_impact_targets
+        ]
+        target_files = self._merge_strings(
+            post_impact_resolution.resolved_targets,
+            post_impact_resolution.unresolved_targets if self._objective_intends_creation(objective) else [],
+            allowed_impact_creates,
+        )
+        all_resolution_evidence = (
+            target_resolution.evidence
+            + companion_resolution.evidence
+            + post_impact_resolution.evidence
+        )
+        unresolved_target_files = self._merge_strings(
+            initial_unresolved,
+            companion_unresolved,
+            post_impact_unresolved,
+        )
+        planner_revisit_required = bool(unresolved_target_files)
 
         test_targets = self._merge_strings(
             planner_data.get("test_targets", []),
@@ -91,8 +155,8 @@ class PlannerWorkPacketService:
         approved_target_files = [path for path in target_files if not self._is_test_path(path)]
         approved_companion_tests = self._merge_strings(
             [path for path in target_files if self._is_test_path(path)],
-            impact_result.companion_files,
-            impact_result.impacted_tests,
+            [path for path in impact_result.companion_files if path in target_files],
+            [path for path in impact_result.impacted_tests if path in target_files],
         )
         approved_scope = self._merge_strings(approved_target_files, approved_companion_tests)
 
@@ -114,6 +178,15 @@ class PlannerWorkPacketService:
             approved_target_files=approved_target_files,
             approved_companion_tests=approved_companion_tests,
             approved_scope=approved_scope,
+            resolved_target_files=target_files,
+            unresolved_target_files=unresolved_target_files,
+            target_resolution_evidence={
+                "resolved_targets": target_files,
+                "unresolved_targets": unresolved_target_files,
+                "planner_revisit_required": planner_revisit_required,
+                "evidence": [item.model_dump() for item in all_resolution_evidence],
+            },
+            planner_revisit_required=planner_revisit_required,
         )
 
     def expand_target_files(
@@ -198,6 +271,18 @@ class PlannerWorkPacketService:
     def _is_test_path(self, path: str) -> bool:
         normalized = path.replace("\\", "/")
         return normalized.startswith("tests/") or Path(normalized).name.startswith("test_")
+
+
+    def _objective_intends_creation(self, objective: str) -> bool:
+        lowered = objective.lower()
+        return any(marker in lowered for marker in [
+            "create ",
+            "create a ",
+            "create new",
+            "add ",
+            "new service",
+            "new worker",
+        ])
 
     def _objective_requests_tests(self, objective: str) -> bool:
         lowered = objective.lower()

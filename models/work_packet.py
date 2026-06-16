@@ -26,3 +26,7 @@ class WorkPacket(BaseModel):
     approved_companion_tests: list[str] = Field(default_factory=list)
     approved_scope: list[str] = Field(default_factory=list)
     context_selection_evidence: dict[str, Any] = Field(default_factory=dict)
+    resolved_target_files: list[str] = Field(default_factory=list)
+    unresolved_target_files: list[str] = Field(default_factory=list)
+    target_resolution_evidence: dict[str, Any] = Field(default_factory=dict)
+    planner_revisit_required: bool = False

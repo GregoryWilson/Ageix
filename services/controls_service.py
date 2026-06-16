@@ -133,6 +133,17 @@ class ControlsService:
             "blocked_dependencies": [],
             "unknown_dependency_policy": "fail",
         },
+        "target_resolution": {
+            "enabled": True,
+            "minimum_confidence": 0.75,
+            "minimum_confidence_gap": 0.15,
+            "allow_auto_resolution": True,
+            "allow_basename_match": True,
+            "allow_directory_similarity": True,
+            "allow_resolution_creation": False,
+            "planner_revisit_threshold": 0.50,
+            "max_candidate_matches": 10,
+        },
         "repository_impact": {
             "enabled": True,
             "max_depth": 2,
