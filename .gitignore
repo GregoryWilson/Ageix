@@ -56,3 +56,25 @@ cache/
 # User feedback / discovery answer artifacts
 .ageix/user_feedback/*
 !.ageix/user_feedback/.gitkeep
+
+# Ageix runtime/generated artifacts
+.ageix/logs/
+.ageix/manifests/
+.ageix/staged/
+.ageix/staging/
+.ageix/runs/
+.ageix/verification/
+.ageix/runtime/
+.ageix/user_feedback/*
+!.ageix/user_feedback/.gitkeep
+
+# Local runtime outputs
+run.log
+*.log
+ageix_sprint_*.patch
+jira_answers.json
+
+# Python/test cache
+.pytest_cache/
+__pycache__/
+*.py[cod]
