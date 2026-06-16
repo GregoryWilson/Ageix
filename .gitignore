@@ -39,6 +39,7 @@ dist/
 build/
 *.egg-info/
 artifacts/*.json
+*.patch
 
 # Ollama / AI artifacts if created locally
 cache/
