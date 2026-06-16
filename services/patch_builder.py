@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from contracts.patch_contract import PatchFile, PatchProposal
@@ -28,7 +28,7 @@ class PatchBuilder:
         promotion_readiness_summary: dict | None = None,
         governance_review_packet: dict | None = None,
     ) -> dict:
-        patch_id = f"patch_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
+        patch_id = f"patch_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S_%f')}"
         patch_dir = self.staged_root / patch_id
         files_dir = patch_dir / "files"
         originals_dir = patch_dir / "originals"

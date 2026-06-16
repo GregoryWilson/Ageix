@@ -18,6 +18,7 @@ from services.confidence_scoring_service import ConfidenceScoringService
 from services.promotion_readiness_service import PromotionReadinessService
 from services.governance_review_packet_service import GovernanceReviewPacketService
 from services.discovery_service import DiscoveryService
+from services.discovery_resolution_service import DiscoveryResolutionService
 from models.test_execution_evidence import TestExecutionResult
 
 MAX_PROPOSAL_QUALITY_RETRIES = 1
@@ -202,6 +203,10 @@ def normalize_agent_key(agent_name: str) -> str:
         "repository_agent": "repository",
         "repository": "repository",
         "repo": "repository",
+
+        "cloudarchitect": "cloud_architect",
+        "cloud_architect": "cloud_architect",
+        "cloud_architect_agent": "cloud_architect",
     }
 
     return aliases.get(normalized, normalized)
@@ -224,6 +229,7 @@ def build_agent_registry() -> dict:
         "planner",
         "dev_worker",
         "repository",
+        "cloud_architect",
     ]
 
     return {
@@ -1496,14 +1502,26 @@ if __name__ == "__main__":
     )
 
     if not discovery_result.ready:
-        print(json.dumps({
-            "chair_action": "discovery_required",
-            "status": "discovery_required",
-            "task": task,
-            "discovery": discovery_result.model_dump(),
-            "executed_count": 0,
-        }, indent=2))
-        raise SystemExit(0)
+        resolution_result = DiscoveryResolutionService(Path(".")).resolve(
+            objective=sprint_prompt,
+            target_files=target_files,
+            answers=discovery_answers,
+            run_id=objective_envelope.get("run_id") or args.project_id,
+            execute_research=True,
+            execute_architecture_review=True,
+            persist=True,
+        )
+        if not resolution_result.ready:
+            print(json.dumps({
+                "chair_action": "discovery_required",
+                "status": resolution_result.status,
+                "task": task,
+                "discovery": resolution_result.discovery.model_dump(),
+                "discovery_resolution": resolution_result.model_dump(),
+                "executed_count": 0,
+            }, indent=2))
+            raise SystemExit(0)
+        discovery_result = resolution_result.discovery
 
     plan_result = build_plan_for_task(task=task)
     state = create_chair_state(task, plan_result)

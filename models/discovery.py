@@ -50,7 +50,7 @@ class DiscoveryConfidence(BaseModel):
 
 
 class DiscoveryResult(BaseModel):
-    status: Literal["ready_for_planning", "discovery_required"]
+    status: Literal["ready_for_planning", "discovery_required", "research_pending", "architecture_pending"]
     confidence: DiscoveryConfidence
     blockers: list[DiscoveryBlocker] = Field(default_factory=list)
     questions: list[DiscoveryQuestion] = Field(default_factory=list)

@@ -36,6 +36,21 @@ AGENT_REGISTRY: dict[str, dict[str, Any]] = {
             "source_collection",
         ],
     },
+    "cloud_architect": {
+        "name": "Cloud Architect",
+        "description": "Provides architecture guidance only; no code, patches, or file writes.",
+        "handler": "agents.cloud_architect_agent.run",
+        "default_model_profile": "cloud_deep_reasoning",
+        "allowed_model_profiles": [
+            "cloud_deep_reasoning",
+        ],
+        "capabilities": [
+            "architecture_review",
+            "pattern_selection",
+            "dependency_guidance",
+        ],
+    },
+
     "dev_worker": {
         "name": "Development Worker Agent",
         "description": "Executes development tasks against a codebase.",

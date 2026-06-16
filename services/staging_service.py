@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import shutil
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from models.patch_manifest import PatchFile, PatchManifest
@@ -30,7 +30,7 @@ class StagingService:
         return candidate
 
     def create_patch_id(self) -> str:
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S_%f")
         return f"patch_{timestamp}"
 
     def create_stage(
