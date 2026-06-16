@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from models.work_packet import WorkPacket
+from services.repository_evidence_service import RepositoryEvidenceService
 
 
 class PlannerWorkPacketService:
@@ -103,16 +104,13 @@ class PlannerWorkPacketService:
         return sorted(dict.fromkeys(target_files))
 
     def select_repository_examples(self, target_files: list[str], known_files: list[str] | None = None) -> list[str]:
-        known = known_files or self._list_repo_files()
-        examples: list[str] = []
-        if any(path.startswith("services/") for path in target_files):
-            examples.extend(self._first_matches(known, ["services/", "_service.py"], exclude=target_files, limit=2))
-        if any(path.startswith("agents/") or "worker" in Path(path).name for path in target_files):
-            examples.extend(self._first_matches(known, ["agents/", "worker"], exclude=target_files, limit=2))
-        if any(self._is_test_path(path) for path in target_files):
-            examples.extend(self._first_matches(known, ["tests/test_"], exclude=target_files, limit=2))
-        examples.extend(path for path in ["schemas/plan_schema.py", "services/requirement_trace_service.py"] if path in known)
-        return sorted(dict.fromkeys(examples))
+        service = RepositoryEvidenceService(self.repo_root)
+        return service.select_evidence_files(
+            objective=" ".join(target_files),
+            target_files=target_files,
+            known_files=known_files or self._list_repo_files(),
+            limit=8,
+        )
 
     def _infer_target_files(self, objective: str) -> list[str]:
         text = objective.lower()
@@ -213,16 +211,7 @@ class PlannerWorkPacketService:
         }
 
     def _list_repo_files(self) -> list[str]:
-        ignored = {".git", "__pycache__", ".pytest_cache", "venv", ".venv", "artifacts"}
-        files: list[str] = []
-        for path in self.repo_root.rglob("*"):
-            if not path.is_file():
-                continue
-            rel = path.relative_to(self.repo_root)
-            if any(part in ignored for part in rel.parts):
-                continue
-            files.append(str(rel).replace("\\", "/"))
-        return sorted(files)
+        return RepositoryEvidenceService(self.repo_root).list_source_files()
 
     def _first_matches(self, files: list[str], needles: list[str], *, exclude: list[str], limit: int) -> list[str]:
         matches = []

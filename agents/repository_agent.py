@@ -3,46 +3,23 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from services.repository_evidence_service import RepositoryEvidenceService, TEXT_EXTENSIONS
+
 
 REPO_ROOT = Path(".").resolve()
 
-IGNORED_PARTS = {
-    ".git",
-    "__pycache__",
-    "venv",
-    ".venv",
-    "artifacts",
-}
 
-TEXT_EXTENSIONS = {
-    ".py",
-    ".txt",
-    ".md",
-    ".yaml",
-    ".yml",
-    ".json",
-    ".toml",
-}
+def _evidence_service() -> RepositoryEvidenceService:
+    return RepositoryEvidenceService(REPO_ROOT)
 
 
 def _is_ignored(path: Path) -> bool:
-    relative = path.relative_to(REPO_ROOT)
-    return any(part in IGNORED_PARTS for part in relative.parts)
+    relative = str(path.relative_to(REPO_ROOT)).replace("\\", "/")
+    return _evidence_service().is_ignored_path(relative)
 
 
 def _list_files() -> list[str]:
-    files: list[str] = []
-
-    for path in REPO_ROOT.rglob("*"):
-        if not path.is_file():
-            continue
-
-        if _is_ignored(path):
-            continue
-
-        files.append(str(path.relative_to(REPO_ROOT)))
-
-    return sorted(files)
+    return _evidence_service().list_source_files()
 
 
 def _read_file(
@@ -198,12 +175,22 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
         for term in sorted(set(search_terms))
     }
 
+    evidence_limit = int((constraints or {}).get("evidence_file_limit", 12) or 12)
+    selected_files = _evidence_service().select_evidence_files(
+        objective=payload.get("objective", "") or instructions,
+        target_files=target_files,
+        known_files=files,
+        limit=evidence_limit,
+    )
+
     return {
         "agent": "repository",
         "status": "completed",
         "summary": "RepositoryAgent inspected repository files and gathered read-only code evidence.",
         "files": files,
         "file_count": len(files),
+        "selected_files": selected_files,
+        "selected_file_count": len(selected_files),
         "read_files": file_reads,
         "evidence": file_reads,
         "requested_operation": requested_operation,
