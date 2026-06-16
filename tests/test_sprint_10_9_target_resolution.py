@@ -247,3 +247,58 @@ def test_creation_intent_requires_stronger_create_signal_than_add(tmp_path):
 
     assert service._objective_intends_creation("Update config handling and add validation tests") is False
     assert service._objective_intends_creation("Create a new Jira worker agent") is True
+
+
+def test_chair_blocks_devworker_when_planner_revisit_required(monkeypatch):
+    from chair import execute_ready_step
+
+    dispatched_agents = []
+
+    def fake_dispatch_agent(agent_name, payload):
+        dispatched_agents.append(agent_name)
+        return {"deliverable": {"result_type": "patch_proposal"}}
+
+    monkeypatch.setattr("chair.dispatch_agent", fake_dispatch_agent)
+
+    state = {
+        "plan": {
+            "work_packet": {
+                "planner_revisit_required": True,
+                "unresolved_target_files": ["config/worker_config.py"],
+                "target_resolution_evidence": {
+                    "planner_revisit_required": True,
+                    "unresolved_targets": ["config/worker_config.py"],
+                    "evidence": [
+                        {
+                            "requested_target": "config/worker_config.py",
+                            "resolved_target": None,
+                            "resolution_method": "planner_revisit_required",
+                            "planner_revisit_required": True,
+                            "candidate_matches": [],
+                        }
+                    ],
+                },
+            },
+            "steps": [
+                {
+                    "id": "step_1",
+                    "agent": "dev_worker",
+                    "objective": "Update config handling and add validation tests",
+                    "target_files": ["config/worker_config.py"],
+                    "constraints": {"allow_create_files": True},
+                    "dependencies": [],
+                    "status": "pending",
+                }
+            ],
+        },
+        "agent_turns": [],
+    }
+
+    result = execute_ready_step(state)
+
+    assert dispatched_agents == []
+    assert result["status"] == "blocked"
+    assert result["chair_action"] == "target_resolution_failed"
+    assert result["context_request"]["reason"] == "target_resolution_failed"
+    assert result["context_request"]["recommended_planner_revisit"] is True
+    assert result["plan"]["steps"][0]["status"] == "blocked"

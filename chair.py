@@ -259,6 +259,44 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
 
     try:
         if agent_key == "dev_worker":
+            if work_packet.get("planner_revisit_required"):
+                unresolved_targets = work_packet.get("unresolved_target_files", [])
+                resolution_evidence = work_packet.get("target_resolution_evidence", {})
+                context_request = {
+                    "result_type": "context_request",
+                    "reason": "target_resolution_failed",
+                    "requested_target": unresolved_targets[0] if unresolved_targets else None,
+                    "unresolved_target_files": unresolved_targets,
+                    "target_resolution_evidence": resolution_evidence,
+                    "recommended_planner_revisit": True,
+                }
+
+                step["status"] = "blocked"
+                step["block_reason"] = "target_resolution_failed"
+                step["result"] = {
+                    "status": "blocked",
+                    "deliverable": context_request,
+                }
+
+                state.setdefault("agent_turns", []).append(
+                    {
+                        "agent_name": "chair",
+                        "turn_type": "blocked",
+                        "content": {
+                            "step_id": step.get("id"),
+                            "agent_key": agent_key,
+                            "reason": "target_resolution_failed",
+                            "unresolved_target_files": unresolved_targets,
+                        },
+                        "visibility": "internal",
+                    }
+                )
+
+                state["chair_action"] = "target_resolution_failed"
+                state["context_request"] = context_request
+                state["blocked_step_id"] = step.get("id")
+                return update_plan_status(state)
+
             agent_result: dict[str, Any] = {}
             devworker_packet: dict[str, Any] = {}
 
