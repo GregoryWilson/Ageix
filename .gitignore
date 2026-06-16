@@ -49,3 +49,6 @@ cache/
 .ageix/manifests/
 .ageix/repair_loops/
 .ageix/verification/
+
+# Runtime execution artifacts
+.ageix/runs/
