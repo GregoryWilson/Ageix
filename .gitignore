@@ -40,6 +40,7 @@ build/
 *.egg-info/
 artifacts/*.json
 *.patch
+jira_answers.json
 
 # Ollama / AI artifacts if created locally
 cache/
