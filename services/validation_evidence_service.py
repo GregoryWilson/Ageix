@@ -111,14 +111,18 @@ class ValidationEvidenceService:
         violations: list[ValidationEvidenceViolation] = []
 
         for trace in traces:
-            if trace.implementation_evidence and not trace.test_evidence:
+            if (
+                trace.implementation_evidence
+                and not trace.test_evidence
+                and self._requires_mapped_test_evidence(trace)
+            ):
                 violations.append(
                     ValidationEvidenceViolation(
                         code="MISSING_TEST_EVIDENCE",
                         message="Requirement has implementation evidence but no mapped test evidence.",
                         requirement_id=trace.requirement_id,
                         expected=trace.requirement_text,
-                        actual="<missing>",
+                        actual=str(self._trace_diagnostics(trace, proposed_tests=self._proposal_test_paths(proposal))),
                         instruction="Provide a test that validates the requirement and include trace evidence.",
                     )
                 )
@@ -183,6 +187,45 @@ class ValidationEvidenceService:
             )
 
         return violations
+
+
+    def _requires_mapped_test_evidence(self, trace: RequirementTrace) -> bool:
+        lowered = trace.requirement_text.lower()
+
+        # File-existence acceptance criteria are satisfied by the proposed file
+        # change itself. They should not be converted into behavioral coverage
+        # requirements merely because the evidence is an implementation file.
+        file_existence_markers = [
+            "authorized target file exists",
+            "target file exists",
+            "file exists in proposal",
+        ]
+        if any(marker in lowered for marker in file_existence_markers):
+            return False
+
+        # Meta validation criteria are proved by trace/runtime evidence elsewhere.
+        if "requirement trace covers" in lowered or "generated test command passes" in lowered:
+            return False
+
+        return True
+
+    def _trace_diagnostics(
+        self,
+        trace: RequirementTrace,
+        *,
+        proposed_tests: set[str],
+    ) -> dict[str, Any]:
+        return {
+            "requirement_id": trace.requirement_id,
+            "requirement_text": trace.requirement_text,
+            "implementation_evidence_count": len(trace.implementation_evidence),
+            "test_evidence_count": len(trace.test_evidence),
+            "validation_evidence_count": len(trace.validation_evidence),
+            "requires_mapped_test_evidence": self._requires_mapped_test_evidence(trace),
+            "implementation_sources": [e.file_path for e in trace.implementation_evidence if e.file_path],
+            "test_sources": [e.file_path for e in trace.test_evidence if e.file_path],
+            "proposed_test_sources": sorted(proposed_tests),
+        }
 
     def summarize(self, result: ValidationEvidenceResult) -> dict[str, Any]:
         violations_by_code: dict[str, int] = {}

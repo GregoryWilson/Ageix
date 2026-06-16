@@ -1506,8 +1506,74 @@ def validate_no_placeholder_patch_content(path: str, content: str) -> None:
         if marker in lowered:
             raise ValueError(f"{path} contains placeholder/stub content.")
 
-    if path.startswith("tests/") and "assert " not in content:
-        raise ValueError(f"{path} test file contains no assertions.")
+    if path.startswith("tests/") and not has_test_assertion(content):
+        raise ValueError(f"{path} test file contains no assertions. diagnostics={build_assertion_diagnostics(content)}")
+
+
+def has_test_assertion(content: str) -> bool:
+    try:
+        import ast
+        tree = ast.parse(content)
+    except SyntaxError:
+        return "assert " in content or "pytest.raises" in content or ".assert" in content
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assert):
+            if isinstance(node.test, ast.Constant) and node.test.value is True:
+                continue
+            return True
+
+        if isinstance(node, ast.Call):
+            func = node.func
+            if isinstance(func, ast.Attribute):
+                if func.attr == "raises" and isinstance(func.value, ast.Name) and func.value.id == "pytest":
+                    return True
+                if func.attr.startswith("assert"):
+                    if func.attr == "assertTrue" and node.args:
+                        first_arg = node.args[0]
+                        if isinstance(first_arg, ast.Constant) and first_arg.value is True:
+                            continue
+                    return True
+
+    return False
+
+
+def build_assertion_diagnostics(content: str) -> dict[str, int]:
+    try:
+        import ast
+        tree = ast.parse(content)
+    except SyntaxError:
+        return {
+            "assert_keyword_count": content.count("assert "),
+            "unittest_assert_count": content.count(".assert"),
+            "pytest_raises_count": content.count("pytest.raises"),
+            "syntax_error": 1,
+        }
+
+    diagnostics = {
+        "assert_keyword_count": 0,
+        "unittest_assert_count": 0,
+        "pytest_raises_count": 0,
+        "meaningful_assertion_count": 0,
+    }
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assert):
+            diagnostics["assert_keyword_count"] += 1
+            if not (isinstance(node.test, ast.Constant) and node.test.value is True):
+                diagnostics["meaningful_assertion_count"] += 1
+
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            func = node.func
+            if func.attr == "raises" and isinstance(func.value, ast.Name) and func.value.id == "pytest":
+                diagnostics["pytest_raises_count"] += 1
+                diagnostics["meaningful_assertion_count"] += 1
+            elif func.attr.startswith("assert"):
+                diagnostics["unittest_assert_count"] += 1
+                if not (func.attr == "assertTrue" and node.args and isinstance(node.args[0], ast.Constant) and node.args[0].value is True):
+                    diagnostics["meaningful_assertion_count"] += 1
+
+    return diagnostics
 
 
 def extract_target_file_hints(objective: str) -> list[str]:
