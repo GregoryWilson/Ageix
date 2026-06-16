@@ -138,6 +138,30 @@ def test_impact_controls_disable_service(tmp_path):
     assert result.status == "disabled"
 
 
+
+
+def test_repository_impact_excludes_virtualenv_paths(tmp_path):
+    _write(tmp_path / "services" / "controls_service.py", "class ControlsService: pass\n")
+    _write(
+        tmp_path / "venv" / "lib" / "python3.14" / "site-packages" / "yaml" / "cyaml.py",
+        "from yaml._yaml import CParser\n",
+    )
+
+    result = RepositoryImpactService(tmp_path).analyze(target_files=["services/controls_service.py"])
+
+    assert not any("venv/" in item for item in result.impacted_files)
+    assert not any("site-packages" in warning for warning in result.violations)
+
+
+def test_repository_impact_exclude_paths_control_is_configurable(tmp_path):
+    _write_controls(tmp_path, exclude_paths=["generated/"])
+    _write(tmp_path / "services" / "a.py", "class A: pass\n")
+    _write(tmp_path / "generated" / "consumer.py", "from services.a import A\n")
+
+    result = RepositoryImpactService(tmp_path).analyze(target_files=["services/a.py"])
+
+    assert "generated/consumer.py" not in result.impacted_files
+
 def test_circular_dependency_warns_and_stops_path(tmp_path):
     _write(tmp_path / "services" / "a.py", "from services.b import B\n")
     _write(tmp_path / "services" / "b.py", "from services.a import A\n")

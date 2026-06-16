@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict, deque
+from fnmatch import fnmatch
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -37,6 +38,33 @@ class RepositoryImpactControls:
     unresolved_import_policy: str = "warn"
     unknown_impact_policy: str = "warn"
     limit_policy: str = "warn"
+    exclude_paths: tuple[str, ...] = (
+        ".git/",
+        ".pytest_cache/",
+        ".mypy_cache/",
+        ".ruff_cache/",
+        "__pycache__/",
+        "venv/",
+        ".venv/",
+        "env/",
+        ".env/",
+        "site-packages/",
+        "node_modules/",
+        "build/",
+        "dist/",
+        "*.egg-info/",
+        "artifacts/",
+        "htmlcov/",
+        ".tox/",
+        ".ageix/staged/",
+        ".ageix/staging/",
+        ".ageix/manifests/",
+        ".ageix/runs/",
+        ".ageix/runtime/",
+        ".ageix/verification/",
+        ".ageix/repair_loops/",
+        ".ageix/logs/",
+    )
 
     @classmethod
     def from_raw(cls, raw: dict[str, Any] | None) -> "RepositoryImpactControls":
@@ -62,6 +90,7 @@ class RepositoryImpactControls:
             unresolved_import_policy=str(raw.get("unresolved_import_policy", "warn")),
             unknown_impact_policy=str(raw.get("unknown_impact_policy", "warn")),
             limit_policy=str(raw.get("limit_policy", "warn")),
+            exclude_paths=tuple(str(item).replace("\\", "/") for item in raw.get("exclude_paths", cls.exclude_paths)),
         )
 
 
@@ -304,7 +333,20 @@ class RepositoryImpactService:
         return str(path).replace("\\", "/").strip("/")
 
     def _skip_path(self, path: str) -> bool:
-        return path.startswith((".git/", ".pytest_cache/", "__pycache__/", ".ageix/staged/"))
+        normalized = self._normalize_path(path)
+        parts = set(Path(normalized).parts)
+        for raw_pattern in self.controls.exclude_paths:
+            pattern = self._normalize_path(raw_pattern)
+            if not pattern:
+                continue
+            directory_pattern = pattern.rstrip("/")
+            if directory_pattern in parts:
+                return True
+            if pattern.endswith("/") and (normalized == directory_pattern or normalized.startswith(f"{directory_pattern}/")):
+                return True
+            if fnmatch(normalized, pattern) or fnmatch(Path(normalized).name, pattern):
+                return True
+        return False
 
     def _is_test_path(self, path: str) -> bool:
         normalized = self._normalize_path(path)
