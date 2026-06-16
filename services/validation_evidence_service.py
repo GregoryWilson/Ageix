@@ -46,6 +46,9 @@ class ValidationEvidenceService:
                             if behavior_status == "PASS" and self._runtime_passed(runtime_evidence)
                             else "Behavioral or runtime verification did not pass for requirement-connected test evidence."
                         ),
+                        validation_stage="requirement_trace",
+                        evidence_type="test",
+                        source_file=test.file_path,
                         runtime_evidence=runtime_evidence,
                     )
                 )

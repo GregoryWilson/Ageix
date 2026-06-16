@@ -41,7 +41,13 @@ class PatchProposalContractService:
         if "changes" not in normalized or not self._non_empty_list(normalized.get("changes")):
             for alias in self.CHANGE_ALIASES:
                 value = normalized.get(alias)
-                if alias != "changes" and self._non_empty_list(value):
+                if alias == "changes":
+                    continue
+                if self._non_empty_list(value):
+                    normalized["changes"] = value
+                    normalized_from["changes"] = alias
+                    break
+                if "changes" not in normalized and isinstance(value, list):
                     normalized["changes"] = value
                     normalized_from["changes"] = alias
                     break
@@ -86,6 +92,18 @@ class PatchProposalContractService:
 
     def missing_required_fields(self, proposal: dict[str, Any]) -> list[str]:
         return [field for field in self.REQUIRED_FIELDS if field not in proposal]
+
+    def classify_validation_failure(self, proposal: dict[str, Any]) -> str | None:
+        if "changes" not in proposal:
+            return "missing_changes_field"
+        if not isinstance(proposal.get("changes"), list) or not proposal.get("changes"):
+            return "empty_patch_proposal"
+        for change in proposal.get("changes", []):
+            if not isinstance(change, dict):
+                return "invalid_patch_operation"
+            if change.get("operation") not in {"replace_file", "create_file"}:
+                return "invalid_patch_operation"
+        return None
 
     @staticmethod
     def _non_empty_list(value: Any) -> bool:

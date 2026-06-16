@@ -14,6 +14,9 @@ class ValidationEvidence(BaseModel):
     verification_source: str
     timestamp: str
     details: str | None = None
+    validation_stage: str | None = None
+    evidence_type: str | None = None
+    source_file: str | None = None
     runtime_evidence: list[TestExecutionEvidence] = Field(default_factory=list)
 
 

@@ -859,12 +859,13 @@ def validate_patch_proposal_deliverable(
     ]
 
     if missing:
+        failure_code = "missing_changes_field" if "changes" in missing else "missing_required_field"
         raise ValueError(
-            f"Patch proposal missing fields: {missing}"
+            f"{failure_code}: Patch proposal missing fields: {missing}"
         )
 
     if not isinstance(deliverable.get("changes"), list) or not deliverable.get("changes"):
-        raise ValueError("Patch proposal must include at least one change.")
+        raise ValueError("empty_patch_proposal: Patch proposal must include at least one change.")
 
     seen_paths: set[str] = set()
 
@@ -881,7 +882,7 @@ def validate_patch_proposal_deliverable(
 
         if operation not in {"replace_file", "create_file"}:
             raise ValueError(
-                f"Unsupported patch proposal operation: {operation}"
+                f"invalid_patch_operation: Unsupported patch proposal operation: {operation}"
             )
 
         if not isinstance(path, str) or not path.strip():

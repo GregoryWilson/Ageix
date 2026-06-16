@@ -112,13 +112,22 @@ class BehavioralSmokeVerifier:
 
     def _extract_expected_function_names(self, sources: list[str]) -> set[str]:
         names: set[str] = set()
+        ignored = {
+            "a", "an", "and", "or", "the", "that", "this", "with",
+            "create", "new", "utility", "test", "tests",
+        }
         for source in sources:
             if not isinstance(source, str):
                 continue
-            for match in re.finditer(r"\b([a-zA-Z_]\w*)\s+returns\b", source):
-                names.add(match.group(1))
-            for match in re.finditer(r"\bfunction\s+([a-zA-Z_]\w*)\b", source, re.IGNORECASE):
-                names.add(match.group(1))
+            for pattern in [
+                r"\b([a-zA-Z_]\w*)\s+returns\b",
+                r"\bfunction\s+([a-zA-Z_]\w*)\b",
+                r"\b(?:with|create|add)\s+(?:an?\s+)?([a-zA-Z_]\w*)\s+function\b",
+            ]:
+                for match in re.finditer(pattern, source, re.IGNORECASE):
+                    name = match.group(1)
+                    if name.lower() not in ignored:
+                        names.add(name)
         return names
 
     def _nearest_quoted_literal(self, changes: list[dict[str, Any]]) -> str | None:
