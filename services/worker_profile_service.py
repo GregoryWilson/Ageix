@@ -15,6 +15,7 @@ class WorkerProfileService:
             self.get_profile("research_worker"),
             self.get_profile("cloud_architect"),
             self.get_profile("ux_architect"),
+            self.get_profile("planner_implementation_architect"),
         ]
 
     def get_profile(self, worker_id: str) -> WorkerProfile:
@@ -70,6 +71,23 @@ class WorkerProfileService:
                 prompt_file="prompts/cloud_architect_system.txt",
                 input_contract="architecture_review_request",
                 output_contract="architecture_review",
+            ),
+            "planner_implementation_architect": WorkerProfile(
+                worker_id="planner_implementation_architect",
+                role="Implementation architect and work packet contract generator",
+                persona=WorkerPersona(
+                    name="Planner Implementation Architect",
+                    principles=["Planner owns implementation strategy", "Repository evidence before generation", "Requirements and tests are part of scope"],
+                    tone="precise and directive",
+                    biases=["Prefer explicit WorkPacket contracts", "Prefer companion tests for new code", "Prefer deterministic acceptance criteria"],
+                ),
+                capabilities=["work_packet_generation", "target_file_selection", "requirement_seeding", "acceptance_criteria_generation", "test_target_generation"],
+                constraints=["no_file_writes", "contract_generation_only"],
+                router_hints={"preferred_model_class": "cloud_deep_reasoning", "creativity": "low", "domain": "implementation_architecture"},
+                authority="block_planning",
+                prompt_file="prompts/planner_implementation_architect_system.txt",
+                input_contract="discovery_resolution",
+                output_contract="work_packet",
             ),
             "ux_architect": WorkerProfile(
                 worker_id="ux_architect",

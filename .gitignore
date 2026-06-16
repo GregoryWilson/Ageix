@@ -53,3 +53,6 @@ cache/
 
 # Runtime execution artifacts
 .ageix/runs/
+# User feedback / discovery answer artifacts
+.ageix/user_feedback/*
+!.ageix/user_feedback/.gitkeep

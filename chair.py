@@ -19,6 +19,7 @@ from services.promotion_readiness_service import PromotionReadinessService
 from services.governance_review_packet_service import GovernanceReviewPacketService
 from services.discovery_service import DiscoveryService
 from services.discovery_resolution_service import DiscoveryResolutionService
+from services.planner_work_packet_service import PlannerWorkPacketService
 from models.test_execution_evidence import TestExecutionResult
 
 MAX_PROPOSAL_QUALITY_RETRIES = 1
@@ -81,6 +82,7 @@ def build_plan_for_task(
     recent_messages: list[dict] | None = None,
     task_events: list[dict] | None = None,
     known_files: list[str] | None = None,
+    discovery_resolution: dict | None = None,
 ) -> dict:
     planner_turn = dispatch_agent(
         "planner",
@@ -92,6 +94,7 @@ def build_plan_for_task(
             "recent_messages": recent_messages,
             "task_events": task_events,
             "known_files": known_files,
+            "discovery_resolution": discovery_resolution,
         },
     )
 
@@ -251,6 +254,7 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
     agent_key = normalize_agent_key(step.get("agent", "research"))
 
     step["status"] = "in_progress"
+    work_packet = state.get("plan", {}).get("work_packet") or {}
 
     try:
         if agent_key == "dev_worker":
@@ -263,7 +267,7 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
                     {
                         "objective": step.get("objective", ""),
                         "instructions": step.get("instructions", ""),
-                        "target_files": step.get("target_files", []),
+                        "target_files": step.get("target_files", []) or work_packet.get("target_files", []),
                         "requested_operation": "create_file" if step.get("constraints", {}).get("allow_create_files") else "replace_file",
                         "constraints": step.get("constraints", {}),
                         "mode": "evidence_gathering",
@@ -275,7 +279,7 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
 
                 devworker_packet = build_devworker_packet(
                     objective=step.get("objective", ""),
-                    target_files=step.get("target_files", []),
+                    target_files=step.get("target_files", []) or work_packet.get("target_files", []),
                     repository_result=repository_content,
                     step_constraints=step.get("constraints", {}),
                     success_criteria=step.get("success_criteria", []),
@@ -283,7 +287,15 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
 
                 devworker_packet["instructions"] = step.get("instructions", "")
                 devworker_packet["expected_output"] = step.get("expected_output", {})
-                devworker_packet["success_criteria"] = step.get("success_criteria", [])
+                if work_packet:
+                    devworker_packet["work_packet"] = work_packet
+                    devworker_packet["success_criteria"] = work_packet.get("acceptance_criteria", step.get("success_criteria", []))
+                    devworker_packet["requirements"] = work_packet.get("requirements", [])
+                    devworker_packet["test_targets"] = work_packet.get("test_targets", [])
+                    devworker_packet["test_commands"] = work_packet.get("test_commands", [])
+                    devworker_packet["architecture_constraints"] = work_packet.get("architecture_constraints", [])
+                else:
+                    devworker_packet["success_criteria"] = step.get("success_criteria", [])
 
                 print(
                     "[Chair] DevWorker packet repo evidence count:",
@@ -343,6 +355,18 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
                     deliverable=deliverable,
                     devworker_packet=devworker_packet,
                 )
+
+                if not quality_result.passed:
+                    expanded_packet = expand_devworker_packet_for_companion_tests(
+                        devworker_packet=devworker_packet,
+                        quality_result=quality_result,
+                    )
+                    if expanded_packet is not devworker_packet:
+                        devworker_packet = expanded_packet
+                        quality_result = validate_patch_proposal_quality(
+                            deliverable=deliverable,
+                            devworker_packet=devworker_packet,
+                        )
 
                 if not quality_result.passed:
                     retry_packet = build_quality_retry_packet(
@@ -724,6 +748,9 @@ def build_devworker_packet(
         "objective": objective,
         "target_files": target_files,
         "success_criteria": success_criteria or [],
+        "test_targets": [],
+        "test_commands": [],
+        "requirements": [],
         "repo_evidence": repo_evidence,
         "dependency_hints": repository_result.get("dependency_hints", []),
         "repository_discovery": {
@@ -978,7 +1005,7 @@ def validate_patch_proof_of_delivery(
     )
     if require_test_evidence:
         runtime_result = TestExecutionService(Path(".")).execute(
-            collect_mapped_test_identifiers(trace_result),
+            devworker_packet.get("test_targets") or collect_mapped_test_identifiers(trace_result),
             proposal=deliverable,
         )
     else:
@@ -1008,6 +1035,37 @@ def build_delivery_feedback_result(trace_result, behavior_result, runtime_result
 def _is_test_path(path: str) -> bool:
     normalized = str(path).replace("\\", "/")
     return normalized.startswith("tests/") or normalized.split("/")[-1].startswith("test_")
+
+def expand_devworker_packet_for_companion_tests(*, devworker_packet: dict, quality_result) -> dict:
+    target_files = devworker_packet.get("target_files", [])
+    expanded = list(target_files)
+    service = PlannerWorkPacketService()
+
+    for violation in getattr(quality_result, "violations", []):
+        code = getattr(getattr(violation, "code", ""), "value", getattr(violation, "code", ""))
+        if code != "unauthorized_file_change":
+            continue
+        proposed_file = getattr(violation, "file_path", None)
+        if not proposed_file:
+            continue
+        expanded = service.expand_after_unauthorized_change(
+            target_files=expanded,
+            proposed_file=proposed_file,
+        )
+
+    if expanded == target_files:
+        return devworker_packet
+
+    retry_packet = dict(devworker_packet)
+    retry_packet["target_files"] = expanded
+    retry_packet["test_targets"] = sorted(
+        set(retry_packet.get("test_targets", []))
+        | {path for path in expanded if _is_test_path(path)}
+    )
+    retry_packet["constraints"] = dict(retry_packet.get("constraints", {}))
+    retry_packet["constraints"]["planner_expanded_companion_test_files"] = True
+    return retry_packet
+
 
 def build_quality_retry_packet(
     *,
@@ -1523,7 +1581,8 @@ if __name__ == "__main__":
             raise SystemExit(0)
         discovery_result = resolution_result.discovery
 
-    plan_result = build_plan_for_task(task=task)
+    resolution_payload = resolution_result.model_dump() if "resolution_result" in locals() else {}
+    plan_result = build_plan_for_task(task=task, discovery_resolution=resolution_payload)
     state = create_chair_state(task, plan_result)
     state["discovery"] = discovery_result.model_dump()
 

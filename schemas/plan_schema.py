@@ -2,6 +2,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from models.work_packet import WorkPacket
+
 
 class PlanStep(BaseModel):
     id: str
@@ -9,6 +11,8 @@ class PlanStep(BaseModel):
 
     objective: str
     instructions: str
+
+    target_files: list[str] = Field(default_factory=list)
 
     inputs: dict[str, Any] = Field(default_factory=dict)
 
@@ -26,5 +30,7 @@ class ExecutionPlan(BaseModel):
     strategy: str
 
     steps: list[PlanStep]
+
+    work_packet: WorkPacket | None = None
 
     metadata: dict[str, Any] = Field(default_factory=dict)

@@ -1,6 +1,7 @@
 import json
 from typing import Any
 from services.llm_service import invoke_llm
+from services.planner_work_packet_service import PlannerWorkPacketService
 from schemas.plan_schema import ExecutionPlan
 
 from utils.prompt_loader import load_prompt
@@ -17,6 +18,7 @@ def build_planner_prompt(
     recent_messages: list[dict] | None = None,
     task_events: list[dict] | None = None,
     known_files: list[str] | None = None,
+    discovery_resolution: dict | None = None,
 ) -> str:
     return f"""
 {SYSTEM_PROMPT}
@@ -43,6 +45,9 @@ Task Events:
 
 Known Project Files:
 {json.dumps(known_files or [], indent=2)}
+
+Discovery Resolution Evidence:
+{json.dumps(discovery_resolution or {}, indent=2)}
 """.strip()
 
 def extract_json(raw: str) -> dict:
@@ -110,6 +115,7 @@ def execute_planner_agent(
     recent_messages: list[dict] | None = None,
     task_events: list[dict] | None = None,
     known_files: list[str] | None = None,
+    discovery_resolution: dict | None = None,
 ) -> dict:
     prompt = build_planner_prompt(
         task=task,
@@ -119,6 +125,7 @@ def execute_planner_agent(
         recent_messages=recent_messages,
         task_events=task_events,
         known_files=known_files,
+        discovery_resolution=discovery_resolution,
     )
 
     result = invoke_llm(
@@ -184,12 +191,47 @@ def execute_planner_agent(
 
         if "strategy" not in data:
             data["strategy"] = "Execute steps in dependency order."
-        
+
+        work_packet = PlannerWorkPacketService().build(
+            objective=data.get("objective") or task.get("title", "Generated execution plan"),
+            task=task,
+            planner_data=data,
+            discovery_resolution=discovery_resolution or {},
+            known_files=known_files,
+        )
+        data["work_packet"] = work_packet.model_dump()
+
+        if not data.get("steps") and work_packet.target_files:
+            data["steps"] = [
+                {
+                    "id": "implement_work_packet",
+                    "agent": "dev_worker",
+                    "objective": work_packet.objective,
+                    "instructions": "Execute the Planner work packet exactly as authorized.",
+                    "target_files": work_packet.target_files,
+                    "inputs": {"work_packet": work_packet.model_dump()},
+                    "expected_output": {"result_type": "patch_proposal"},
+                    "constraints": {
+                        "allow_create_files": True,
+                        "require_requirement_trace": True,
+                    },
+                    "success_criteria": work_packet.acceptance_criteria,
+                    "dependencies": [],
+                }
+            ]
+
         
         for step in data.get("steps", []):
 
             if step.get("agent") == "dev_worker":
                 target_files = step.get("target_files") or step.get("inputs", {}).get("target_files")
+
+                if not target_files and data.get("work_packet"):
+                    target_files = data["work_packet"].get("target_files", [])
+                    step["target_files"] = target_files
+
+                if not step.get("success_criteria") and data.get("work_packet"):
+                    step["success_criteria"] = data["work_packet"].get("acceptance_criteria", [])
 
                 if not target_files:
                     warnings.append(
@@ -260,6 +302,7 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
         recent_messages=payload.get("recent_messages"),
         task_events=payload.get("task_events"),
         known_files=payload.get("known_files"),
+        discovery_resolution=payload.get("discovery_resolution"),
     )
 
 
