@@ -124,10 +124,52 @@ class PromotionReadinessService:
             return True
         if hasattr(requirement_trace, "traces"):
             traces = requirement_trace.traces
-            return any(not getattr(trace, "test_evidence", []) for trace in traces)
+            return any(
+                self._trace_requires_test_evidence(trace)
+                and not getattr(trace, "test_evidence", [])
+                for trace in traces
+            )
         if isinstance(requirement_trace, dict):
             traces = requirement_trace.get("traces", [])
             for trace in traces:
-                if isinstance(trace, dict) and not trace.get("test_evidence", []):
+                if not isinstance(trace, dict):
+                    continue
+                if self._trace_requires_test_evidence(trace) and not trace.get("test_evidence", []):
                     return True
         return False
+
+    def _trace_requires_test_evidence(self, trace: Any) -> bool:
+        if isinstance(trace, dict):
+            text = str(trace.get("requirement_text", "")).lower()
+        else:
+            text = str(getattr(trace, "requirement_text", "")).lower()
+
+        # File-existence criteria for implementation files are satisfied by the
+        # implementation evidence itself. Requiring test_evidence here causes
+        # promotion readiness to disagree with RequirementTraceService and
+        # ValidationEvidenceService.
+        if any(
+            marker in text
+            for marker in (
+                "authorized target file exists",
+                "target file exists",
+                "file exists in proposal",
+            )
+        ):
+            return "tests/" in text or "test_" in text
+
+        # Meta criteria are evaluated by the trace and validation evidence
+        # services rather than direct test evidence on the meta trace itself.
+        if "requirement trace covers" in text:
+            return False
+
+        return any(
+            marker in text
+            for marker in (
+                "test",
+                "pytest",
+                "unit test",
+                "generated test command passes",
+                "executable test target",
+            )
+        )

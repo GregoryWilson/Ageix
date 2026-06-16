@@ -37,7 +37,11 @@ class PlannerWorkPacketService:
             explicit_targets,
             [] if explicit_targets else self._infer_target_files(objective),
         )
-        target_files = self.expand_target_files(target_files)
+        objective_requests_tests = self._objective_requests_tests(objective)
+        target_files = self.expand_target_files(
+            target_files,
+            include_generic_tests=objective_requests_tests,
+        )
 
         test_targets = self._merge_strings(
             planner_data.get("test_targets", []),
@@ -85,10 +89,18 @@ class PlannerWorkPacketService:
             discovery_evidence=self._compact_discovery_evidence(discovery_resolution),
         )
 
-    def expand_target_files(self, target_files: list[str]) -> list[str]:
+    def expand_target_files(
+        self,
+        target_files: list[str],
+        *,
+        include_generic_tests: bool = False,
+    ) -> list[str]:
         expanded = list(target_files)
         for path in target_files:
-            companion = self._companion_test_file(path)
+            companion = self._companion_test_file(
+                path,
+                include_generic_tests=include_generic_tests,
+            )
             if companion and companion not in expanded:
                 expanded.append(companion)
         return sorted(dict.fromkeys(expanded))
@@ -128,7 +140,12 @@ class PlannerWorkPacketService:
             files.extend(inputs.get("target_files") or [])
         return files
 
-    def _companion_test_file(self, path: str) -> str | None:
+    def _companion_test_file(
+        self,
+        path: str,
+        *,
+        include_generic_tests: bool = False,
+    ) -> str | None:
         normalized = path.replace("\\", "/")
         if self._is_test_path(normalized) or not normalized.endswith(".py"):
             return None
@@ -139,16 +156,36 @@ class PlannerWorkPacketService:
             if name.endswith("_agent"):
                 name = name[:-6]
             return f"tests/test_{name}_agent.py"
+        if include_generic_tests:
+            return f"tests/test_{name}.py"
         return None
 
     def _is_obvious_companion_test(self, target_files: list[str], proposed_file: str) -> bool:
         if not self._is_test_path(proposed_file):
             return False
-        return proposed_file in [self._companion_test_file(path) for path in target_files]
+        return proposed_file in [
+            self._companion_test_file(path, include_generic_tests=True)
+            for path in target_files
+        ]
 
     def _is_test_path(self, path: str) -> bool:
         normalized = path.replace("\\", "/")
         return normalized.startswith("tests/") or Path(normalized).name.startswith("test_")
+
+    def _objective_requests_tests(self, objective: str) -> bool:
+        lowered = objective.lower()
+        test_markers = [
+            " test",
+            " tests",
+            "pytest",
+            "unit test",
+            "deterministic test",
+            "deterministic tests",
+            "add tests",
+            "with tests",
+            "and tests",
+        ]
+        return any(marker in lowered for marker in test_markers)
 
     def _requirement_seeds(self, objective: str, target_files: list[str], discovery_resolution: dict[str, Any]) -> list[str]:
         reqs = [f"REQ-001 Implement objective: {objective}"]
@@ -162,7 +199,7 @@ class PlannerWorkPacketService:
         for implication in self._research_implications(discovery_resolution):
             reqs.append(f"REQ-{index:03d} {implication}")
             index += 1
-        if any(self._is_test_path(path) for path in target_files):
+        if any(self._is_test_path(path) for path in target_files) or self._objective_requests_tests(objective):
             reqs.append(f"REQ-{index:03d} Provide deterministic tests")
         return reqs
 

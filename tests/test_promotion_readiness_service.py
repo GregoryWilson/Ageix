@@ -22,6 +22,7 @@ class FailingResult(BaseModel):
 
 
 class Trace(BaseModel):
+    requirement_text: str = "Executable test target exists: tests/test_example.py"
     test_evidence: list[str] = ["tests/test_example.py"]
 
 
@@ -36,7 +37,10 @@ class TraceResult(BaseModel):
 
 class MissingTraceCoverageResult(BaseModel):
     status: str = "pass"
-    traces: list[Trace] = [Trace(test_evidence=[])]
+    traces: list[Trace] = [Trace(
+        requirement_text="Executable test target exists: tests/test_example.py",
+        test_evidence=[],
+    )]
 
     @property
     def passed(self):
@@ -118,3 +122,32 @@ def test_promotion_readiness_detects_missing_test_coverage(tmp_path: Path):
 
     codes = [blocker.code for blocker in result.blockers]
     assert "MISSING_TEST_COVERAGE" in codes
+
+
+class FileExistenceTrace(BaseModel):
+    requirement_text: str = "Authorized target file exists in proposal: utils/math_helpers.py"
+    test_evidence: list[str] = []
+
+
+class FileExistenceTraceResult(BaseModel):
+    status: str = "pass"
+    traces: list[FileExistenceTrace] = [FileExistenceTrace()]
+
+    @property
+    def passed(self):
+        return True
+
+
+def test_promotion_readiness_does_not_require_tests_for_file_existence_trace(tmp_path: Path):
+    result = PromotionReadinessService(tmp_path).evaluate(
+        proposal_quality=PassingResult(),
+        requirement_trace=FileExistenceTraceResult(),
+        behavior_verification=PassingResult(),
+        validation_evidence=PassingResult(),
+        runtime_validation=PassingResult(),
+        confidence_summary={"overall_confidence": 0.90},
+    )
+
+    codes = [blocker.code for blocker in result.blockers]
+    assert "MISSING_TEST_COVERAGE" not in codes
+    assert result.status == "ready"

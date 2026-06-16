@@ -132,3 +132,35 @@ def test_validation_evidence_reports_trace_diagnostics_for_real_missing_test_evi
     assert violation.code == "MISSING_TEST_EVIDENCE"
     assert "implementation_evidence_count" in violation.actual
     assert "requires_mapped_test_evidence" in violation.actual
+
+
+def test_planner_adds_generic_companion_test_when_objective_requests_tests():
+    from services.planner_work_packet_service import PlannerWorkPacketService
+
+    packet = PlannerWorkPacketService().build(
+        objective="Create utils/string_helper.py with a reverse_string function and deterministic tests.",
+        task={"target_files": ["utils/string_helper.py"]},
+        known_files=[],
+    )
+
+    assert "utils/string_helper.py" in packet.target_files
+    assert "tests/test_string_helper.py" in packet.target_files
+    assert packet.test_targets == ["tests/test_string_helper.py"]
+    assert "PYTHONPATH=. python -m pytest tests/test_string_helper.py" in packet.test_commands
+    assert any("deterministic tests" in req.lower() for req in packet.requirements)
+    assert "Executable test target exists: tests/test_string_helper.py" in packet.acceptance_criteria
+    assert "Generated test command passes" in packet.acceptance_criteria
+
+
+def test_planner_does_not_add_generic_companion_test_without_test_request():
+    from services.planner_work_packet_service import PlannerWorkPacketService
+
+    packet = PlannerWorkPacketService().build(
+        objective="Create utils/string_helper.py with a reverse_string function.",
+        task={"target_files": ["utils/string_helper.py"]},
+        known_files=[],
+    )
+
+    assert packet.target_files == ["utils/string_helper.py"]
+    assert packet.test_targets == []
+    assert packet.test_commands == []
