@@ -78,5 +78,11 @@ git add -A
 echo "Committing changes..."
 git commit -m "$commit_message"
 
+git status
+PYTHONPATH=. python -m pytest
+rm -rf ../ageix_repo.zip
+git archive --format=zip --prefix=ageix/ --output ../ageix_repo.zip HEAD
+
 echo "Done."
 git status --short
+
