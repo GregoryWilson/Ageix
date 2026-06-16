@@ -1,7 +1,0 @@
-{
-  "jira_platform": "dongle",
-  "jira_auth_method": "api_token",
-  "integration_use_case": "create_and_comment",
-  "dependency_policy": "stdlib_only",
-  "config_location": "environment_variables"
-}
