@@ -18,3 +18,7 @@ class WorkPacket(BaseModel):
     test_commands: list[str] = Field(default_factory=list)
     architecture_constraints: list[str] = Field(default_factory=list)
     discovery_evidence: dict[str, Any] = Field(default_factory=dict)
+    impacted_files: list[str] = Field(default_factory=list)
+    impacted_tests: list[str] = Field(default_factory=list)
+    companion_files: list[str] = Field(default_factory=list)
+    impact_summary: dict[str, Any] = Field(default_factory=dict)

@@ -59,5 +59,32 @@
     ],
     "blocked_dependencies": [],
     "unknown_dependency_policy": "fail"
+  },
+  "repository_impact": {
+    "enabled": true,
+    "max_depth": 2,
+    "max_nodes": 75,
+    "max_dependents_per_file": 25,
+    "retry_on_limit": true,
+    "retry_max_depth": 4,
+    "retry_max_nodes": 200,
+    "retry_max_dependents_per_file": 75,
+    "retry_policy": "validation_failure_only",
+    "include_tests": true,
+    "include_runtime_files": true,
+    "include_companion_tests": true,
+    "impacted_test_depth": 1,
+    "auto_add_companion_tests": true,
+    "auto_add_impacted_tests": true,
+    "recommend_indirect_dependents": true,
+    "circular_dependency_policy": "warn_stop_path",
+    "unresolved_import_policy": "warn",
+    "unknown_impact_policy": "warn",
+    "limit_policy": "warn"
+  },
+  "cloud_context": {
+    "include_impact_summary": true,
+    "include_full_impact_evidence": false,
+    "max_impact_items": 10
   }
 }

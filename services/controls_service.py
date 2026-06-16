@@ -133,6 +133,33 @@ class ControlsService:
             "blocked_dependencies": [],
             "unknown_dependency_policy": "fail",
         },
+        "repository_impact": {
+            "enabled": True,
+            "max_depth": 2,
+            "max_nodes": 75,
+            "max_dependents_per_file": 25,
+            "retry_on_limit": True,
+            "retry_max_depth": 4,
+            "retry_max_nodes": 200,
+            "retry_max_dependents_per_file": 75,
+            "retry_policy": "validation_failure_only",
+            "include_tests": True,
+            "include_runtime_files": True,
+            "include_companion_tests": True,
+            "impacted_test_depth": 1,
+            "auto_add_companion_tests": True,
+            "auto_add_impacted_tests": True,
+            "recommend_indirect_dependents": True,
+            "circular_dependency_policy": "warn_stop_path",
+            "unresolved_import_policy": "warn",
+            "unknown_impact_policy": "warn",
+            "limit_policy": "warn",
+        },
+        "cloud_context": {
+            "include_impact_summary": True,
+            "include_full_impact_evidence": False,
+            "max_impact_items": 10,
+        },
     }
 
     def __init__(self, repo_root: Path):

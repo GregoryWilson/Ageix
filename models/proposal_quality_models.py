@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from models.dependency_intelligence import DependencyValidationEvidence
+from models.repository_impact import RepositoryImpactEvidence
 
 
 class ProposalQualityFailureCode(str, Enum):
@@ -41,6 +42,9 @@ class ProposalQualityResult(BaseModel):
     violations: list[ProposalQualityViolation] = Field(default_factory=list)
     requirement_trace: list[RequirementTrace] = Field(default_factory=list)
     dependency_evidence: list[DependencyValidationEvidence] = Field(default_factory=list)
+    impact_evidence: list[RepositoryImpactEvidence] = Field(default_factory=list)
+    impact_summary: dict = Field(default_factory=dict)
+    impact_warnings: list[str] = Field(default_factory=list)
     research_required: bool = False
     escalation_recommended: bool = False
     escalation: dict = Field(default_factory=dict)

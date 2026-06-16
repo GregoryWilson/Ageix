@@ -6,6 +6,7 @@ from typing import Any
 
 from models.work_packet import WorkPacket
 from services.repository_evidence_service import RepositoryEvidenceService
+from services.repository_impact_service import RepositoryImpactService
 
 
 class PlannerWorkPacketService:
@@ -43,9 +44,20 @@ class PlannerWorkPacketService:
             include_generic_tests=objective_requests_tests,
         )
 
+        impact_result = RepositoryImpactService(self.repo_root).analyze(
+            target_files=target_files,
+            proposal={"changes": []},
+        )
+        target_files = self._merge_strings(
+            target_files,
+            impact_result.companion_files,
+            impact_result.impacted_tests,
+        )
+
         test_targets = self._merge_strings(
             planner_data.get("test_targets", []),
             [path for path in target_files if self._is_test_path(path)],
+            impact_result.impacted_tests,
         )
         test_commands = self._merge_strings(
             planner_data.get("test_commands", []),
@@ -87,6 +99,10 @@ class PlannerWorkPacketService:
             test_commands=test_commands,
             architecture_constraints=architecture_constraints,
             discovery_evidence=self._compact_discovery_evidence(discovery_resolution),
+            impacted_files=impact_result.impacted_files,
+            impacted_tests=impact_result.impacted_tests,
+            companion_files=impact_result.companion_files,
+            impact_summary=impact_result.summary,
         )
 
     def expand_target_files(

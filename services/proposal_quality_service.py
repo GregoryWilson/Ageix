@@ -14,6 +14,7 @@ from models.proposal_quality_models import (
     RequirementTrace,
 )
 from services.dependency_intelligence_service import DependencyIntelligenceService
+from services.repository_impact_service import RepositoryImpactService
 from models.dependency_intelligence import (
     DependencyClassification,
     DependencyValidationOutcome,
@@ -152,6 +153,19 @@ class ProposalQualityService:
                 )
             )
 
+        impact_result = RepositoryImpactService(self.repo_root).analyze(
+            target_files=target_files,
+            proposal=proposal,
+        )
+        impact_warnings = list(impact_result.violations)
+        proposed_tests = {path for path in changed_path_set if self._is_test_path(path)}
+        missing_impacted_tests = [
+            path for path in impact_result.impacted_tests
+            if path not in proposed_tests and path in target_file_set
+        ]
+        for path in missing_impacted_tests:
+            impact_warnings.append(f"impacted_test_missing: {path}")
+
         for change in changes:
             path = change.get("path")
             content = change.get("content")
@@ -200,6 +214,15 @@ class ProposalQualityService:
                     )
                 )
 
+        if impact_result.violations and RepositoryImpactService(self.repo_root).should_retry_expanded(impact_result):
+            expanded_impact_result = RepositoryImpactService(self.repo_root).analyze(
+                target_files=target_files,
+                proposal=proposal,
+                expanded=True,
+            )
+            impact_result = expanded_impact_result
+            impact_warnings = sorted(dict.fromkeys(impact_warnings + expanded_impact_result.violations))
+
         if not escalation and self._objective_mentions_external_api(objective):
             known_content = combined_content.lower()
             if not any(name.lower() in known_content for name in allowed_dependencies):
@@ -219,6 +242,9 @@ class ProposalQualityService:
             escalation_recommended=escalation_recommended,
             escalation=escalation,
             dependency_evidence=dependency_evidence,
+            impact_evidence=impact_result.evidence,
+            impact_summary=impact_result.summary,
+            impact_warnings=sorted(dict.fromkeys(impact_warnings)),
         )
 
     def _extract_required_literals(self, sources: list[str]) -> set[str]:
