@@ -93,6 +93,42 @@ class PatchProposalContractService:
     def missing_required_fields(self, proposal: dict[str, Any]) -> list[str]:
         return [field for field in self.REQUIRED_FIELDS if field not in proposal]
 
+
+    def validate_approved_scope(
+        self,
+        proposal: dict[str, Any],
+        *,
+        approved_scope: list[str] | None = None,
+    ) -> None:
+        """Reject DevWorker proposals that modify files outside Planner-approved scope."""
+        scope = set(approved_scope or [])
+        if not scope:
+            return
+        proposed = {
+            str(change.get("path", "")).strip()
+            for change in proposal.get("changes", []) or []
+            if isinstance(change, dict)
+        }
+        unapproved = sorted(path for path in proposed if path and path not in scope)
+        if unapproved:
+            raise ValueError(
+                "scope_validation_failed: proposal_targets must be within approved_scope; "
+                f"unapproved={unapproved}"
+            )
+
+    def architecture_scope_exceeded_request(
+        self,
+        *,
+        requested_files: list[str],
+        reason: str = "architecture_scope_exceeded",
+    ) -> dict[str, Any]:
+        return {
+            "result_type": "context_request",
+            "reason": reason,
+            "requested_files": sorted(dict.fromkeys(requested_files)),
+            "recommended_planner_revisit": True,
+        }
+
     def classify_validation_failure(self, proposal: dict[str, Any]) -> str | None:
         if "changes" not in proposal:
             return "missing_changes_field"

@@ -113,5 +113,21 @@
     "include_impact_summary": true,
     "include_full_impact_evidence": false,
     "max_impact_items": 10
+  },
+  "evidence_context": {
+    "mode": "target_scoped",
+    "include_full_repo_inventory": false,
+    "include_target_files": true,
+    "include_impacted_files": true,
+    "include_impacted_tests": true,
+    "include_dependency_neighbors": true,
+    "max_files": 20,
+    "max_chars": 30000,
+    "overflow_policy": "summarize",
+    "code_context_mode": "sliced",
+    "allow_full_file_fallback": true,
+    "max_slice_lines_per_file": 120,
+    "include_imports": true,
+    "include_adjacent_helpers": true
   }
 }

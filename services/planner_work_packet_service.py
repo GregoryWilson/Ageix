@@ -88,6 +88,14 @@ class PlannerWorkPacketService:
             self.select_repository_examples(target_files, known_files),
         )
 
+        approved_target_files = [path for path in target_files if not self._is_test_path(path)]
+        approved_companion_tests = self._merge_strings(
+            [path for path in target_files if self._is_test_path(path)],
+            impact_result.companion_files,
+            impact_result.impacted_tests,
+        )
+        approved_scope = self._merge_strings(approved_target_files, approved_companion_tests)
+
         return WorkPacket(
             objective=objective,
             implementation_strategy=implementation_strategy,
@@ -103,6 +111,9 @@ class PlannerWorkPacketService:
             impacted_tests=impact_result.impacted_tests,
             companion_files=impact_result.companion_files,
             impact_summary=impact_result.summary,
+            approved_target_files=approved_target_files,
+            approved_companion_tests=approved_companion_tests,
+            approved_scope=approved_scope,
         )
 
     def expand_target_files(

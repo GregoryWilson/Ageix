@@ -22,3 +22,7 @@ class WorkPacket(BaseModel):
     impacted_tests: list[str] = Field(default_factory=list)
     companion_files: list[str] = Field(default_factory=list)
     impact_summary: dict[str, Any] = Field(default_factory=dict)
+    approved_target_files: list[str] = Field(default_factory=list)
+    approved_companion_tests: list[str] = Field(default_factory=list)
+    approved_scope: list[str] = Field(default_factory=list)
+    context_selection_evidence: dict[str, Any] = Field(default_factory=dict)

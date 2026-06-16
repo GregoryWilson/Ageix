@@ -187,6 +187,22 @@ class ControlsService:
             "include_full_impact_evidence": False,
             "max_impact_items": 10,
         },
+        "evidence_context": {
+            "mode": "target_scoped",
+            "include_full_repo_inventory": False,
+            "include_target_files": True,
+            "include_impacted_files": True,
+            "include_impacted_tests": True,
+            "include_dependency_neighbors": True,
+            "max_files": 20,
+            "max_chars": 30000,
+            "overflow_policy": "summarize",
+            "code_context_mode": "sliced",
+            "allow_full_file_fallback": True,
+            "max_slice_lines_per_file": 120,
+            "include_imports": True,
+            "include_adjacent_helpers": True,
+        },
     }
 
     def __init__(self, repo_root: Path):

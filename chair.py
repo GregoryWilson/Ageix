@@ -841,9 +841,19 @@ def normalize_patch_proposal_deliverable(
 
 
 def validate_patch_proposal_deliverable(
-    deliverable: dict[str, Any]
+    deliverable: dict[str, Any],
+    *,
+    approved_scope: list[str] | None = None,
 ) -> None:
 
+    if deliverable.get("result_type") == "context_request":
+        if deliverable.get("reason") != "architecture_scope_exceeded":
+            raise ValueError("Unsupported context request reason.")
+        if deliverable.get("recommended_planner_revisit") is not True:
+            raise ValueError("Scope context request must recommend planner revisit.")
+        return
+
+    service = PatchProposalContractService()
     required = PatchProposalContractService.REQUIRED_FIELDS
 
     forbidden = [
@@ -867,6 +877,8 @@ def validate_patch_proposal_deliverable(
     if not isinstance(deliverable.get("changes"), list) or not deliverable.get("changes"):
         raise ValueError("empty_patch_proposal: Patch proposal must include at least one change.")
 
+    service.validate_approved_scope(deliverable, approved_scope=approved_scope)
+
     seen_paths: set[str] = set()
 
     for change in deliverable["changes"]:
@@ -874,11 +886,12 @@ def validate_patch_proposal_deliverable(
         operation = change.get("operation")
         content = change.get("content")
 
-        for marker in forbidden:
-            if marker.lower() in content.lower():
-                raise ValueError(
-                    f"{path} contains placeholder content."
-                )
+        if isinstance(content, str):
+            for marker in forbidden:
+                if marker.lower() in content.lower():
+                    raise ValueError(
+                        f"{path} contains placeholder content."
+                    )
 
         if operation not in {"replace_file", "create_file"}:
             raise ValueError(
