@@ -42,6 +42,8 @@ class ConsultationControls:
     max_evidence_tokens_per_request: int = 2000
     max_total_evidence_tokens: int = 8000
     max_total_requests: int = 6
+    minimum_evidence_confidence: float = 0.85
+    max_interactive_turns: int = 5
     allow_followup_evidence_requests: bool = True
     enable_prompt_caching: bool = True
     default_model: str = "anthropic/claude-sonnet-4.6"
@@ -125,6 +127,8 @@ class ControlsService:
             "max_evidence_tokens_per_request": 2000,
             "max_total_evidence_tokens": 8000,
             "max_total_requests": 6,
+            "minimum_evidence_confidence": 0.85,
+            "max_interactive_turns": 5,
             "allow_followup_evidence_requests": True,
             "enable_prompt_caching": True,
             "default_model": "anthropic/claude-sonnet-4.6",

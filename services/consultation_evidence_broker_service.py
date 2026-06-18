@@ -38,7 +38,8 @@ class ConsultationEvidenceBrokerService:
         return response
 
     def _validate_session_ready(self, session: dict[str, Any]) -> None:
-        if session.get("status") != "approved" or not session.get("approval"):
+        ready_statuses = {"approved", "waiting_for_participant", "waiting_for_evidence", "response_recorded"}
+        if session.get("status") not in ready_statuses or not session.get("approval"):
             raise PermissionError("Consultation evidence may only be served after approval.")
 
     def _find_evidence_item(self, session: dict[str, Any], evidence_id: str) -> dict[str, Any]:

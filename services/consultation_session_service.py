@@ -35,6 +35,8 @@ class ConsultationSessionService:
             "evidence_requests": [],
             "evidence_responses": [],
             "consultation_responses": [],
+            "turns": [],
+            "current_turn": 0,
             "token_usage": {
                 "estimated_input_tokens": proposal.token_estimate.estimated_input_tokens,
                 "estimated_output_tokens": proposal.token_estimate.estimated_output_tokens,
