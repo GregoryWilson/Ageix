@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class EscalationDecisionAction(str, Enum):
@@ -57,10 +57,18 @@ class EvidenceDictionaryItem(BaseModel):
         "test_targets",
     ]
     summary: str
+    type: str | None = None
     estimated_tokens: int = 0
     paths: list[str] = Field(default_factory=list)
     requestable: bool = True
     reference_only: bool = False
+    payload: Any | None = None
+
+    @model_validator(mode="after")
+    def populate_type_alias(self) -> "EvidenceDictionaryItem":
+        if self.type is None:
+            self.type = self.evidence_type
+        return self
 
 
 class EvidenceDictionary(BaseModel):

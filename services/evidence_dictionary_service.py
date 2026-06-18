@@ -103,6 +103,7 @@ class EvidenceDictionaryService:
             paths=self._unique(paths or []),
             requestable=requestable,
             reference_only=reference_only,
+            payload=payload,
         )
 
     def _unique(self, values: list[str]) -> list[str]:
