@@ -129,5 +129,21 @@
     "max_slice_lines_per_file": 120,
     "include_imports": true,
     "include_adjacent_helpers": true
+  },
+  "consultation": {
+    "enabled": true,
+    "require_human_approval": true,
+    "allow_cloud_consultation": true,
+    "allow_human_guidance": true,
+    "max_input_tokens": 12000,
+    "max_output_tokens": 1500,
+    "max_followup_rounds": 2,
+    "max_evidence_requests_per_round": 3,
+    "enable_prompt_caching": true,
+    "default_model": "anthropic/claude-sonnet-4.6",
+    "planner_confidence_threshold": 0.7,
+    "target_resolution_confidence_threshold": 0.85,
+    "proposal_quality_failure_threshold": 1,
+    "context_complexity_threshold": 10
   }
 }

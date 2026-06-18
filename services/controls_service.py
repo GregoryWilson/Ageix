@@ -30,6 +30,24 @@ class ValidationControls:
 
 
 @dataclass(frozen=True)
+class ConsultationControls:
+    enabled: bool = True
+    require_human_approval: bool = True
+    allow_cloud_consultation: bool = True
+    allow_human_guidance: bool = True
+    max_input_tokens: int = 12000
+    max_output_tokens: int = 1500
+    max_followup_rounds: int = 2
+    max_evidence_requests_per_round: int = 3
+    enable_prompt_caching: bool = True
+    default_model: str = "anthropic/claude-sonnet-4.6"
+    planner_confidence_threshold: float = 0.70
+    target_resolution_confidence_threshold: float = 0.85
+    proposal_quality_failure_threshold: int = 1
+    context_complexity_threshold: int = 10
+
+
+@dataclass(frozen=True)
 class GovernanceControls:
     require_human_review: bool = True
     allow_auto_promotion: bool = False
@@ -90,6 +108,22 @@ class ControlsService:
         "validation": {
             "require_validation": True,
             "allow_validation_bypass": False,
+        },
+        "consultation": {
+            "enabled": True,
+            "require_human_approval": True,
+            "allow_cloud_consultation": True,
+            "allow_human_guidance": True,
+            "max_input_tokens": 12000,
+            "max_output_tokens": 1500,
+            "max_followup_rounds": 2,
+            "max_evidence_requests_per_round": 3,
+            "enable_prompt_caching": True,
+            "default_model": "anthropic/claude-sonnet-4.6",
+            "planner_confidence_threshold": 0.70,
+            "target_resolution_confidence_threshold": 0.85,
+            "proposal_quality_failure_threshold": 1,
+            "context_complexity_threshold": 10,
         },
         "governance": {
             "require_human_review": True,
@@ -224,6 +258,7 @@ class ControlsService:
         self.repair = RepairControls(**self._config["repair"])
         self.cloud = CloudControls(**self._config["cloud"])
         self.validation = ValidationControls(**self._config["validation"])
+        self.consultation = ConsultationControls(**self._config["consultation"])
         self.governance = GovernanceControls(**self._config["governance"])
         self.promotion_confidence = PromotionConfidenceControls(**self._config["promotion_confidence"])
         self.promotion_governance = PromotionGovernanceControls(**self._config["promotion_governance"])
@@ -275,6 +310,7 @@ class ControlsService:
         governance = config.setdefault("governance", {})
         validation = config.setdefault("validation", {})
         promotion_governance = config.setdefault("promotion_governance", {})
+        consultation = config.setdefault("consultation", {})
 
         governance["allow_auto_promotion"] = False
         governance["allow_auto_commit"] = False
@@ -282,6 +318,7 @@ class ControlsService:
 
         validation["allow_validation_bypass"] = False
         promotion_governance["allow_promotion_with_blockers"] = False
+        consultation["require_human_approval"] = True
 
     def get_raw_config(self) -> dict[str, Any]:
         return deepcopy(self._config)
