@@ -159,7 +159,7 @@ def test_external_consultation_submit(tmp_path: Path):
     assert response.success is True
     updated = ProposalService(tmp_path).get_proposal(proposal.proposal_id)
     assert updated.status == ProposalStatus.CONSULTATION_SUBMITTED
-    assert "architecture_review" in updated.linked_consultations
+    assert response.result["consultation_id"] in updated.linked_consultations
 
 
 def test_proposal_approval_path(tmp_path: Path):

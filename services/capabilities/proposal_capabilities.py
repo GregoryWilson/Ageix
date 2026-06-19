@@ -5,8 +5,6 @@ from typing import Any
 
 from models.capability_definition import CapabilityDefinition
 from models.proposal import Proposal, ProposalStatus, ProposalType
-from models.evidence_access_proposal import EvidenceAccessProposal
-from services.evidence_access_proposal_service import EvidenceAccessProposalService
 from services.proposal_evaluation_service import ProposalEvaluationService
 from services.proposal_service import ProposalService
 
@@ -16,27 +14,6 @@ def register_capabilities(repo_root: Path):
 
     def proposal_submit(arguments: dict[str, Any]) -> dict[str, Any]:
         try:
-            if str(arguments.get("proposal_type") or "") == "evidence_access":
-                evidence_proposal = EvidenceAccessProposal(
-                    session_id=str(arguments.get("session_id") or ""),
-                    agent_id=str(arguments.get("agent_id") or ""),
-                    project_id=str(arguments.get("project_id") or ""),
-                    objective=str(arguments.get("objective") or ""),
-                    reason=str(arguments.get("reason") or ""),
-                    requested_evidence=arguments.get("requested_evidence") or [],
-                    human_approval=arguments.get("human_approval"),
-                )
-                decision = EvidenceAccessProposalService(repo_root).evaluate(evidence_proposal)
-                return {
-                    "success": decision.decision == "approved",
-                    "result": decision.model_dump(),
-                    "metadata": {
-                        "proposal_type": "evidence_access",
-                        "requires_proposal": True,
-                        **decision.metadata,
-                    },
-                    "error": None if decision.decision == "approved" else decision.decision,
-                }
             proposal = Proposal(
                 project_id=str(arguments.get("project_id") or ""),
                 session_id=str(arguments.get("session_id") or ""),

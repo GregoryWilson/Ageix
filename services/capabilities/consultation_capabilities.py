@@ -8,6 +8,7 @@ from models.capability_definition import CapabilityDefinition
 from models.consultation_recommendation import ConsultationDisposition
 from models.consultation_response import ConsultationResponse
 from services.proposal_service import ProposalService
+from services.consultation_evidence_review_service import ConsultationEvidenceReviewService
 
 
 def _consultation_root(repo_root: Path) -> Path:
@@ -78,20 +79,25 @@ def register_capabilities(repo_root: Path):
             "response": response.model_dump(),
         }
         (root / "session.json").write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
-        ProposalService(repo_root).link_consultation(proposal_id, consultation_type)
+        ProposalService(repo_root).link_consultation(proposal_id, consultation_id)
         ProposalService(repo_root).update_status(proposal_id, "consultation_submitted")
         return {"success": True, "result": payload, "metadata": {"proposal_id": proposal_id, "consultation_id": consultation_id}}
 
-    def consultation_get(arguments: dict[str, Any]) -> dict[str, Any]:
+    def consultation_details(arguments: dict[str, Any]) -> dict[str, Any]:
         consultation_id = str(arguments.get("consultation_id") or "")
         if not consultation_id:
             return {"success": False, "result": {}, "error": "consultation_id_required"}
-        path = _consultation_root(repo_root) / consultation_id / "session.json"
-        if not path.exists():
+        try:
+            session = ConsultationEvidenceReviewService(repo_root).details(consultation_id)
+        except FileNotFoundError:
             return {"success": False, "result": {}, "error": "consultation_not_found"}
-        session = json.loads(path.read_text(encoding="utf-8"))
         result = {
             **_summary(session),
+            "proposal_id": session.get("proposal_id"),
+            "external_agent_submitted": session.get("external_agent_submitted", False),
+            "response": session.get("response"),
+            "review": session.get("review", {}),
+            "review_recommendations": session.get("review_recommendations", []),
             "approval": session.get("approval", {}),
             "consultation_responses": session.get("consultation_responses", []),
             "evidence_requests": session.get("evidence_requests", []),
@@ -119,10 +125,10 @@ def register_capabilities(repo_root: Path):
             description="List governed consultation summaries.",
         ), consultation_list),
         (CapabilityDefinition(
-            capability_id="consultation.get",
+            capability_id="consultation.details",
             category="consultation",
             access_level="read",
-            handler="consultation.get",
-            description="Return one governed consultation result.",
-        ), consultation_get),
+            handler="consultation.details",
+            description="Return one governed consultation result by ID.",
+        ), consultation_details),
     ]

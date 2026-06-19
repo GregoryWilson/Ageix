@@ -22,6 +22,8 @@ from services.discovery_resolution_service import DiscoveryResolutionService
 from services.planner_work_packet_service import PlannerWorkPacketService
 from services.patch_proposal_contract_service import PatchProposalContractService
 from models.test_execution_evidence import TestExecutionResult
+from models.capability_request import CapabilityRequest
+from services.capability_execution_service import CapabilityExecutionService
 
 MAX_PROPOSAL_QUALITY_RETRIES = 1
 
@@ -1650,7 +1652,31 @@ def parse_chair_args() -> argparse.Namespace:
     parser.add_argument("--project-id", default="ageix", help="Project identifier.")
     parser.add_argument("--answer-file", help="JSON file containing structured discovery answers.")
     parser.add_argument("--allow-assumptions", action="store_true", help="Allow planning to proceed with explicit assumptions when only user clarification is missing.")
+    parser.add_argument("--mode", choices=["workflow", "proposal"], default="workflow", help="Explicit Chair mode. Use proposal to submit a governed proposal instead of running workflow discovery.")
+    parser.add_argument("--proposal-type", default="investigation", help="Proposal type used with --mode proposal.")
+    parser.add_argument("--session-id", default="chair-cli-session", help="External agent session id used with --mode proposal.")
+    parser.add_argument("--agent-id", default="chair_cli", help="Agent id used with --mode proposal.")
     return parser.parse_args()
+
+def submit_chair_proposal_mode(args: argparse.Namespace, objective_envelope: dict[str, Any]) -> dict[str, Any]:
+    objective = objective_envelope["description"]
+    response = CapabilityExecutionService(Path(".")).execute(CapabilityRequest(
+        capability_id="proposal.submit",
+        session_id=args.session_id,
+        agent_id=args.agent_id,
+        arguments={
+            "project_id": args.project_id,
+            "objective": objective,
+            "proposal_type": args.proposal_type,
+        },
+    ))
+    return {
+        "chair_action": "proposal_submitted" if response.success else "proposal_submission_failed",
+        "mode": "proposal",
+        "status": "submitted" if response.success else "failed",
+        "capability_response": response.model_dump(),
+        "executed_count": 0,
+    }
 
 #-----------------------------------------------------------------------#
 
@@ -1666,6 +1692,10 @@ if __name__ == "__main__":
     )
 
     sprint_prompt = objective_envelope["description"]
+
+    if args.mode == "proposal":
+        print(json.dumps(submit_chair_proposal_mode(args, objective_envelope), indent=2))
+        raise SystemExit(0)
 
     task = {
         "title": "Ageix Sprint 10.0",

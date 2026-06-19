@@ -207,11 +207,10 @@ def test_evidence_request_capability_requires_proposal_and_audit(tmp_path: Path)
     (tmp_path / "foo.py").write_text("def run():\n    return True\n", encoding="utf-8")
 
     response = CapabilityExecutionService(tmp_path).execute(CapabilityRequest(
-        capability_id="proposal.submit",
+        capability_id="evidence.proposal.submit",
         session_id="thread-1",
         agent_id="lex",
         arguments={
-            "proposal_type": "evidence_access",
             "project_id": "Ageix",
             "objective": "Review run function",
             "reason": "Need exact function implementation",

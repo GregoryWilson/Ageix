@@ -40,6 +40,18 @@
       "session_id": "smoke-12-1-session-project",
       "updated_at": "2026-06-19T14:29:51.865495+00:00"
     },
+    "smoke-13-1": {
+      "agent_id": "lex",
+      "capabilities_used": [
+        "proposal.submit"
+      ],
+      "created_at": "2026-06-19T17:08:40.053843+00:00",
+      "last_activity": "2026-06-19T17:08:40.054039+00:00",
+      "metadata": {},
+      "project_id": "Ageix_Test",
+      "session_id": "smoke-13-1",
+      "updated_at": "2026-06-19T17:08:40.054039+00:00"
+    },
     "smoke-13-session": {
       "agent_id": "lex",
       "capabilities_used": [
@@ -56,5 +68,5 @@
       "updated_at": "2026-06-19T15:15:59.023539+00:00"
     }
   },
-  "updated_at": "2026-06-19T15:15:59.023539+00:00"
+  "updated_at": "2026-06-19T17:08:40.054039+00:00"
 }

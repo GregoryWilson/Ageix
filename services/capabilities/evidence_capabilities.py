@@ -31,12 +31,6 @@ def register_capabilities(repo_root: Path):
             "error": None if decision.decision == "approved" else decision.decision,
         }
 
-    def proposal_submit(arguments: dict[str, Any]) -> dict[str, Any]:
-        proposal_type = str(arguments.get("proposal_type") or "")
-        if proposal_type != "evidence_access":
-            return {"success": False, "result": {}, "error": "unsupported_proposal_type"}
-        return evidence_request(arguments)
-
     return [
         (CapabilityDefinition(
             capability_id="evidence.request",
@@ -47,11 +41,11 @@ def register_capabilities(repo_root: Path):
             requires_proposal=True,
         ), evidence_request),
         (CapabilityDefinition(
-            capability_id="proposal.submit",
-            category="proposal",
+            capability_id="evidence.proposal.submit",
+            category="evidence",
             access_level="governed_read",
-            handler="proposal.submit",
-            description="Submit a governed proposal; Sprint 12 supports proposal_type=evidence_access.",
+            handler="evidence.proposal.submit",
+            description="Submit a governed evidence-access proposal.",
             requires_proposal=True,
-        ), proposal_submit),
+        ), evidence_request),
     ]

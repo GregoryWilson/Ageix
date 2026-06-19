@@ -36,8 +36,8 @@ class ProposalEvaluationService:
             missing_evidence.append("proposal_requires_supporting_evidence")
             reasons.append("evidence_sufficiency_not_met")
 
-        accepted_types = set(proposal.accepted_consultations or proposal.linked_consultations)
-        missing_consultations = [item for item in required_consultations if item not in accepted_types]
+        satisfied_types = set(proposal.satisfied_consultations)
+        missing_consultations = [item for item in required_consultations if item not in satisfied_types]
         if missing_consultations:
             reasons.append("proposal_requires_consultation")
             disposition = "consultation_required"

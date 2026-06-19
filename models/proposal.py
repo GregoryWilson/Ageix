@@ -47,6 +47,7 @@ class Proposal(BaseModel):
     required_consultations: list[str] = Field(default_factory=list)
     accepted_consultations: list[str] = Field(default_factory=list)
     rejected_consultations: list[str] = Field(default_factory=list)
+    satisfied_consultations: list[str] = Field(default_factory=list)
     conditions: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 

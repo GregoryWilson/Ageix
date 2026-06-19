@@ -50,14 +50,36 @@ class ProposalService:
         self._write(proposal)
         return proposal
 
-    def link_consultation(self, proposal_id: str, consultation_id: str, *, accepted: bool | None = None) -> Proposal:
+    def link_consultation(self, proposal_id: str, consultation_id: str) -> Proposal:
         proposal = self.get_proposal(proposal_id)
         if consultation_id not in proposal.linked_consultations:
             proposal.linked_consultations.append(consultation_id)
-        if accepted is True and consultation_id not in proposal.accepted_consultations:
+        proposal.updated_at = self._now()
+        self._write(proposal)
+        return proposal
+
+    def accept_consultation(self, proposal_id: str, consultation_id: str, consultation_type: str) -> Proposal:
+        proposal = self.get_proposal(proposal_id)
+        if consultation_id not in proposal.linked_consultations:
+            proposal.linked_consultations.append(consultation_id)
+        if consultation_id not in proposal.accepted_consultations:
             proposal.accepted_consultations.append(consultation_id)
-        if accepted is False and consultation_id not in proposal.rejected_consultations:
+        if consultation_type and consultation_type not in proposal.satisfied_consultations:
+            proposal.satisfied_consultations.append(consultation_type)
+        if consultation_id in proposal.rejected_consultations:
+            proposal.rejected_consultations.remove(consultation_id)
+        proposal.updated_at = self._now()
+        self._write(proposal)
+        return proposal
+
+    def reject_consultation(self, proposal_id: str, consultation_id: str) -> Proposal:
+        proposal = self.get_proposal(proposal_id)
+        if consultation_id not in proposal.linked_consultations:
+            proposal.linked_consultations.append(consultation_id)
+        if consultation_id not in proposal.rejected_consultations:
             proposal.rejected_consultations.append(consultation_id)
+        if consultation_id in proposal.accepted_consultations:
+            proposal.accepted_consultations.remove(consultation_id)
         proposal.updated_at = self._now()
         self._write(proposal)
         return proposal
