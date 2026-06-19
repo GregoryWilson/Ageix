@@ -15,6 +15,9 @@ venv/
 .env
 .env.*
 
+# Certificates and Keys
+.ageix/certs/
+
 # Databases
 *.db
 *.sqlite
@@ -51,6 +54,7 @@ cache/
 .ageix/manifests/
 .ageix/repair_loops/
 .ageix/verification/
+.ageix/instance/
 
 # Runtime execution artifacts
 .ageix/runs/
