@@ -1,0 +1,45 @@
+{
+  "created_at": "2026-06-19T14:24:48.512218+00:00",
+  "schema_version": 1,
+  "sessions": {
+    "smoke-12-1-agent-profile": {
+      "agent_id": "lex",
+      "capabilities_used": [
+        "agent.list",
+        "agent.profile"
+      ],
+      "created_at": "2026-06-19T14:30:11.543928+00:00",
+      "last_activity": "2026-06-19T14:30:11.545101+00:00",
+      "metadata": {},
+      "project_id": null,
+      "session_id": "smoke-12-1-agent-profile",
+      "updated_at": "2026-06-19T14:30:11.545101+00:00"
+    },
+    "smoke-12-1-current": {
+      "agent_id": "lex",
+      "capabilities_used": [
+        "project.current"
+      ],
+      "created_at": "2026-06-19T14:24:48.512210+00:00",
+      "last_activity": "2026-06-19T14:24:48.512395+00:00",
+      "metadata": {},
+      "project_id": null,
+      "session_id": "smoke-12-1-current",
+      "updated_at": "2026-06-19T14:24:48.512395+00:00"
+    },
+    "smoke-12-1-session-project": {
+      "agent_id": "lex",
+      "capabilities_used": [
+        "project.current",
+        "evidence.request"
+      ],
+      "created_at": "2026-06-19T14:25:05.759508+00:00",
+      "last_activity": "2026-06-19T14:29:51.865495+00:00",
+      "metadata": {},
+      "project_id": "Ageix_Test",
+      "session_id": "smoke-12-1-session-project",
+      "updated_at": "2026-06-19T14:29:51.865495+00:00"
+    }
+  },
+  "updated_at": "2026-06-19T14:30:11.545101+00:00"
+}

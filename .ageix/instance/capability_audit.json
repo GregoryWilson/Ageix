@@ -103,6 +103,110 @@
       "session_id": "smoke-chatgpt-001",
       "success": false,
       "timestamp": "2026-06-19T13:53:39.228152+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "project.current",
+      "reason": "executed",
+      "session_id": "smoke-12-1-current",
+      "success": true,
+      "timestamp": "2026-06-19T14:24:48.512650+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "project.current",
+      "reason": "executed",
+      "session_id": "smoke-12-1-session-project",
+      "success": true,
+      "timestamp": "2026-06-19T14:25:05.772377+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "evidence.request",
+      "reason": "1 validation error for EvidenceAccessProposal\nreason\n  String should have at least 1 character [type=string_too_short, input_value='', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_too_short",
+      "session_id": "smoke-12-1-session-project",
+      "success": false,
+      "timestamp": "2026-06-19T14:25:23.380081+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "evidence.request",
+      "reason": "denied",
+      "session_id": "smoke-12-1-session-project",
+      "success": false,
+      "timestamp": "2026-06-19T14:27:45.869741+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "evidence.request",
+      "reason": "1 validation error for EvidenceAccessProposal\nrequested_evidence.0.reason\n  Field required [type=missing, input_value={'type': 'section', 'path...ine': 1, 'end_line': 80}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing",
+      "session_id": "smoke-12-1-session-project",
+      "success": false,
+      "timestamp": "2026-06-19T14:28:18.034583+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "evidence.request",
+      "reason": "executed",
+      "session_id": "smoke-12-1-session-project",
+      "success": true,
+      "timestamp": "2026-06-19T14:28:49.095971+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "evidence.request",
+      "reason": "denied",
+      "session_id": "smoke-12-1-session-project",
+      "success": false,
+      "timestamp": "2026-06-19T14:29:21.954891+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "evidence.request",
+      "reason": "human_approval_required",
+      "session_id": "smoke-12-1-session-project",
+      "success": false,
+      "timestamp": "2026-06-19T14:29:51.865722+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "agent.list",
+      "reason": "executed",
+      "session_id": "smoke-12-1-agent-profile",
+      "success": true,
+      "timestamp": "2026-06-19T14:30:11.544549+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "agent.profile",
+      "reason": "executed",
+      "session_id": "smoke-12-1-agent-profile",
+      "success": true,
+      "timestamp": "2026-06-19T14:30:11.545262+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "repository.raw_read",
+      "reason": "external_agents_cannot_bypass_repository_governance",
+      "session_id": "smoke-12-1-governance",
+      "success": false,
+      "timestamp": "2026-06-19T14:31:28.334244+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "worker.execute",
+      "reason": "unknown_capability",
+      "session_id": "smoke-12-1-governance",
+      "success": false,
+      "timestamp": "2026-06-19T14:31:28.334761+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "promotion.promote",
+      "reason": "unknown_capability",
+      "session_id": "smoke-12-1-governance",
+      "success": false,
+      "timestamp": "2026-06-19T14:31:28.335116+00:00"
     }
   ],
   "schema_version": 1
