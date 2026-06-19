@@ -207,6 +207,70 @@
       "session_id": "smoke-12-1-governance",
       "success": false,
       "timestamp": "2026-06-19T14:31:28.335116+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "proposal.submit",
+      "reason": "executed",
+      "session_id": "smoke-13-session",
+      "success": true,
+      "timestamp": "2026-06-19T15:14:12.324148+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "proposal.status",
+      "reason": "executed",
+      "session_id": "smoke-13-session",
+      "success": true,
+      "timestamp": "2026-06-19T15:14:57.786755+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "proposal.details",
+      "reason": "executed",
+      "session_id": "smoke-13-session",
+      "success": true,
+      "timestamp": "2026-06-19T15:14:57.787686+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "consultation.submit",
+      "reason": "executed",
+      "session_id": "smoke-13-session",
+      "success": true,
+      "timestamp": "2026-06-19T15:15:31.991915+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "proposal.details",
+      "reason": "executed",
+      "session_id": "smoke-13-session",
+      "success": true,
+      "timestamp": "2026-06-19T15:15:59.024011+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "proposal.approve",
+      "reason": "unknown_capability",
+      "session_id": "smoke-13-session",
+      "success": false,
+      "timestamp": "2026-06-19T15:16:27.399569+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "repository.raw_write",
+      "reason": "external_agents_cannot_modify_repository",
+      "session_id": "smoke-13-session",
+      "success": false,
+      "timestamp": "2026-06-19T15:16:27.400144+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "worker.execute",
+      "reason": "unknown_capability",
+      "session_id": "smoke-13-session",
+      "success": false,
+      "timestamp": "2026-06-19T15:16:27.400731+00:00"
     }
   ],
   "schema_version": 1
