@@ -3,13 +3,18 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from models.consultation_recommendation import ConsultationRecommendation
 from models.consultation_response import ConsultationResponse
 from models.consultation_turn import ConsultationTurn
 from models.evidence_request import EvidenceRequest
 from models.interactive_prompt import InteractivePrompt
 from models.participant_response import ParticipantResponse
 from services.consultation_evidence_broker_service import ConsultationEvidenceBrokerService
+from participants.human_interactive_participant import HumanInteractiveParticipant
+from participants.stub_architecture_participant import StubArchitectureParticipant
+from participants.stub_code_review_participant import StubCodeReviewParticipant
 from services.consultation_prompt_service import build_available_evidence
+from services.consultation_result_aggregator import ConsultationResultAggregator
 from services.consultation_session_service import ConsultationSessionService
 from services.controls_service import ControlsService
 from services.participant_registry_service import ParticipantRegistryService
@@ -28,13 +33,14 @@ class ConsultationOrchestrationService:
         self.registry = ParticipantRegistryService(self.repo_root)
         self.broker = ConsultationEvidenceBrokerService(str(self.repo_root))
         self.controls = ControlsService(self.repo_root).get_raw_config().get("consultation", {})
+        self.aggregator = ConsultationResultAggregator()
 
     def start_interactive_turn(self, consultation_id: str, participant_id: str = "human_interactive") -> InteractivePrompt:
         session = self.session_service.load_session(consultation_id)
         participant = self.registry.get_participant(participant_id)
         if not participant.enabled:
             raise PermissionError("Consultation participant is disabled.")
-        if session.get("status") not in {"approved", "waiting_for_participant", "waiting_for_evidence", "response_recorded"}:
+        if session.get("status") not in {"approved", "waiting_for_participant", "waiting_for_evidence", "response_recorded", "confidence_satisfied", "recommendation_recorded"}:
             raise PermissionError("Consultation session is not ready for participant interaction.")
 
         turn_number = int(session.get("current_turn", 0)) + 1
@@ -50,9 +56,19 @@ class ConsultationOrchestrationService:
             objective=objective,
             prompt_text="Review the brokered evidence metadata and provide a structured recommendation. Request follow-up evidence only by EV-* evidence ID.",
             available_evidence=build_available_evidence(session.get("evidence_dictionary") or {}),
+            required_fields=[
+                "disposition",
+                "recommendation",
+                "confidence",
+                "evidence_sufficient",
+                "concerns",
+                "suggested_improvements",
+                "requested_followup_evidence",
+            ],
             metadata={
                 "participant_type": participant.participant_type,
                 "minimum_evidence_confidence": self.minimum_evidence_confidence,
+                "response_contract": self.response_contract(),
             },
         )
         turn = ConsultationTurn(
@@ -85,7 +101,11 @@ class ConsultationOrchestrationService:
             participant_type="human" if response.participant_id.startswith("human") else "specialist",
             recommendation=response.recommendation,
             confidence=response.confidence,
+            disposition=response.disposition,
+            evidence_sufficient=response.evidence_sufficient,
             findings=response.findings,
+            concerns=response.concerns,
+            suggested_improvements=response.suggested_improvements,
             requested_followup_evidence=response.requested_followup_evidence,
             metadata=response.metadata,
         )
@@ -100,18 +120,68 @@ class ConsultationOrchestrationService:
         return updated
 
     def run_stub_participant(self, consultation_id: str, participant_id: str = "stub_architect") -> dict[str, Any]:
+        participant = self._build_participant(participant_id)
+        session = self.session_service.load_session(consultation_id)
+        response = participant.participate(session, self.broker)
+        response.metadata.setdefault("minimum_evidence_confidence", self.minimum_evidence_confidence)
+        response.confidence = max(response.confidence, self.minimum_evidence_confidence)
         self.start_interactive_turn(consultation_id, participant_id)
-        return self.submit_participant_response(
-            consultation_id,
-            ParticipantResponse(
-                participant_id=participant_id,
-                recommendation="Brokered evidence is available for governed consultation orchestration.",
-                confidence=max(self.minimum_evidence_confidence, 0.75),
-                evidence_sufficient=True,
-                findings=["Participant orchestration executed without repository access."],
-                metadata={"deterministic_stub": True, "minimum_evidence_confidence": self.minimum_evidence_confidence},
-            ),
-        )
+        return self.submit_participant_response(consultation_id, response)
+
+    def execute_participants(self, consultation_id: str, participant_ids: list[str]) -> dict[str, Any]:
+        updated: dict[str, Any] | None = None
+        for participant_id in participant_ids:
+            participant = self._build_participant(participant_id)
+            session = self.session_service.load_session(consultation_id)
+            response = participant.participate(session, self.broker)
+            response.metadata.setdefault("minimum_evidence_confidence", self.minimum_evidence_confidence)
+            if participant_id.startswith("stub_"):
+                response.confidence = max(response.confidence, self.minimum_evidence_confidence)
+            self.start_interactive_turn(consultation_id, participant_id)
+            updated = self.submit_participant_response(consultation_id, response)
+
+        final_session = updated or self.session_service.load_session(consultation_id)
+        recommendation = self.produce_recommendation(consultation_id)
+        final_session["consultation_recommendation"] = recommendation.model_dump()
+        final_session["status"] = "recommendation_recorded"
+        self.session_service._persist_session(final_session)
+        return final_session
+
+    def produce_recommendation(self, consultation_id: str) -> ConsultationRecommendation:
+        session = self.session_service.load_session(consultation_id)
+        recommendation = self.aggregator.aggregate(session.get("consultation_responses", []))
+        session["consultation_recommendation"] = recommendation.model_dump()
+        self.session_service._persist_session(session)
+        return recommendation
+
+    def response_contract(self) -> dict[str, Any]:
+        return {
+            "disposition": [
+                "proceed",
+                "proceed_with_recommendations",
+                "caution",
+                "blocked_insufficient_evidence",
+                "disagreement",
+                "reject",
+            ],
+            "confidence": "0.0-1.0",
+            "recommendation": "one concise sentence",
+            "concerns": "concise list",
+            "suggested_improvements": "concise list",
+            "evidence_requests": "EV-* IDs only through the Evidence Broker",
+        }
+
+    def _build_participant(self, participant_id: str):
+        registered = self.registry.get_participant(participant_id)
+        if not registered.enabled:
+            raise PermissionError("Consultation participant is disabled.")
+        if participant_id == "human_interactive":
+            return HumanInteractiveParticipant(participant_id=participant_id)
+        if participant_id == "stub_architect":
+            return StubArchitectureParticipant(participant_id=participant_id)
+        if participant_id == "stub_code_reviewer":
+            return StubCodeReviewParticipant(participant_id=participant_id)
+        raise ValueError(f"No executable participant adapter registered for {participant_id}.")
 
     @property
     def minimum_evidence_confidence(self) -> float:

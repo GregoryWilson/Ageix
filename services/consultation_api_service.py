@@ -34,3 +34,6 @@ class ConsultationApiService:
 
     def run_stub(self, consultation_id: str, participant_id: str = "stub_architect") -> dict[str, Any]:
         return self.orchestrator.run_stub_participant(consultation_id, participant_id)
+
+    def execute_participants(self, consultation_id: str, participant_ids: list[str]) -> dict[str, Any]:
+        return self.orchestrator.execute_participants(consultation_id, participant_ids)

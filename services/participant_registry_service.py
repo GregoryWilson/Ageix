@@ -17,6 +17,12 @@ class ParticipantRegistryService:
             enabled=True,
         ),
         ConsultationParticipant(
+            participant_id="stub_code_reviewer",
+            participant_type="stub",
+            specialties=["code_review", "validation", "governance"],
+            enabled=True,
+        ),
+        ConsultationParticipant(
             participant_id="human_interactive",
             participant_type="human_interactive",
             specialties=["architecture", "planning", "validation", "implementation"],
