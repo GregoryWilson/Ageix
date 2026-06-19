@@ -1,86 +1,126 @@
 {
-  "version": 1,
-  "repair": {
-    "max_local_attempts": 3,
-    "allow_cloud_escalation": true,
-    "max_cloud_attempts": 1
+  "agent_capabilities": {
+    "enabled": true,
+    "hard_max_files": 50,
+    "hard_max_items": 50,
+    "hard_max_lines": 20000,
+    "min_reason_words": 3,
+    "reputation_budgets": {
+      "strategic": {
+        "max_files": 20,
+        "max_items": 20,
+        "max_lines": 8000
+      },
+      "trusted": {
+        "max_files": 8,
+        "max_items": 8,
+        "max_lines": 2000
+      },
+      "unknown": {
+        "max_files": 2,
+        "max_items": 2,
+        "max_lines": 400
+      }
+    }
   },
   "cloud": {
+    "allow_full_file_contents": false,
+    "allow_full_logs": false,
     "max_context_tokens": 6000,
     "max_evidence_items": 8,
-    "max_failure_summary_chars": 4000,
-    "allow_full_logs": false,
-    "allow_full_file_contents": false
+    "max_failure_summary_chars": 4000
   },
-  "validation": {
-    "require_validation": true,
-    "allow_validation_bypass": false
+  "cloud_context": {
+    "include_full_impact_evidence": false,
+    "include_impact_summary": true,
+    "max_impact_items": 10
+  },
+  "consultation": {
+    "allow_cloud_consultation": true,
+    "allow_human_guidance": true,
+    "context_complexity_threshold": 10,
+    "default_model": "anthropic/claude-sonnet-4.6",
+    "enable_prompt_caching": true,
+    "enabled": true,
+    "max_evidence_requests_per_round": 3,
+    "max_followup_rounds": 2,
+    "max_input_tokens": 12000,
+    "max_output_tokens": 1500,
+    "planner_confidence_threshold": 0.7,
+    "proposal_quality_failure_threshold": 1,
+    "require_human_approval": true,
+    "target_resolution_confidence_threshold": 0.85
+  },
+  "dependency_intelligence": {
+    "allow_existing_local_imports": true,
+    "allow_proposed_local_imports": true,
+    "allow_stdlib_imports": true,
+    "allowed_test_dependencies": [
+      "pytest"
+    ],
+    "blocked_dependencies": [],
+    "enabled": true,
+    "follow_runtime_imports": true,
+    "follow_test_imports": true,
+    "max_depth": 2,
+    "max_imports_per_file": 25,
+    "max_nodes": 50,
+    "unknown_dependency_policy": "fail"
+  },
+  "evidence_context": {
+    "allow_full_file_fallback": true,
+    "code_context_mode": "sliced",
+    "include_adjacent_helpers": true,
+    "include_dependency_neighbors": true,
+    "include_full_repo_inventory": false,
+    "include_impacted_files": true,
+    "include_impacted_tests": true,
+    "include_imports": true,
+    "include_target_files": true,
+    "max_chars": 30000,
+    "max_files": 20,
+    "max_slice_lines_per_file": 120,
+    "mode": "target_scoped",
+    "overflow_policy": "summarize"
   },
   "governance": {
-    "require_human_review": true,
-    "allow_auto_promotion": false,
     "allow_auto_commit": false,
-    "allow_direct_repo_modification": false
+    "allow_auto_promotion": false,
+    "allow_direct_repo_modification": false,
+    "require_human_review": true
   },
   "promotion_confidence": {
     "enabled": true,
     "minimum_confidence": 0.8,
     "ratings": {
       "high": 0.9,
-      "medium": 0.75,
-      "low": 0.5
+      "low": 0.5,
+      "medium": 0.75
     },
     "weights": {
+      "behavioral_verification": 0.2,
       "proposal_quality": 0.2,
       "requirement_traceability": 0.2,
-      "behavioral_verification": 0.2,
-      "validation_evidence": 0.2,
-      "runtime_execution": 0.2
+      "runtime_execution": 0.2,
+      "validation_evidence": 0.2
     }
   },
   "promotion_governance": {
+    "allow_promotion_with_blockers": false,
     "enabled": true,
     "human_approval_required": true,
-    "minimum_confidence": 0.8,
-    "allow_promotion_with_blockers": false
+    "minimum_confidence": 0.8
   },
-  "dependency_intelligence": {
-    "enabled": true,
-    "max_depth": 2,
-    "max_nodes": 50,
-    "max_imports_per_file": 25,
-    "follow_test_imports": true,
-    "follow_runtime_imports": true,
-    "allow_proposed_local_imports": true,
-    "allow_existing_local_imports": true,
-    "allow_stdlib_imports": true,
-    "allowed_test_dependencies": [
-      "pytest"
-    ],
-    "blocked_dependencies": [],
-    "unknown_dependency_policy": "fail"
+  "repair": {
+    "allow_cloud_escalation": true,
+    "max_cloud_attempts": 1,
+    "max_local_attempts": 3
   },
   "repository_impact": {
-    "enabled": true,
-    "max_depth": 2,
-    "max_nodes": 75,
-    "max_dependents_per_file": 25,
-    "retry_on_limit": true,
-    "retry_max_depth": 4,
-    "retry_max_nodes": 200,
-    "retry_max_dependents_per_file": 75,
-    "retry_policy": "validation_failure_only",
-    "include_tests": true,
-    "include_runtime_files": true,
-    "include_companion_tests": true,
-    "impacted_test_depth": 1,
     "auto_add_companion_tests": true,
     "auto_add_impacted_tests": true,
-    "recommend_indirect_dependents": true,
     "circular_dependency_policy": "warn_stop_path",
-    "unresolved_import_policy": "warn",
-    "unknown_impact_policy": "warn",
-    "limit_policy": "warn",
+    "enabled": true,
     "exclude_paths": [
       ".git/",
       ".pytest_cache/",
@@ -107,43 +147,27 @@
       ".ageix/verification/",
       ".ageix/repair_loops/",
       ".ageix/logs/"
-    ]
+    ],
+    "impacted_test_depth": 1,
+    "include_companion_tests": true,
+    "include_runtime_files": true,
+    "include_tests": true,
+    "limit_policy": "warn",
+    "max_dependents_per_file": 25,
+    "max_depth": 2,
+    "max_nodes": 75,
+    "recommend_indirect_dependents": true,
+    "retry_max_dependents_per_file": 75,
+    "retry_max_depth": 4,
+    "retry_max_nodes": 200,
+    "retry_on_limit": true,
+    "retry_policy": "validation_failure_only",
+    "unknown_impact_policy": "warn",
+    "unresolved_import_policy": "warn"
   },
-  "cloud_context": {
-    "include_impact_summary": true,
-    "include_full_impact_evidence": false,
-    "max_impact_items": 10
+  "validation": {
+    "allow_validation_bypass": false,
+    "require_validation": true
   },
-  "evidence_context": {
-    "mode": "target_scoped",
-    "include_full_repo_inventory": false,
-    "include_target_files": true,
-    "include_impacted_files": true,
-    "include_impacted_tests": true,
-    "include_dependency_neighbors": true,
-    "max_files": 20,
-    "max_chars": 30000,
-    "overflow_policy": "summarize",
-    "code_context_mode": "sliced",
-    "allow_full_file_fallback": true,
-    "max_slice_lines_per_file": 120,
-    "include_imports": true,
-    "include_adjacent_helpers": true
-  },
-  "consultation": {
-    "enabled": true,
-    "require_human_approval": true,
-    "allow_cloud_consultation": true,
-    "allow_human_guidance": true,
-    "max_input_tokens": 12000,
-    "max_output_tokens": 1500,
-    "max_followup_rounds": 2,
-    "max_evidence_requests_per_round": 3,
-    "enable_prompt_caching": true,
-    "default_model": "anthropic/claude-sonnet-4.6",
-    "planner_confidence_threshold": 0.7,
-    "target_resolution_confidence_threshold": 0.85,
-    "proposal_quality_failure_threshold": 1,
-    "context_complexity_threshold": 10
-  }
+  "version": 1
 }

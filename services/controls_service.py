@@ -137,6 +137,18 @@ class ControlsService:
             "proposal_quality_failure_threshold": 1,
             "context_complexity_threshold": 10,
         },
+        "agent_capabilities": {
+            "enabled": True,
+            "min_reason_words": 3,
+            "hard_max_files": 50,
+            "hard_max_lines": 20000,
+            "hard_max_items": 50,
+            "reputation_budgets": {
+                "unknown": {"max_files": 2, "max_lines": 400, "max_items": 2},
+                "trusted": {"max_files": 8, "max_lines": 2000, "max_items": 8},
+                "strategic": {"max_files": 20, "max_lines": 8000, "max_items": 20}
+            }
+        },
         "governance": {
             "require_human_review": True,
             "allow_auto_promotion": False,
