@@ -83,10 +83,14 @@ class CapabilityExecutionService:
         return response
 
     def _audit(self, request: CapabilityRequest, response: CapabilityResponse, reason: str) -> None:
+        arguments = request.arguments if isinstance(request.arguments, dict) else {}
         self.audit.record(CapabilityAuditRecord(
             session_id=request.session_id,
             agent_id=request.agent_id,
             capability_id=request.capability_id,
             success=response.success,
             reason=reason,
+            client_id=str(arguments.get("client_id")) if arguments.get("client_id") else None,
+            project_id=str(arguments.get("project_id")) if arguments.get("project_id") else None,
+            participant_id=str(arguments.get("participant_id")) if arguments.get("participant_id") else None,
         ))

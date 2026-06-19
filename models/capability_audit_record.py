@@ -12,3 +12,6 @@ class CapabilityAuditRecord(BaseModel):
     timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     success: bool
     reason: str = ""
+    client_id: str | None = None
+    project_id: str | None = None
+    participant_id: str | None = None
