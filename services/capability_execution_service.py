@@ -8,6 +8,7 @@ from models.capability_response import CapabilityResponse
 from services.agent_authorization_service import AgentAuthorizationService
 from services.capability_audit_service import CapabilityAuditService
 from services.capability_registry_service import CapabilityRegistryService
+from services.agent_session_service import AgentSessionService
 
 
 class CapabilityExecutionService:
@@ -18,6 +19,7 @@ class CapabilityExecutionService:
         self.registry = CapabilityRegistryService(self.repo_root)
         self.authorization = AgentAuthorizationService(self.repo_root)
         self.audit = CapabilityAuditService(self.repo_root)
+        self.sessions = AgentSessionService(self.repo_root)
 
     def execute(self, request: CapabilityRequest) -> CapabilityResponse:
         definition = self.registry.lookup(request.capability_id)
@@ -55,6 +57,8 @@ class CapabilityExecutionService:
                 "agent_id": request.agent_id,
                 "capability_id": request.capability_id,
             })
+            project_id = request.arguments.get("project_id") if isinstance(request.arguments, dict) else None
+            self.sessions.record_capability_use(request.session_id, request.agent_id, request.capability_id, project_id=str(project_id) if project_id and project_id != "current" else None)
             response = CapabilityResponse(
                 success=bool(result.get("success", True)),
                 result=result.get("result", result),

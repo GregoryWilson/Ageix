@@ -1,0 +1,21 @@
+{
+  "created_at": "2026-06-19T13:49:12.382186+00:00",
+  "projects": {
+    "Ageix_Test": {
+      "brain_path": "/home/gwilson/ageix/.ageix/projects/Ageix_Test",
+      "created_at": "2026-06-19T13:49:12.382225+00:00",
+      "metadata": {
+        "purpose": "Sprint 12 evidence request smoke test"
+      },
+      "name": "Ageix Test",
+      "project_id": "Ageix_Test",
+      "project_role": "target",
+      "project_type": "python",
+      "root_path": "/home/gwilson/ageix",
+      "status": "active",
+      "updated_at": "2026-06-19T13:49:12.382225+00:00"
+    }
+  },
+  "schema_version": 1,
+  "updated_at": "2026-06-19T13:49:12.382225+00:00"
+}

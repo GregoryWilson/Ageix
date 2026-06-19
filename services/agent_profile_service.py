@@ -28,6 +28,10 @@ class AgentProfileService:
             return AgentProfile(**raw)
         return AgentProfile(agent_id=agent_id)
 
+    def list_profiles(self) -> list[AgentProfile]:
+        data = self._load()
+        return [AgentProfile(**raw) for raw in data.get("agents", {}).values()]
+
     def upsert_profile(self, profile: AgentProfile) -> AgentProfile:
         data = self._load()
         profile.updated_at = datetime.now(timezone.utc).isoformat()

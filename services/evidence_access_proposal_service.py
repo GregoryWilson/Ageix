@@ -7,6 +7,8 @@ from typing import Any
 
 from models.evidence_access_proposal import EvidenceAccessDecision, EvidenceAccessProposal, EvidenceRequestItem
 from services.agent_profile_service import AgentProfileService
+from services.approval_request_service import ApprovalRequestService
+from services.current_project_resolution_service import CurrentProjectResolutionService
 from services.code_context_extractor import CodeContextExtractor
 from services.controls_service import ControlsService
 from services.project_registry_service import ProjectRegistryService
@@ -25,8 +27,11 @@ class EvidenceAccessProposalService:
         self.inventory_service = RepositoryInventoryService(self.repo_root)
         self.extractor = CodeContextExtractor(self.repo_root)
         self.proposal_root = self.repo_root / ".ageix" / "manifests" / "evidence_access_proposals"
+        self.project_resolution = CurrentProjectResolutionService(self.repo_root)
+        self.approvals = ApprovalRequestService(self.repo_root)
 
     def evaluate(self, proposal: EvidenceAccessProposal) -> EvidenceAccessDecision:
+        proposal.project_id = self._resolve_project_id(proposal)
         budget = self.profile_service.evidence_budget(proposal.agent_id, self.controls)
         hard = self._hard_limits()
         profile = self.profile_service.get_profile(proposal.agent_id)
@@ -68,7 +73,8 @@ class EvidenceAccessProposalService:
         for item in proposal.requested_evidence:
             item_denial = self._validate_item(item)
             if item_denial:
-                denied.append(self._denied_item(item, item_denial))
+                reason, details = item_denial
+                denied.append(self._denied_item(item, reason, details))
                 continue
 
             resolution = self.target_resolution.resolve_target(item.path)
@@ -108,9 +114,17 @@ class EvidenceAccessProposalService:
             if not self._human_override(proposal):
                 human_required = True
 
+        approval_id = None
         if human_required:
             approved = []
             decision_value = "human_approval_required"
+            approval = self.approvals.create_request(
+                proposal_id=proposal.proposal_id,
+                reason=", ".join(reasons) or "human approval required",
+                requested_by=proposal.agent_id,
+                request_type="evidence_expansion",
+            )
+            approval_id = approval.approval_id
         elif approved and not denied:
             decision_value = "approved"
         elif approved and denied:
@@ -135,10 +149,20 @@ class EvidenceAccessProposalService:
                 "resolved_files": resolved_files,
                 "total_lines": total_lines,
                 "hard_limits": hard,
+                **({"approval_id": approval_id} if approval_id else {}),
             },
         )
         self._persist(proposal, decision)
         return decision
+
+    def _resolve_project_id(self, proposal: EvidenceAccessProposal) -> str:
+        project_id = proposal.project_id or None
+        if project_id in {"Ageix", "ageix"}:
+            try:
+                return self.project_resolution.resolve_project_id(project_id, proposal.session_id or None)
+            except Exception:
+                return str(project_id)
+        return self.project_resolution.resolve_project_id(project_id, proposal.session_id or None)
 
     def _validate_project(self, project_id: str) -> str | None:
         try:
@@ -149,24 +173,49 @@ class EvidenceAccessProposalService:
             return "unknown_project_id"
         return None
 
-    def _validate_item(self, item: EvidenceRequestItem) -> str | None:
-        reason_words = [word for word in item.reason.split() if word.strip()]
+    def _validate_item(self, item: EvidenceRequestItem) -> tuple[str, dict[str, Any]] | None:
+        scores = self._justification_scores(item)
         min_words = int(self.controls.get("min_reason_words", 3))
-        if len(reason_words) < min_words:
-            return "evidence_request_reason_too_sparse"
+        if scores["word_count"] < min_words or scores["specificity_score"] < 0.5:
+            return "evidence_request_reason_too_sparse", {
+                "specificity_score": scores["specificity_score"],
+                "relevance_score": scores["relevance_score"],
+                "scope_score": scores["scope_score"],
+                "overall_score": scores["overall_score"],
+                "required_minimum": 0.5,
+                "minimum_reason_words": min_words,
+                "message": "Explain why this exact path and scope are needed for the stated objective.",
+            }
         normalized = Path(item.path)
         if normalized.is_absolute() or ".." in normalized.parts:
-            return "evidence_request_path_must_be_repo_relative"
+            return "evidence_request_path_must_be_repo_relative", {"message": "Evidence paths must be repository-relative and cannot traverse upward."}
         return None
+
+    def _justification_scores(self, item: EvidenceRequestItem) -> dict[str, Any]:
+        words = [word.strip(".,;:()[]{}\"'").lower() for word in item.reason.split() if word.strip()]
+        unique = set(words)
+        specificity_terms = {"exact", "specific", "implementation", "symbol", "line", "class", "function", "validate", "governance", "target", "evidence"}
+        scope_terms = {"file", "directory", "section", "symbol", "lines", "range", "only", "because", "needed", "review"}
+        specificity = min(1.0, (len(unique & specificity_terms) / 2.0) + (0.2 if item.symbol or item.start_line else 0.0))
+        relevance = min(1.0, max(0.2, len(words) / 8.0))
+        scope = min(1.0, (len(unique & scope_terms) / 2.0) + (0.2 if item.type in {"symbol", "line_range", "section"} else 0.0))
+        overall = round((specificity + relevance + scope) / 3.0, 3)
+        return {
+            "word_count": len(words),
+            "specificity_score": round(specificity, 3),
+            "relevance_score": round(relevance, 3),
+            "scope_score": round(scope, 3),
+            "overall_score": overall,
+        }
 
     def _fetch_item(self, item: EvidenceRequestItem, path: str) -> dict[str, Any]:
         if item.type == "file":
             content = (self.repo_root / path).read_text(encoding="utf-8")
             return {"content": content, "line_count": len(content.splitlines())}
-        if item.type in {"section", "symbol"}:
+        if item.type in {"section", "symbol"} and item.symbol:
             content = self.extractor.extract_file_slice(path, symbols=[str(item.symbol)], max_lines=self._hard_limits()["max_lines"])
             return {"content": content, "line_count": len(content.splitlines())}
-        if item.type == "line_range":
+        if item.type in {"line_range", "section"}:
             lines = (self.repo_root / path).read_text(encoding="utf-8").splitlines()
             start = int(item.start_line or 1)
             end = int(item.end_line or start)

@@ -19,13 +19,15 @@ class EvidenceRequestItem(BaseModel):
 
     @model_validator(mode="after")
     def validate_shape(self) -> "EvidenceRequestItem":
-        if self.type in {"section", "symbol"} and not self.symbol:
-            raise ValueError("section and symbol evidence requests require symbol")
-        if self.type == "line_range":
+        if self.type == "symbol" and not self.symbol:
+            raise ValueError("symbol evidence requests require symbol")
+        if self.type == "section" and not self.symbol and (self.start_line is None or self.end_line is None):
+            raise ValueError("section evidence requests require either symbol or start_line/end_line")
+        if self.type in {"line_range", "section"} and (self.start_line is not None or self.end_line is not None):
             if self.start_line is None or self.end_line is None:
-                raise ValueError("line_range evidence requests require start_line and end_line")
+                raise ValueError(f"{self.type} line evidence requests require both start_line and end_line")
             if self.start_line < 1 or self.end_line < self.start_line:
-                raise ValueError("line_range must use positive ordered line numbers")
+                raise ValueError(f"{self.type} line ranges must use positive ordered line numbers")
         return self
 
 
