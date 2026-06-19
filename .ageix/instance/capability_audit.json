@@ -279,6 +279,14 @@
       "session_id": "smoke-13-1",
       "success": true,
       "timestamp": "2026-06-19T17:08:40.054335+00:00"
+    },
+    {
+      "agent_id": "lex",
+      "capability_id": "proposal.submit",
+      "reason": "executed",
+      "session_id": "smoke-13-1",
+      "success": true,
+      "timestamp": "2026-06-19T17:49:55.246269+00:00"
     }
   ],
   "schema_version": 1

@@ -5,6 +5,7 @@ from typing import Any
 
 from models.capability_definition import CapabilityDefinition
 from services.controls_service import ControlsService
+from services.capability_audit_service import CapabilityAuditService
 
 
 def register_capabilities(repo_root: Path):
@@ -14,6 +15,14 @@ def register_capabilities(repo_root: Path):
             "result": {"status": "ok", "system": "ageix", "capability_interface": "available"},
             "metadata": {"source": "ageix"},
         }
+
+    def audit_recent(arguments: dict[str, Any]) -> dict[str, Any]:
+        session_id = str(arguments.get("session_id") or "")
+        agent_id = str(arguments.get("agent_id") or "")
+        limit = int(arguments.get("limit") or 20)
+        records = CapabilityAuditService(repo_root).list_records()
+        scoped = [record for record in records if (session_id and record.get("session_id") == session_id) or (agent_id and record.get("agent_id") == agent_id)]
+        return {"success": True, "result": {"records": scoped[-limit:]}, "metadata": {"source": "capability_audit"}}
 
     def governance_status(arguments: dict[str, Any]) -> dict[str, Any]:
         controls = ControlsService(repo_root).get_raw_config()
@@ -43,6 +52,13 @@ def register_capabilities(repo_root: Path):
             handler="system.health",
             description="Return Ageix capability interface health.",
         ), health),
+        (CapabilityDefinition(
+            capability_id="audit.recent",
+            category="audit",
+            access_level="read",
+            handler="system.audit_recent",
+            description="Return recent scoped external-agent audit records.",
+        ), audit_recent),
         (CapabilityDefinition(
             capability_id="governance.status",
             category="governance",
