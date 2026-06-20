@@ -17,7 +17,11 @@ TOKEN = "dev-ageix-token"
 
 
 def seed() -> None:
-    ProjectProfileService(ROOT).register_project(PROJECT_ID, "Ageix Test", "python", ROOT)
+    try:
+        ProjectProfileService(ROOT).register_project(PROJECT_ID, "Ageix Test", "python", ROOT)
+    except Exception as exc:
+        if "Project already registered" not in str(exc):
+            raise
     path = ROOT / ".ageix" / "config" / "auth.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({
@@ -78,7 +82,7 @@ def main() -> None:
     assert denied["errors"] == ["capability_not_authorized_for_token"]
 
     print("\n-- audit continuity --")
-    records = CapabilityAuditService(ROOT).list_records(limit=5)
+    records = CapabilityAuditService(ROOT).list_records()
     print(records[-1] if records else {})
     assert records
 
