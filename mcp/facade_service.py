@@ -120,11 +120,15 @@ class MCPFacadeService:
         if trust is not None:
             return trust
 
+        forbidden = {"authorization", "token", "bearer_token"}.intersection(set((arguments or {}).keys()))
+        if forbidden:
+            return AgeixEnvelope.denied("credential_fields_not_allowed", capability_id=capability_id)
         merged_arguments = {
             **(arguments or {}),
             "project_id": context.project_id,
             "client_id": context.client_id,
             "client_context": self.trust.build_client_context(context),
+            "authentication_method": context.authentication_method,
         }
         if context.participant_id:
             merged_arguments["participant_id"] = context.participant_id

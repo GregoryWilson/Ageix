@@ -23,12 +23,21 @@ def _client(tmp_path: Path) -> TestClient:
 
 def _context(project_id: str = "Ageix_Test") -> dict[str, str]:
     return {
-        "client_id": "chatgpt",
-        "agent_id": "lex",
-        "participant_id": "greg",
         "session_id": "sprint-14-session",
         "project_id": project_id,
     }
+
+
+def _mcp_context(project_id: str = "Ageix_Test") -> AgeixRequestContext:
+    return AgeixRequestContext(
+        client_id="chatgpt",
+        agent_id="lex",
+        participant_id="greg",
+        session_id="sprint-14-session",
+        project_id=project_id,
+        provider="openai",
+        display_name="Lex",
+    )
 
 
 def test_health_endpoint(tmp_path: Path):
@@ -63,8 +72,6 @@ def test_execute_capability_endpoint(tmp_path: Path):
 
 def test_projects_current_requires_explicit_project_id(tmp_path: Path):
     response = _client(tmp_path).get("/projects/current", params={
-        "client_id": "chatgpt",
-        "agent_id": "lex",
         "session_id": "sprint-14-session",
         "project_id": "current",
     })
@@ -75,8 +82,6 @@ def test_projects_current_requires_explicit_project_id(tmp_path: Path):
 def test_projects_current_endpoint(tmp_path: Path):
     _seed_project(tmp_path)
     response = _client(tmp_path).get("/projects/current", params={
-        "client_id": "chatgpt",
-        "agent_id": "lex",
         "session_id": "sprint-14-session",
         "project_id": "Ageix_Test",
     })
@@ -110,8 +115,6 @@ def test_get_proposal_endpoint(tmp_path: Path):
     proposal_id = create.json()["result"]["proposal"]["proposal_id"]
 
     response = _client(tmp_path).get(f"/proposals/{proposal_id}", params={
-        "client_id": "chatgpt",
-        "agent_id": "lex",
         "session_id": "sprint-14-session",
         "project_id": "Ageix_Test",
     })
@@ -159,8 +162,6 @@ def test_get_consultation_endpoint(tmp_path: Path):
     consultation_id = submitted.json()["result"]["consultation_id"]
 
     response = _client(tmp_path).get(f"/consultations/{consultation_id}", params={
-        "client_id": "chatgpt",
-        "agent_id": "lex",
         "session_id": "sprint-14-session",
         "project_id": "Ageix_Test",
     })
@@ -179,8 +180,6 @@ def test_audit_recent_endpoint(tmp_path: Path):
     })
 
     response = _client(tmp_path).get("/audit/recent", params={
-        "client_id": "chatgpt",
-        "agent_id": "lex",
         "session_id": "sprint-14-session",
         "project_id": "Ageix_Test",
     })
@@ -227,7 +226,7 @@ def test_mcp_service_discovers_stable_tools(tmp_path: Path):
 
 def test_mcp_tool_call_routes_through_governed_capability_execution(tmp_path: Path):
     _seed_project(tmp_path)
-    context = AgeixRequestContext(**_context())
+    context = _mcp_context()
 
     response = MCPService(tmp_path).execute_tool("ageix.health", context, {})
 
@@ -237,7 +236,7 @@ def test_mcp_tool_call_routes_through_governed_capability_execution(tmp_path: Pa
 
 
 def test_mcp_reserved_sandbox_tool_is_placeholder_only(tmp_path: Path):
-    context = AgeixRequestContext(**_context())
+    context = _mcp_context()
 
     response = MCPService(tmp_path).execute_tool("ageix.validation.scenario.request", context, {"scenario": "pytest"})
 

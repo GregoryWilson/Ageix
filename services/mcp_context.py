@@ -2,11 +2,36 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+class AgeixExternalRequestContext(BaseModel):
+    """External request context accepted from web clients.
+
+    Identity fields are intentionally forbidden. client_id/agent_id/authentication
+    data come from the authenticated credential, not the caller payload.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    session_id: str = Field(min_length=1)
+    project_id: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def reject_ambiguous_project(self) -> "AgeixExternalRequestContext":
+        if self.project_id.strip().lower() == "current":
+            raise ValueError("project_id_must_be_explicit")
+        return self
 
 
 class AgeixRequestContext(BaseModel):
-    """Stable external-client context shared by HTTP and MCP boundaries."""
+    """Resolved transport-independent context shared by HTTP and MCP boundaries.
+
+    This model is constructed by Ageix after authentication. It may still be used
+    by internal MCP tests/tools, but web payloads should use AgeixExternalRequestContext.
+    """
+
+    model_config = ConfigDict(extra="forbid")
 
     client_id: str = Field(min_length=1)
     agent_id: str = Field(min_length=1)
@@ -16,6 +41,7 @@ class AgeixRequestContext(BaseModel):
     provider: str | None = None
     display_name: str | None = None
     claimed_primary: bool | None = None
+    authentication_method: str | None = None
 
     @model_validator(mode="after")
     def reject_ambiguous_project(self) -> "AgeixRequestContext":

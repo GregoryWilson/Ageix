@@ -45,9 +45,6 @@ def _headers(token: str = "dev-ageix-token") -> dict[str, str]:
 
 def _context(**overrides: str) -> dict[str, str]:
     context = {
-        "client_id": "chatgpt",
-        "agent_id": "lex",
-        "participant_id": "greg",
         "session_id": "sprint-14-1-session",
         "project_id": "Ageix_Test",
     }
@@ -93,7 +90,7 @@ def test_auth_enabled_allows_valid_bearer_token(tmp_path: Path):
     assert response.json()["metadata"]["client_id"] == "chatgpt"
 
 
-def test_authenticated_context_must_match_client(tmp_path: Path):
+def test_authenticated_context_rejects_client_identity_field(tmp_path: Path):
     _write_auth_config(tmp_path, enabled=True)
     _seed_project(tmp_path)
 
@@ -103,11 +100,10 @@ def test_authenticated_context_must_match_client(tmp_path: Path):
         "arguments": {},
     })
 
-    assert response.status_code == 403
-    assert response.json()["detail"] == "client_id_not_authorized_for_token"
+    assert response.status_code == 422
 
 
-def test_authenticated_context_must_match_agent(tmp_path: Path):
+def test_authenticated_context_rejects_agent_identity_field(tmp_path: Path):
     _write_auth_config(tmp_path, enabled=True)
     _seed_project(tmp_path)
 
@@ -117,8 +113,7 @@ def test_authenticated_context_must_match_agent(tmp_path: Path):
         "arguments": {},
     })
 
-    assert response.status_code == 403
-    assert response.json()["detail"] == "agent_id_not_authorized_for_token"
+    assert response.status_code == 422
 
 
 def test_authenticated_context_must_match_project(tmp_path: Path):

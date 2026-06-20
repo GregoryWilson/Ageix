@@ -33,7 +33,7 @@ class AuthService:
 
     def authenticate_bearer_token(self, token: str | None) -> AuthIdentity:
         if not self.is_enabled():
-            return AuthIdentity(authenticated=False, auth_enabled=False, authentication_method="disabled")
+            return AuthIdentity(authenticated=False, auth_enabled=False, authentication_method="disabled", client_id="chatgpt", agent_id="lex")
         if not token:
             raise AuthRequiredError("authentication_required")
         mode = str(self.config.get("mode") or "dev_token")
@@ -44,12 +44,28 @@ class AuthService:
             raise AuthForbiddenError("invalid_bearer_token")
         raise AuthForbiddenError(f"unsupported_auth_mode:{mode}")
 
+    def build_resolved_context(self, identity: AuthIdentity, *, session_id: str, project_id: str) -> AgeixRequestContext:
+        """Create Ageix-owned execution context from credential identity plus request context."""
+        participant_id = identity.participant_id if identity.auth_enabled else None
+        context = AgeixRequestContext(
+            client_id=identity.client_id,
+            agent_id=identity.agent_id,
+            participant_id=participant_id,
+            session_id=session_id,
+            project_id=project_id,
+            provider="openai" if identity.client_id == "chatgpt" else identity.client_id,
+            display_name="Lex" if identity.agent_id == "lex" else identity.agent_id,
+            authentication_method=identity.authentication_method,
+        )
+        self.validate_context(identity, context)
+        return context
+
     def validate_context(self, identity: AuthIdentity, context: AgeixRequestContext) -> None:
         if not identity.auth_enabled:
             return
         if context.client_id != identity.client_id:
             raise AuthForbiddenError("client_id_not_authorized_for_token")
-        if not identity.agent_allowed(context.agent_id):
+        if context.agent_id != identity.agent_id:
             raise AuthForbiddenError("agent_id_not_authorized_for_token")
         if not identity.project_allowed(context.project_id):
             raise AuthForbiddenError("project_id_not_authorized_for_token")

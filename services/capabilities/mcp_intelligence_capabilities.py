@@ -41,7 +41,20 @@ def register_capabilities(repo_root: Path):
             )
         except Exception as exc:
             return {"success": False, "result": {}, "error": str(exc)}
-        resolved = IdentityResolutionService(repo_root).resolve(context)
+        auth_method = arguments.get("authentication_method")
+        fake_identity = None
+        if auth_method:
+            from models.auth_identity import AuthIdentity
+            fake_identity = AuthIdentity(
+                authenticated=True,
+                auth_enabled=True,
+                authentication_method=str(auth_method),
+                client_id=context.client_id,
+                agent_id=context.agent_id,
+                participant_id=context.participant_id,
+                allowed_projects=[context.project_id],
+            )
+        resolved = IdentityResolutionService(repo_root).resolve(context, fake_identity)
         return {"success": True, "result": resolved, "metadata": {"source": "identity_resolution", "governance_profile": resolved["governance_profile"]}}
 
     return [
