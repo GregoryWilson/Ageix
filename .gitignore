@@ -48,6 +48,9 @@ cache/
 .ageix/manifests/
 .ageix/repair_loops/
 .ageix/verification/
+.ageix/verification/**
+.ageix/workspaces/**
+.ageix/manifests/**
 
 # -------------------------------------------------------------------
 # Ageix Runtime
