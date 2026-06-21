@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pprint import pprint
 
-from mcp.clients import MCPClientHardeningAssessmentService
-from mcp.facade_service import MCPFacadeService
+from ageix_mcp.clients import MCPClientHardeningAssessmentService
+from ageix_mcp.facade_service import MCPFacadeService
 from services.capability_audit_service import CapabilityAuditService
 from services.mcp_context import AgeixRequestContext
 from services.project_profile_service import ProjectProfileService

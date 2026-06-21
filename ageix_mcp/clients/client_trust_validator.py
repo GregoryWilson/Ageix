@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from mcp.clients.client_admission_policy import ClientAdmissionDecision, MCPClientAdmissionPolicy
+from ageix_mcp.clients.client_admission_policy import ClientAdmissionDecision, MCPClientAdmissionPolicy
 from services.agent_session_service import AgentSessionService
 from services.mcp_context import AgeixRequestContext
 

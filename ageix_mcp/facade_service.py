@@ -5,9 +5,9 @@ from typing import Any
 
 from models.capability_audit_record import CapabilityAuditRecord
 from models.capability_request import CapabilityRequest
-from mcp.discovery_service import MCPDiscoveryService
-from mcp.tool_registry import MCPToolRegistry
-from mcp.clients.client_trust_validator import MCPClientTrustValidator
+from ageix_mcp.discovery_service import MCPDiscoveryService
+from ageix_mcp.tool_registry import MCPToolRegistry
+from ageix_mcp.clients.client_trust_validator import MCPClientTrustValidator
 from services.capability_audit_service import CapabilityAuditService
 from services.capability_execution_service import CapabilityExecutionService
 from services.capability_registry_service import CapabilityRegistryService

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from mcp.facade_service import MCPFacadeService
+from ageix_mcp.facade_service import MCPFacadeService
 
 
 class MCPService(MCPFacadeService):

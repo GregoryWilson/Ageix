@@ -1,7 +1,7 @@
 from pprint import pprint
 
-from mcp.tool_definitions import MCPToolDefinition
-from mcp.tool_registry import MCPToolRegistry
+from ageix_mcp.tool_definitions import MCPToolDefinition
+from ageix_mcp.tool_registry import MCPToolRegistry
 
 
 def main():

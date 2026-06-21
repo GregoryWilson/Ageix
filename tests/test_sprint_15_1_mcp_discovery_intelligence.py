@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from mcp.discovery_service import DISCOVERY_SCHEMA_VERSION, MCPDiscoveryService
-from mcp.facade_service import MCPFacadeService
-from mcp.tool_definitions import MCPToolDefinition
-from mcp.tool_registry import MCPToolRegistry
+from ageix_mcp.discovery_service import DISCOVERY_SCHEMA_VERSION, MCPDiscoveryService
+from ageix_mcp.facade_service import MCPFacadeService
+from ageix_mcp.tool_definitions import MCPToolDefinition
+from ageix_mcp.tool_registry import MCPToolRegistry
 from models.capability_definition import CapabilityDefinition
 from services.capability_registry_service import CapabilityRegistryService
 from services.mcp_context import AgeixRequestContext

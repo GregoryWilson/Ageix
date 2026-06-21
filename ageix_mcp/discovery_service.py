@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from models.capability_definition import CapabilityDefinition
-from mcp.tool_definitions import MCPToolDefinition
-from mcp.tool_registry import MCPToolRegistry
+from ageix_mcp.tool_definitions import MCPToolDefinition
+from ageix_mcp.tool_registry import MCPToolRegistry
 from services.capability_registry_service import CapabilityRegistryService
 
 

@@ -7,7 +7,7 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from services.auth_service import AuthForbiddenError, AuthRequiredError, AuthService
-from mcp.server import build_fastmcp_server
+from ageix_mcp.server import build_fastmcp_server
 
 
 class MCPTransportAuthMiddleware:

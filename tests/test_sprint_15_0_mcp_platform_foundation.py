@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from mcp.facade_service import MCPFacadeService
-from mcp.tool_definitions import MCPToolDefinition
-from mcp.tool_registry import MCPToolRegistry
+from ageix_mcp.facade_service import MCPFacadeService
+from ageix_mcp.tool_definitions import MCPToolDefinition
+from ageix_mcp.tool_registry import MCPToolRegistry
 from services.capability_audit_service import CapabilityAuditService
 from services.mcp_context import AgeixRequestContext
 from services.project_profile_service import ProjectProfileService

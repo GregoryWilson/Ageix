@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from mcp.clients.client_denylist import MCPClientDenylist
-from mcp.clients.client_registry import MCPClientRegistry
+from ageix_mcp.clients.client_denylist import MCPClientDenylist
+from ageix_mcp.clients.client_registry import MCPClientRegistry
 
 
 @dataclass(frozen=True)

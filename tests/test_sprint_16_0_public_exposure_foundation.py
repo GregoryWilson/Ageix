@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from mcp.clients.client_registry import MCPClientDefinition, MCPClientRegistry
+from ageix_mcp.clients.client_registry import MCPClientDefinition, MCPClientRegistry
 from models.public_exposure import (
     AccessDecisionPolicy,
     CertificateSource,

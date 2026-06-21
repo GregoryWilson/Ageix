@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from mcp.facade_service import MCPFacadeService
+from ageix_mcp.facade_service import MCPFacadeService
 from models.auth_identity import AuthIdentity
 from services.auth_service import AuthService
 from services.capability_audit_service import CapabilityAuditService

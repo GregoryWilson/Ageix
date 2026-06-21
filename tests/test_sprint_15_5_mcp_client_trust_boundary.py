@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from mcp.clients import MCPClientHardeningAssessmentService
-from mcp.facade_service import MCPFacadeService
+from ageix_mcp.clients import MCPClientHardeningAssessmentService
+from ageix_mcp.facade_service import MCPFacadeService
 from services.agent_session_service import AgentSessionService
 from services.capability_audit_service import CapabilityAuditService
 from services.mcp_context import AgeixRequestContext

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from mcp.tool_definitions import MCPToolDefinition, MCP_TOOL_DEFINITIONS
+from ageix_mcp.tool_definitions import MCPToolDefinition, MCP_TOOL_DEFINITIONS
 
 
 class MCPToolRegistry:

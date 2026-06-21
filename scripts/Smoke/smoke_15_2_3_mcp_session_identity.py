@@ -11,7 +11,7 @@ from pathlib import Path
 from pprint import pprint
 from uuid import uuid4
 
-from mcp.facade_service import MCPFacadeService
+from ageix_mcp.facade_service import MCPFacadeService
 from services.agent_session_service import AgentSessionService
 from services.capability_audit_service import CapabilityAuditService
 from services.mcp_context import AgeixRequestContext

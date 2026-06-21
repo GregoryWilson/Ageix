@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from mcp.clients.client_registry import MCPClientDefinition, MCPClientRegistry
+from ageix_mcp.clients.client_registry import MCPClientDefinition, MCPClientRegistry
 
 
 @dataclass(frozen=True)

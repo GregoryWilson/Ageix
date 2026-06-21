@@ -12,7 +12,7 @@ from pathlib import Path
 from pprint import pprint
 from uuid import uuid4
 
-from mcp.clients import ChatGPTClientProfile, ChatGPTClientSimulator, MCPClientRegistry
+from ageix_mcp.clients import ChatGPTClientProfile, ChatGPTClientSimulator, MCPClientRegistry
 from services.agent_session_service import AgentSessionService
 from services.project_profile_service import ProjectProfileService
 

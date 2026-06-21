@@ -4,9 +4,9 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import uuid4
 
-from mcp.clients.chatgpt_client_profile import ChatGPTClientProfile
-from mcp.clients.client_readiness_service import ClientReadinessService
-from mcp.facade_service import MCPFacadeService
+from ageix_mcp.clients.chatgpt_client_profile import ChatGPTClientProfile
+from ageix_mcp.clients.client_readiness_service import ClientReadinessService
+from ageix_mcp.facade_service import MCPFacadeService
 from services.capability_audit_service import CapabilityAuditService
 from services.mcp_context import AgeixRequestContext
 
