@@ -81,6 +81,61 @@ def register_capabilities(repo_root: Path):
             },
             "error": None,
         }
+
+    def package_recommend(arguments: dict[str, Any]) -> dict[str, Any]:
+        objective = str(arguments.get("objective") or "")
+        if not objective:
+            return {"success": False, "result": {}, "metadata": {}, "error": "objective_required"}
+        result = EvidencePackageLifecycleService(repo_root).recommend(
+            objective=objective,
+            requester_identity=requester(arguments),
+            limit=arguments.get("limit"),
+            min_similarity=float(arguments.get("min_similarity") or 0.1),
+        )
+        return {
+            "success": True,
+            "result": result,
+            "metadata": {"request_mode": "package_recommendation", "advisory_only": True, "visibility_filtered": True},
+            "error": None,
+        }
+
+    def package_reuse(arguments: dict[str, Any]) -> dict[str, Any]:
+        package_id = str(arguments.get("package_id") or "")
+        if not package_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "package_id_required"}
+        package = EvidencePackageLifecycleService(repo_root).reuse_package(
+            package_id,
+            requester_identity=requester(arguments),
+            objective=arguments.get("objective"),
+            lineage_type=str(arguments.get("lineage_type") or "reuse"),
+            reuse_reason=str(arguments.get("reuse_reason") or "Chair approved evidence package reuse."),
+            automatic_refresh=bool(arguments.get("automatic_refresh", False)),
+        )
+        return {
+            "success": True,
+            "result": package.model_dump(),
+            "metadata": {
+                "request_mode": "package_reuse",
+                "parent_package_ids": package.parent_package_ids,
+                "child_package_id": package.package_id,
+                "immutable_child_created": True,
+                "automatic_refresh": False,
+            },
+            "error": None,
+        }
+
+    def package_lineage(arguments: dict[str, Any]) -> dict[str, Any]:
+        package_id = str(arguments.get("package_id") or "")
+        if not package_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "package_id_required"}
+        result = EvidencePackageLifecycleService(repo_root).lineage(package_id, requester_identity=requester(arguments))
+        return {
+            "success": True,
+            "result": result,
+            "metadata": {"request_mode": "package_lineage", "package_id": package_id},
+            "error": None,
+        }
+
     def evidence_request(arguments: dict[str, Any]) -> dict[str, Any]:
         # Sprint 17.1: proposal_id/evidence_plan_id means fulfill an already-approved
         # intent plan. Existing explicit/intent proposal submission remains unchanged
@@ -190,4 +245,28 @@ def register_capabilities(repo_root: Path):
             description="Return one immutable historical evidence package by package ID without regenerating or mutating contents.",
             requires_proposal=False,
         ), package_rehydrate),
+        (CapabilityDefinition(
+            capability_id="evidence.package.recommend",
+            category="evidence",
+            access_level="governed_read",
+            handler="evidence.package.recommend",
+            description="Recommend visible historical evidence packages for a new objective; advisory to Chair only.",
+            requires_proposal=False,
+        ), package_recommend),
+        (CapabilityDefinition(
+            capability_id="evidence.package.reuse",
+            category="evidence",
+            access_level="governed_read",
+            handler="evidence.package.reuse",
+            description="Create a new immutable child package that records Chair-approved reuse of a visible parent package.",
+            requires_proposal=False,
+        ), package_reuse),
+        (CapabilityDefinition(
+            capability_id="evidence.package.lineage",
+            category="evidence",
+            access_level="governed_read",
+            handler="evidence.package.lineage",
+            description="Return visible parent, child, ancestor, and descendant package lineage.",
+            requires_proposal=False,
+        ), package_lineage),
     ]

@@ -56,6 +56,14 @@ class PackageFreshness(BaseModel):
     last_freshness_check_at: str | None = None
 
 
+class PackageLineageType(str, Enum):
+    NONE = "none"
+    REUSE = "reuse"
+    REFRESH = "refresh"
+    EXPANSION = "expansion"
+    DERIVED = "derived"
+
+
 class EvidencePackageIndexEntry(BaseModel):
     package_id: str
     proposal_id: str
@@ -71,6 +79,12 @@ class EvidencePackageIndexEntry(BaseModel):
     stale: bool = False
     last_freshness_check_at: str | None = None
     project_id: str | None = None
+    visibility_scope: dict[str, Any] = Field(default_factory=dict)
+    parent_package_ids: list[str] = Field(default_factory=list)
+    lineage_type: PackageLineageType = PackageLineageType.NONE
+    reuse_reason: str = ""
+    reused_count: int = 0
+    last_reused_at: str | None = None
 
 
 class EvidencePackage(BaseModel):
@@ -80,6 +94,10 @@ class EvidencePackage(BaseModel):
     objective: str = Field(min_length=1)
     intent: str = Field(default="")
     repository_snapshot: dict[str, Any] = Field(default_factory=dict)
+    visibility_scope: dict[str, Any] = Field(default_factory=dict)
+    parent_package_ids: list[str] = Field(default_factory=list)
+    lineage_type: PackageLineageType = PackageLineageType.NONE
+    reuse_reason: str = ""
     primary_evidence: list[EvidencePackageItem] = Field(default_factory=list)
     supporting_evidence: list[EvidencePackageItem] = Field(default_factory=list)
     validation_evidence: list[EvidencePackageItem] = Field(default_factory=list)

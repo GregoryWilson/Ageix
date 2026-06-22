@@ -269,6 +269,7 @@ class EvidenceBrokerService:
             coverage_gaps=gaps,
             recommended_followup_requests=followups,
             requester_identity=requester_identity,
+            visibility_scope=self._visibility_scope(requester_identity),
         )
 
     def _score(self, primary: list[EvidencePackageItem], supporting: list[EvidencePackageItem], validation: list[EvidencePackageItem], items: list[EvidencePackageItem]) -> tuple[float, str, list[str], list[str]]:
@@ -299,6 +300,13 @@ class EvidenceBrokerService:
         else:
             reason = "Low retrieval confidence: retrieved evidence does not sufficiently cover the approved intent."
         return score, reason, gaps, followups
+
+    def _visibility_scope(self, requester: dict[str, Any]) -> dict[str, Any]:
+        return {
+            key: str(requester.get(key))
+            for key in ("project_id", "agent_id", "client_id", "participant_id")
+            if requester.get(key)
+        }
 
     def _persist(self, package: EvidencePackage) -> None:
         path = self.package_root / package.package_id / "package.json"
