@@ -16,7 +16,11 @@ def register_capabilities(repo_root: Path):
             project_id=str(arguments.get("project_id") or ""),
             objective=str(arguments.get("objective") or ""),
             reason=str(arguments.get("reason") or ""),
+            request_mode=str(arguments.get("request_mode") or "explicit"),
             requested_evidence=arguments.get("requested_evidence") or [],
+            target=arguments.get("target"),
+            desired_outcome=arguments.get("desired_outcome"),
+            intent_type=str(arguments.get("intent_type") or "unknown"),
             human_approval=arguments.get("human_approval"),
         )
         decision = EvidenceAccessProposalService(repo_root).evaluate(proposal)
@@ -26,6 +30,7 @@ def register_capabilities(repo_root: Path):
             "metadata": {
                 "proposal_type": "evidence_access",
                 "requires_proposal": True,
+                "request_mode": proposal.request_mode,
                 **decision.metadata,
             },
             "error": None if decision.decision == "approved" else decision.decision,

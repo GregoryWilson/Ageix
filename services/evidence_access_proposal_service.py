@@ -7,6 +7,7 @@ from typing import Any
 
 from models.evidence_access_proposal import EvidenceAccessDecision, EvidenceAccessProposal, EvidenceRequestItem
 from services.agent_profile_service import AgentProfileService
+from services.evidence_broker_planner_service import EvidenceBrokerPlannerService
 from services.approval_request_service import ApprovalRequestService
 from services.current_project_resolution_service import CurrentProjectResolutionService
 from services.code_context_extractor import CodeContextExtractor
@@ -29,9 +30,13 @@ class EvidenceAccessProposalService:
         self.proposal_root = self.repo_root / ".ageix" / "manifests" / "evidence_access_proposals"
         self.project_resolution = CurrentProjectResolutionService(self.repo_root)
         self.approvals = ApprovalRequestService(self.repo_root)
+        self.planner = EvidenceBrokerPlannerService(self.repo_root)
 
     def evaluate(self, proposal: EvidenceAccessProposal) -> EvidenceAccessDecision:
         proposal.project_id = self._resolve_project_id(proposal)
+        if proposal.request_mode == "intent":
+            return self._evaluate_intent(proposal)
+
         budget = self.profile_service.evidence_budget(proposal.agent_id, self.controls)
         hard = self._hard_limits()
         profile = self.profile_service.get_profile(proposal.agent_id)
@@ -144,11 +149,77 @@ class EvidenceAccessProposalService:
             reasons=reasons,
             metadata={
                 **self._metadata(proposal, profile.reputation_level, budget),
+                "request_mode": "explicit",
                 "target_resolution_used": True,
                 "evidence_broker_used": True,
                 "resolved_files": resolved_files,
                 "total_lines": total_lines,
                 "hard_limits": hard,
+                **({"approval_id": approval_id} if approval_id else {}),
+            },
+        )
+        self._persist(proposal, decision)
+        return decision
+
+
+    def _evaluate_intent(self, proposal: EvidenceAccessProposal) -> EvidenceAccessDecision:
+        budget = self.profile_service.evidence_budget(proposal.agent_id, self.controls)
+        profile = self.profile_service.get_profile(proposal.agent_id)
+        project_error = self._validate_project(proposal.project_id)
+        if project_error:
+            decision = EvidenceAccessDecision(
+                proposal_id=proposal.proposal_id,
+                decision="denied",
+                denied_evidence=[{"reason": project_error}],
+                reasons=[project_error],
+                metadata={
+                    **self._metadata(proposal, profile.reputation_level, budget),
+                    "request_mode": "intent",
+                    "evidence_broker_planner_used": False,
+                },
+            )
+            self._persist(proposal, decision)
+            return decision
+
+        plan = self.planner.plan(proposal)
+        recommendation, reasons = self.planner.approval_recommendation(plan)
+        approval_id = None
+        human_required = recommendation == "human_approval_required"
+
+        if human_required:
+            approval = self.approvals.create_request(
+                proposal_id=proposal.proposal_id,
+                reason=", ".join(reasons) or "intent evidence proposal requires human review",
+                requested_by=proposal.agent_id,
+                request_type="evidence_expansion",
+            )
+            approval_id = approval.approval_id
+
+        if self._human_override(proposal) and recommendation != "denied":
+            recommendation = "approved"
+            human_required = False
+            reasons.append("human_override_approved_intent_evidence_plan")
+
+        decision = EvidenceAccessDecision(
+            proposal_id=proposal.proposal_id,
+            decision=recommendation,
+            approved_evidence=[],
+            denied_evidence=[] if recommendation != "denied" else [{"reason": reason} for reason in reasons],
+            human_approval_required=human_required,
+            reasons=reasons,
+            evidence_plan=plan if recommendation in {"approved", "human_approval_required"} else plan,
+            metadata={
+                **self._metadata(proposal, profile.reputation_level, budget),
+                "request_mode": "intent",
+                "target": proposal.target,
+                "desired_outcome": proposal.desired_outcome,
+                "intent_type": plan.intent_type,
+                "evidence_broker_planner_used": True,
+                "planning_confidence": plan.planning_confidence,
+                "planning_confidence_reason": plan.confidence_reason,
+                "evidence_plan_id": plan.plan_id,
+                "expires_at": plan.expires_at,
+                "source_files_returned": False,
                 **({"approval_id": approval_id} if approval_id else {}),
             },
         )
