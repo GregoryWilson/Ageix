@@ -44,6 +44,8 @@ artifacts/*.json
 cache/
 
 # Staging and manifests
+.ageix/evidence_packages/
+.ageix/evidence_packages/**
 .ageix/staged/
 .ageix/manifests/
 .ageix/repair_loops/

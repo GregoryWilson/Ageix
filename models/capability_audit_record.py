@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -15,3 +17,4 @@ class CapabilityAuditRecord(BaseModel):
     client_id: str | None = None
     project_id: str | None = None
     participant_id: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
