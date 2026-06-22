@@ -6,6 +6,7 @@ from typing import Any
 
 from models.auth_identity import AuthIdentity
 from services.auth_providers.dev_token_provider import DevTokenProvider
+from services.auth_providers.jwt_provider import JwtAuthProvider
 from services.mcp_context import AgeixRequestContext
 
 
@@ -21,6 +22,7 @@ class AuthService:
         "enabled": False,
         "mode": "dev_token",
         "tokens": [],
+        "jwt": {},
     }
 
     def __init__(self, repo_root: str | Path = ".") -> None:
@@ -39,6 +41,15 @@ class AuthService:
         mode = str(self.config.get("mode") or "dev_token")
         if mode == "dev_token":
             identity = DevTokenProvider(list(self.config.get("tokens") or [])).authenticate(token)
+            if identity:
+                return identity
+            raise AuthForbiddenError("invalid_bearer_token")
+        if mode in {"jwt", "oauth_jwt", "hybrid"}:
+            # Preserve local/dev token support during OAuth rollout and smoke testing.
+            dev_identity = DevTokenProvider(list(self.config.get("tokens") or [])).authenticate(token)
+            if dev_identity:
+                return dev_identity
+            identity = JwtAuthProvider(dict(self.config.get("jwt") or self.config.get("oauth") or {})).authenticate(token)
             if identity:
                 return identity
             raise AuthForbiddenError("invalid_bearer_token")

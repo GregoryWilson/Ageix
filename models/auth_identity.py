@@ -20,6 +20,9 @@ class AuthIdentity(BaseModel):
     participant_id: str | None = None
     allowed_projects: list[str] = Field(default_factory=list)
     allowed_capabilities: list[str] = Field(default_factory=list)
+    scopes: list[str] = Field(default_factory=list)
+    issuer: str | None = None
+    subject: str | None = None
 
     def project_allowed(self, project_id: str) -> bool:
         return not self.auth_enabled or "*" in self.allowed_projects or project_id in self.allowed_projects
