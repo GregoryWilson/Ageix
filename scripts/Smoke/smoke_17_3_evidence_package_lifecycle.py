@@ -16,6 +16,7 @@ def _items(package):
 def main() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         repo = Path(tmp)
+        print(f"Smoke 17.3 package store: temporary ({repo / '.ageix' / 'evidence_packages'})")
         decision = _approved_intent_plan(repo)
         package = EvidenceBrokerService(repo).request_evidence(
             proposal_id=decision.proposal_id,
@@ -67,7 +68,8 @@ def main() -> None:
 
         print(
             "Smoke 17.3 PASS: package discovery, summaries, details, freshness, "
-            f"and immutable rehydration verified for {package.package_id}."
+            f"and immutable rehydration verified for {package.package_id}. "
+            "Temporary package store is cleaned up after this smoke."
         )
 
 

@@ -21,6 +21,7 @@ def _execute(service: CapabilityExecutionService, capability_id: str, arguments:
 def main() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         repo = Path(tmp)
+        print(f"Smoke 17.4 package store: temporary ({repo / '.ageix' / 'evidence_packages'})")
         decision = _approved_intent_plan(repo)
         parent = EvidenceBrokerService(repo).request_evidence(
             proposal_id=decision.proposal_id,
@@ -76,7 +77,8 @@ def main() -> int:
 
         print(
             "Smoke 17.4 PASS: visibility-filtered recommendations, immutable reuse child, lineage, and refresh denial verified "
-            f"for {parent.package_id} -> {child_id}."
+            f"for {parent.package_id} -> {child_id}. "
+            "Temporary package store is cleaned up after this smoke."
         )
     return 0
 

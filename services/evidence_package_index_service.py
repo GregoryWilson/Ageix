@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 from datetime import datetime, timezone
 
@@ -38,6 +39,7 @@ class EvidencePackageIndexService:
             reuse_reason=package.reuse_reason,
             reused_count=self._existing_reused_count(package.package_id),
             last_reused_at=self._existing_last_reused_at(package.package_id),
+            lifecycle=dict(package.lifecycle or {}),
         )
         data = self._load()
         entries = [item for item in data.get("packages", []) if item.get("package_id") != package.package_id]
@@ -53,6 +55,64 @@ class EvidencePackageIndexService:
 
     def list_entries(self) -> list[dict]:
         return list(self._load().get("packages", []))
+
+    def rebuild_from_package_store(self) -> dict[str, Any]:
+        entries: list[dict[str, Any]] = []
+        package_root = self.path.parent
+        if package_root.exists():
+            for package_file in sorted(package_root.glob("EVPKG-*/package.json")):
+                package = EvidencePackage(**json.loads(package_file.read_text(encoding="utf-8")))
+                freshness = package.freshness or PackageFreshness()
+                entries.append(EvidencePackageIndexEntry(
+                    package_id=package.package_id,
+                    proposal_id=package.proposal_id,
+                    evidence_plan_id=package.evidence_plan_id,
+                    objective=package.objective,
+                    created_at=package.created_at,
+                    retrieval_confidence=package.retrieval_confidence,
+                    primary_count=len(package.primary_evidence),
+                    supporting_count=len(package.supporting_evidence),
+                    validation_count=len(package.validation_evidence),
+                    coverage_gap_count=len(package.coverage_gaps),
+                    freshness_status=freshness.status,
+                    stale=freshness.stale,
+                    last_freshness_check_at=freshness.last_freshness_check_at,
+                    project_id=str((package.requester_identity or {}).get("project_id") or "") or None,
+                    visibility_scope=dict(package.visibility_scope or {}),
+                    parent_package_ids=list(package.parent_package_ids),
+                    lineage_type=package.lineage_type,
+                    reuse_reason=package.reuse_reason,
+                    reused_count=self._existing_reused_count(package.package_id),
+                    last_reused_at=self._existing_last_reused_at(package.package_id),
+                    lifecycle=dict(package.lifecycle or {}),
+                ).model_dump())
+        entries.sort(key=lambda item: item.get("created_at", ""))
+        self._write({"schema_version": 1, "packages": entries})
+        return {"schema_version": 1, "packages": entries, "package_count": len(entries)}
+
+    def validate_index(self) -> dict[str, Any]:
+        data = self._load()
+        entries = list(data.get("packages", []))
+        package_root = self.path.parent
+        package_ids = {path.parent.name for path in package_root.glob("EVPKG-*/package.json")} if package_root.exists() else set()
+        index_ids = {str(entry.get("package_id") or "") for entry in entries}
+        missing_package_dirs = sorted(package_id for package_id in index_ids if package_id and package_id not in package_ids)
+        missing_index_entries = sorted(package_id for package_id in package_ids if package_id not in index_ids)
+        invalid_parent_refs: list[dict[str, str]] = []
+        for entry in entries:
+            child_id = str(entry.get("package_id") or "")
+            for parent_id in list(entry.get("parent_package_ids") or []):
+                if parent_id not in package_ids:
+                    invalid_parent_refs.append({"package_id": child_id, "parent_package_id": parent_id})
+        status = "pass" if not missing_package_dirs and not missing_index_entries and not invalid_parent_refs else "fail"
+        return {
+            "status": status,
+            "package_count": len(package_ids),
+            "index_entry_count": len(index_ids),
+            "missing_package_dirs": missing_package_dirs,
+            "missing_index_entries": missing_index_entries,
+            "invalid_parent_refs": invalid_parent_refs,
+        }
 
     def record_reuse(self, parent_package_ids: list[str]) -> None:
         if not parent_package_ids:

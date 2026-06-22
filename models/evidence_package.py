@@ -85,6 +85,7 @@ class EvidencePackageIndexEntry(BaseModel):
     reuse_reason: str = ""
     reused_count: int = 0
     last_reused_at: str | None = None
+    lifecycle: dict[str, Any] = Field(default_factory=dict)
 
 
 class EvidencePackage(BaseModel):
@@ -109,6 +110,7 @@ class EvidencePackage(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     requester_identity: dict[str, Any] = Field(default_factory=dict)
     audit_metadata: dict[str, Any] = Field(default_factory=dict)
+    lifecycle: dict[str, Any] = Field(default_factory=dict)
 
     def all_evidence(self) -> list[EvidencePackageItem]:
         return [*self.primary_evidence, *self.supporting_evidence, *self.validation_evidence]
