@@ -70,6 +70,7 @@ class EvidencePackageIndexEntry(BaseModel):
     freshness_status: PackageFreshnessStatus = PackageFreshnessStatus.UNCHANGED
     stale: bool = False
     last_freshness_check_at: str | None = None
+    project_id: str | None = None
 
 
 class EvidencePackage(BaseModel):

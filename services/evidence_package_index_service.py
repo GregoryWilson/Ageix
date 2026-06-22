@@ -29,6 +29,7 @@ class EvidencePackageIndexService:
             freshness_status=freshness.status,
             stale=freshness.stale,
             last_freshness_check_at=freshness.last_freshness_check_at,
+            project_id=str((package.requester_identity or {}).get("project_id") or "") or None,
         )
         data = self._load()
         entries = [item for item in data.get("packages", []) if item.get("package_id") != package.package_id]

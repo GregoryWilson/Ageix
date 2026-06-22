@@ -7,9 +7,80 @@ from models.capability_definition import CapabilityDefinition
 from models.evidence_access_proposal import EvidenceAccessProposal
 from services.evidence_access_proposal_service import EvidenceAccessProposalService
 from services.evidence_broker_service import EvidenceBrokerService
+from services.evidence_package_lifecycle_service import EvidencePackageLifecycleService
 
 
 def register_capabilities(repo_root: Path):
+
+    def requester(arguments: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "session_id": str(arguments.get("session_id") or ""),
+            "agent_id": str(arguments.get("agent_id") or ""),
+            "project_id": str(arguments.get("project_id") or ""),
+            "client_id": arguments.get("client_id"),
+            "participant_id": arguments.get("participant_id"),
+        }
+
+    def package_list(arguments: dict[str, Any]) -> dict[str, Any]:
+        result = EvidencePackageLifecycleService(repo_root).list_packages(
+            requester_identity=requester(arguments),
+            limit=arguments.get("limit"),
+            offset=arguments.get("offset"),
+            proposal_id=arguments.get("proposal_id"),
+            evidence_plan_id=arguments.get("evidence_plan_id"),
+            stale=arguments.get("stale"),
+            objective_contains=arguments.get("objective_contains"),
+            context_contains=arguments.get("context_contains"),
+            created_before=arguments.get("created_before"),
+            created_after=arguments.get("created_after"),
+        )
+        return {
+            "success": True,
+            "result": result,
+            "metadata": {"request_mode": "package_discovery", "summary_only": True},
+            "error": None,
+        }
+
+    def package_details(arguments: dict[str, Any]) -> dict[str, Any]:
+        package_id = str(arguments.get("package_id") or "")
+        if not package_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "package_id_required"}
+        result = EvidencePackageLifecycleService(repo_root).details(package_id, requester_identity=requester(arguments))
+        return {
+            "success": True,
+            "result": result,
+            "metadata": {"request_mode": "package_details", "package_id": package_id, "contents_returned": False},
+            "error": None,
+        }
+
+    def package_freshness(arguments: dict[str, Any]) -> dict[str, Any]:
+        package_id = str(arguments.get("package_id") or "")
+        if not package_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "package_id_required"}
+        result = EvidencePackageLifecycleService(repo_root).evaluate_freshness(package_id, requester_identity=requester(arguments))
+        return {
+            "success": True,
+            "result": result,
+            "metadata": {"request_mode": "package_freshness", "package_id": package_id, "index_updated": True},
+            "error": None,
+        }
+
+    def package_rehydrate(arguments: dict[str, Any]) -> dict[str, Any]:
+        package_id = str(arguments.get("package_id") or "")
+        if not package_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "package_id_required"}
+        package = EvidencePackageLifecycleService(repo_root).rehydrate(package_id, requester_identity=requester(arguments))
+        return {
+            "success": True,
+            "result": package.model_dump(),
+            "metadata": {
+                "request_mode": "package_rehydration",
+                "package_id": package.package_id,
+                "immutable_contents_returned": True,
+                "freshness_evaluated": False,
+            },
+            "error": None,
+        }
     def evidence_request(arguments: dict[str, Any]) -> dict[str, Any]:
         # Sprint 17.1: proposal_id/evidence_plan_id means fulfill an already-approved
         # intent plan. Existing explicit/intent proposal submission remains unchanged
@@ -87,4 +158,36 @@ def register_capabilities(repo_root: Path):
             description="Submit a governed evidence-access proposal.",
             requires_proposal=True,
         ), evidence_request),
+        (CapabilityDefinition(
+            capability_id="evidence.package.list",
+            category="evidence",
+            access_level="governed_read",
+            handler="evidence.package.list",
+            description="List project-scoped immutable evidence package summaries from the package index.",
+            requires_proposal=False,
+        ), package_list),
+        (CapabilityDefinition(
+            capability_id="evidence.package.details",
+            category="evidence",
+            access_level="governed_read",
+            handler="evidence.package.details",
+            description="Return package metadata, freshness, counts, and provenance manifest without regenerating package contents.",
+            requires_proposal=False,
+        ), package_details),
+        (CapabilityDefinition(
+            capability_id="evidence.package.freshness",
+            category="evidence",
+            access_level="governed_read",
+            handler="evidence.package.freshness",
+            description="Evaluate content-hash freshness for one immutable evidence package and update the package index.",
+            requires_proposal=False,
+        ), package_freshness),
+        (CapabilityDefinition(
+            capability_id="evidence.package.rehydrate",
+            category="evidence",
+            access_level="governed_read",
+            handler="evidence.package.rehydrate",
+            description="Return one immutable historical evidence package by package ID without regenerating or mutating contents.",
+            requires_proposal=False,
+        ), package_rehydrate),
     ]
