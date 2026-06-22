@@ -14,10 +14,12 @@ def register_capabilities(repo_root: Path):
         # Sprint 17.1: proposal_id/evidence_plan_id means fulfill an already-approved
         # intent plan. Existing explicit/intent proposal submission remains unchanged
         # when those identifiers are absent.
-        if arguments.get("proposal_id") or arguments.get("evidence_plan_id"):
+        if arguments.get("package_id") or arguments.get("proposal_id") or arguments.get("evidence_plan_id"):
             package = EvidenceBrokerService(repo_root).request_evidence(
                 proposal_id=arguments.get("proposal_id"),
                 evidence_plan_id=arguments.get("evidence_plan_id"),
+                package_id=arguments.get("package_id"),
+                evaluate_freshness=bool(arguments.get("evaluate_freshness", True)),
                 requester_identity={
                     "session_id": str(arguments.get("session_id") or ""),
                     "agent_id": str(arguments.get("agent_id") or ""),
@@ -31,11 +33,13 @@ def register_capabilities(repo_root: Path):
                 "result": package.model_dump(),
                 "metadata": {
                     "proposal_type": "evidence_access",
-                    "request_mode": "intent_package",
+                    "request_mode": "package_rehydration" if arguments.get("package_id") else "intent_package",
                     "evidence_broker_used": True,
+                    "package_rehydrated": bool(arguments.get("package_id")),
                     "evidence_package_id": package.package_id,
                     "evidence_plan_id": package.evidence_plan_id,
                     "retrieval_confidence": package.retrieval_confidence,
+                    "freshness": package.freshness.model_dump() if package.freshness else None,
                 },
                 "error": None,
             }

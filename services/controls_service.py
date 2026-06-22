@@ -177,6 +177,10 @@ class ControlsService:
             "minimum_confidence": 0.80,
             "allow_promotion_with_blockers": False,
         },
+        "evidence_package": {
+            "evidence_package_retention_days": None,
+            "retrieval_deny_patterns": [],
+        },
         "dependency_intelligence": {
             "enabled": True,
             "max_depth": 2,
