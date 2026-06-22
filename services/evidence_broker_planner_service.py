@@ -23,11 +23,34 @@ class EvidenceBrokerPlannerService:
         "whole repo",
         "whole repository",
         "all files",
+        "all source",
         "everything",
         "full source",
         "source dump",
         "repo dump",
         "repository dump",
+        "entire codebase",
+        "whole codebase",
+    }
+
+    GENERATED_PATH_SUFFIXES = {
+        ".patch",
+        ".diff",
+        ".zip",
+        ".tar",
+        ".gz",
+        ".tgz",
+        ".pyc",
+        ".pyo",
+    }
+    GENERATED_PATH_PARTS = {
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".git",
+        ".venv",
+        "venv",
     }
 
     FEATURE_TERMS = {"design", "add", "build", "implement", "feature", "support", "adapter", "expose"}
@@ -43,23 +66,24 @@ class EvidenceBrokerPlannerService:
         text = self._combined_text(proposal)
         intent_type = self._intent_type(proposal.intent_type, text)
         repo_walk = self._contains_repo_walk_language(text)
-        candidates = self._candidate_paths(proposal.target or "", text)
-
-        resolved_targets: list[EvidencePlanTarget] = []
-        for candidate in candidates[:12]:
-            resolved_targets.append(EvidencePlanTarget(
-                target_type=self._target_type(candidate),
-                target=candidate,
-                reason=self._target_reason(candidate, proposal),
-                confidence=self._target_confidence(candidate, proposal),
-            ))
-
-        evidence_needed = self._evidence_needed(intent_type, proposal, resolved_targets)
         gaps: list[str] = []
         next_steps: list[str] = []
+        resolved_targets: list[EvidencePlanTarget] = []
+
         if repo_walk:
             gaps.append("Intent contains repo-walk language and is not bounded enough for auto-approval.")
             next_steps.append("Refine the target to a capability, service, component, feature, or explicit file scope.")
+        else:
+            candidates = self._candidate_paths(proposal.target or "", text)
+            for candidate in candidates[:12]:
+                resolved_targets.append(EvidencePlanTarget(
+                    target_type=self._target_type(candidate),
+                    target=candidate,
+                    reason=self._target_reason(candidate, proposal),
+                    confidence=self._target_confidence(candidate, proposal),
+                ))
+
+        evidence_needed = [] if repo_walk else self._evidence_needed(intent_type, proposal, resolved_targets)
         if not resolved_targets:
             gaps.append("No likely repository targets were identified from the current index.")
             next_steps.append("Provide a more specific target name, capability id, service name, or file path.")
@@ -138,7 +162,7 @@ class EvidenceBrokerPlannerService:
         terms = self._search_terms(target, text)
 
         for path in paths:
-            if path.startswith(".ageix/") or path == ".ageix":
+            if self._skip_path(path):
                 continue
             score = 0
             lower_path = path.lower()
@@ -151,15 +175,36 @@ class EvidenceBrokerPlannerService:
                     score += 4
                 if normalized and normalized in stem.replace("-", "_"):
                     score += 3
-            if lower_path.startswith("tests/") and any(term in lower_path for term in terms):
-                score += 2
+            target_type = self._target_type(path)
+            if target_type in {"service", "route", "model"}:
+                score += 3
+            if target_type in {"test", "smoke_test"}:
+                score += 1
+            if lower_path.startswith("services/capabilities/"):
+                score += 3
             if lower_path.endswith((".py", ".json", ".yaml", ".yml", ".md")):
                 score += 1
             if score > 0:
                 ranked.append((score, path))
 
-        ranked.sort(key=lambda item: (-item[0], item[1]))
+        ranked.sort(key=lambda item: (-item[0], self._path_priority(item[1]), item[1]))
         return [path for _, path in ranked]
+
+    def _skip_path(self, path: str) -> bool:
+        lower_path = path.lower()
+        if lower_path.startswith(".ageix/") or lower_path == ".ageix":
+            return True
+        parts = set(Path(lower_path).parts)
+        if parts & self.GENERATED_PATH_PARTS:
+            return True
+        if any(lower_path.endswith(suffix) for suffix in self.GENERATED_PATH_SUFFIXES):
+            return True
+        return False
+
+    def _path_priority(self, path: str) -> int:
+        kind = self._target_type(path)
+        order = {"service": 0, "route": 1, "model": 2, "test": 3, "smoke_test": 4, "file": 5}
+        return order.get(kind, 5)
 
     def _search_terms(self, target: str, text: str) -> list[str]:
         raw_terms = set(re.findall(r"[a-zA-Z_][a-zA-Z0-9_\.\-]*", " ".join([target, text])))
@@ -234,32 +279,40 @@ class EvidenceBrokerPlannerService:
     def _planning_confidence(self, proposal: EvidenceAccessProposal, intent_type: str, resolved_targets: list[EvidencePlanTarget], repo_walk: bool, gaps: list[str]) -> float:
         if repo_walk:
             return 0.10
-        score = 0.20
+        score = 0.18
         if len((proposal.objective or "").split()) >= 4:
-            score += 0.15
+            score += 0.12
         if len((proposal.reason or "").split()) >= 5:
-            score += 0.15
+            score += 0.12
         if proposal.target:
-            score += 0.15
+            score += 0.12
         if proposal.desired_outcome:
-            score += 0.10
+            score += 0.08
         if intent_type != "unknown":
             score += 0.10
         if resolved_targets:
-            score += min(0.20, 0.05 * len(resolved_targets))
+            score += min(0.16, 0.03 * len(resolved_targets))
+            score += min(0.10, 0.02 * len({target.target_type for target in resolved_targets}))
         else:
             score -= 0.20
         if intent_type == "unknown":
-            score -= 0.10
+            score -= 0.12
         if gaps:
             score -= min(0.25, 0.08 * len(gaps))
-        return round(max(0.0, min(1.0, score)), 3)
+
+        # 17.0.1 calibration: deterministic search-based planning should not
+        # claim certainty. High confidence is reserved for future architecture-map
+        # or local-LLM reviewed evidence planning.
+        cap = 0.86
+        if not any(target.confidence >= 0.90 for target in resolved_targets):
+            cap = 0.82
+        return round(max(0.0, min(cap, score)), 3)
 
     def _confidence_reason(self, confidence: float, intent_type: str, targets: list[EvidencePlanTarget], repo_walk: bool) -> str:
         if repo_walk:
             return "Planning confidence is low because the intent appears to request broad repository access."
         if confidence >= 0.80:
-            return f"High confidence: intent classified as {intent_type} and {len(targets)} likely target(s) were identified."
+            return f"High confidence, but not certain: intent classified as {intent_type} and {len(targets)} likely target(s) were identified by deterministic planning."
         if confidence >= 0.60:
-            return f"Moderate confidence: intent classified as {intent_type} with partial target resolution."
+            return f"Moderate confidence: intent classified as {intent_type} with partial deterministic target resolution."
         return "Low confidence: intent or repository target resolution is incomplete."

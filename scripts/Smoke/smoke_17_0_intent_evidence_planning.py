@@ -45,7 +45,8 @@ def main() -> int:
     assert intent_response.metadata["request_mode"] == "intent"
     assert intent_response.result["approved_evidence"] == []
     assert intent_response.result["evidence_plan"]["plan_id"].startswith("EVP-")
-    assert intent_response.result["evidence_plan"]["planning_confidence"] >= 0.70
+    assert 0.70 <= intent_response.result["evidence_plan"]["planning_confidence"] < 1.0
+    assert all(not target["target"].endswith((".patch", ".zip", ".diff")) for target in intent_response.result["evidence_plan"]["resolved_targets"])
     assert intent_response.result["metadata"]["source_files_returned"] is False
 
     repo_walk_response = service.execute(CapabilityRequest(
@@ -66,6 +67,8 @@ def main() -> int:
     assert repo_walk_response.success is False
     assert repo_walk_response.error == "denied"
     assert "intent_request_contains_repo_walk_language" in repo_walk_response.result["reasons"]
+    assert repo_walk_response.result["evidence_plan"]["resolved_targets"] == []
+    assert repo_walk_response.result["evidence_plan"]["evidence_needed"] == []
 
     explicit_response = service.execute(CapabilityRequest(
         capability_id="evidence.request",

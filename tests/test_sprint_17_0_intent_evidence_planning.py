@@ -50,8 +50,9 @@ def test_intent_evidence_proposal_creates_plan_without_returning_source(tmp_path
     assert decision.evidence_plan is not None
     assert decision.evidence_plan.request_mode == "intent"
     assert decision.evidence_plan.intent_type == "feature_design"
-    assert decision.evidence_plan.planning_confidence >= 0.70
+    assert 0.70 <= decision.evidence_plan.planning_confidence < 1.0
     assert decision.evidence_plan.resolved_targets
+    assert all(not target.target.endswith((".patch", ".zip", ".diff")) for target in decision.evidence_plan.resolved_targets)
     assert decision.metadata["source_files_returned"] is False
     assert decision.metadata["request_mode"] == "intent"
     expires_at = datetime.fromisoformat(str(decision.evidence_plan.expires_at))
@@ -77,6 +78,8 @@ def test_intent_evidence_proposal_denies_repo_walk_language(tmp_path: Path):
     assert "intent_request_contains_repo_walk_language" in decision.reasons
     assert decision.evidence_plan is not None
     assert decision.evidence_plan.planning_confidence < 0.45
+    assert decision.evidence_plan.resolved_targets == []
+    assert decision.evidence_plan.evidence_needed == []
 
 
 def test_intent_evidence_proposal_escalates_low_confidence_request(tmp_path: Path):
@@ -149,8 +152,32 @@ def test_intent_evidence_capability_returns_plan_through_mcp_capability(tmp_path
     assert response.success is True
     assert response.metadata["proposal_type"] == "evidence_access"
     assert response.metadata["request_mode"] == "intent"
-    assert response.result["evidence_plan"]["planning_confidence"] >= 0.70
+    assert 0.70 <= response.result["evidence_plan"]["planning_confidence"] < 1.0
     assert response.result["approved_evidence"] == []
+
+
+def test_intent_planner_filters_generated_patch_artifacts(tmp_path: Path):
+    _seed_project(tmp_path)
+    _seed_mcp_files(tmp_path)
+    (tmp_path / "ageix_sprint_17_0_intent_evidence_planning.patch").write_text("diff --git a/example b/example\n", encoding="utf-8")
+    (tmp_path / "ageix_repo_sprint-17.0.zip").write_text("not a real zip for test purposes", encoding="utf-8")
+
+    decision = EvidenceAccessProposalService(tmp_path).evaluate(EvidenceAccessProposal(
+        session_id="thread-17",
+        agent_id="lex",
+        project_id="Ageix",
+        request_mode="intent",
+        objective="Design MCP evidence request adapter support",
+        reason="Need to understand existing MCP capability exposure architecture before proposing the feature design.",
+        target="evidence capability adapter",
+        desired_outcome="Produce a Sprint 17 implementation plan for intent-governed evidence planning.",
+        intent_type="feature_design",
+    ))
+
+    assert decision.evidence_plan is not None
+    targets = [target.target for target in decision.evidence_plan.resolved_targets]
+    assert "ageix_sprint_17_0_intent_evidence_planning.patch" not in targets
+    assert "ageix_repo_sprint-17.0.zip" not in targets
 
 
 def test_intent_evidence_decision_is_persisted_with_plan(tmp_path: Path):
