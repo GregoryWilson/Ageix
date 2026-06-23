@@ -296,6 +296,29 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
         related_tools=("ageix.evidence.package.lineage", "ageix.evidence.package.details"),
     ),
     MCPToolDefinition(
+        name="ageix.evidence.package.deprecate",
+        capability_id="evidence.package.deprecate",
+        category="evidence",
+        description="Mark a visible package deprecated in catalog metadata without mutating package contents.",
+        input_schema=_object_schema({
+            "package_id": _string("Evidence package ID."),
+            "reason": _string("Governance deprecation rationale."),
+        }, ["package_id"]),
+        related_tools=("ageix.evidence.package.details", "ageix.evidence.package.recommend"),
+    ),
+    MCPToolDefinition(
+        name="ageix.evidence.package.supersede",
+        capability_id="evidence.package.supersede",
+        category="evidence",
+        description="Mark a visible package superseded by a newer compatible package without mutating package contents.",
+        input_schema=_object_schema({
+            "package_id": _string("Evidence package ID being superseded."),
+            "superseded_by_package_id": _string("Newer replacement evidence package ID."),
+            "reason": _string("Governance supersession rationale."),
+        }, ["package_id", "superseded_by_package_id"]),
+        related_tools=("ageix.evidence.package.details", "ageix.evidence.package.recommend"),
+    ),
+    MCPToolDefinition(
         name="ageix.evidence.package.lineage",
         capability_id="evidence.package.lineage",
         category="evidence",

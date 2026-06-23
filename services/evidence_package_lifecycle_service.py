@@ -108,27 +108,23 @@ class EvidencePackageLifecycleService:
             similarity = self._similarity(objective, self._entry_context(entry))
             if similarity < min_similarity:
                 continue
-            recommendations.append({
-                "package_id": entry.get("package_id"),
-                "objective": entry.get("objective"),
-                "proposal_id": entry.get("proposal_id"),
-                "evidence_plan_id": entry.get("evidence_plan_id"),
-                "similarity": similarity,
-                "freshness_status": entry.get("freshness_status", "unchanged"),
-                "stale": bool(entry.get("stale", False)),
-                "retrieval_confidence": entry.get("retrieval_confidence", 0.0),
-                "primary_count": entry.get("primary_count", 0),
-                "supporting_count": entry.get("supporting_count", 0),
-                "validation_count": entry.get("validation_count", 0),
-                "parent_package_ids": list(entry.get("parent_package_ids") or []),
-                "reused_count": int(entry.get("reused_count") or 0),
-                "recommendation_reason": self._recommendation_reason(similarity, entry),
-            })
-        recommendations.sort(key=lambda item: (item["stale"], -item["similarity"], -float(item.get("retrieval_confidence") or 0.0)))
+            recommendation = self._recommendation_item(entry, similarity, requester)
+            if recommendation.get("deprecated"):
+                continue
+            recommendations.append(recommendation)
+        recommendations.sort(key=lambda item: (
+            bool(item.get("superseded_by_package_id")),
+            bool(item.get("stale")),
+            -int(item.get("governance_score") or 0),
+            -item["similarity"],
+            -float(item.get("retrieval_confidence") or 0.0),
+        ))
         effective_limit = self._limit(limit)
         page = recommendations[:effective_limit]
-        self._audit("evidence.package.recommend", requester, True, "evidence_package_recommendations_returned", {
+        self.index.record_recommendation([str(item.get("package_id")) for item in page if item.get("package_id")])
+        self._audit("evidence.package.recommend", requester, True, "package_recommended", {
             "objective": objective,
+            "package_ids": [item.get("package_id") for item in page],
             "total_candidates": len(recommendations),
             "returned": len(page),
             "visibility_filtered": True,
@@ -183,7 +179,7 @@ class EvidencePackageLifecycleService:
         }
         self._persist(child)
         self.index.record_reuse([parent.package_id])
-        self._audit("evidence.package.reuse", requester, True, "evidence_package_reuse_child_created", {
+        self._audit("evidence.package.reuse", requester, True, "package_reused", {
             "parent_package_id": parent.package_id,
             "child_package_id": child.package_id,
             "lineage_type": parsed_lineage.value,
@@ -217,6 +213,7 @@ class EvidencePackageLifecycleService:
     def details(self, package_id: str, *, requester_identity: dict[str, Any] | None = None) -> dict[str, Any]:
         requester = requester_identity or {}
         package = self._load_authorized_package(package_id, requester)
+        governance = self._governance_for(package.package_id)
         result = {
             "package_id": package.package_id,
             "proposal_id": package.proposal_id,
@@ -234,6 +231,13 @@ class EvidencePackageLifecycleService:
             "coverage_gaps": list(package.coverage_gaps),
             "recommended_followup_requests": list(package.recommended_followup_requests),
             "freshness": package.freshness.model_dump() if package.freshness else self._indexed_freshness(package.package_id),
+            "governance": governance,
+            "governance_status": governance.get("status", "active"),
+            "deprecated": bool(governance.get("deprecated", False)),
+            "superseded_by_package_id": governance.get("superseded_by_package_id"),
+            "reused_count": self._index_value(package.package_id, "reused_count", 0),
+            "recommendation_count": self._index_value(package.package_id, "recommendation_count", 0),
+            "freshness_check_count": self._index_value(package.package_id, "freshness_check_count", 0),
             "evidence_counts": self._package_counts(package),
             "provenance_summary": self._provenance_summary(package),
             "evidence_manifest": [self._manifest_item(item) for item in package.all_evidence()],
@@ -253,6 +257,7 @@ class EvidencePackageLifecycleService:
         requester = requester_identity or {}
         package = self._load_authorized_package(package_id, requester, require_visibility=True)
         freshness = self.freshness.evaluate(package)
+        self.index.record_freshness_check(package.package_id)
         result = {
             "package_id": package.package_id,
             "proposal_id": package.proposal_id,
@@ -264,8 +269,36 @@ class EvidencePackageLifecycleService:
             "missing_paths": list(freshness.missing_paths),
             "unchanged_paths": list(freshness.unchanged_paths),
         }
-        self._audit("evidence.package.freshness", requester, True, "evidence_package_freshness_evaluated", result)
+        self._audit("evidence.package.freshness", requester, True, "package_freshness_checked", result)
         return result
+
+    def deprecate_package(self, package_id: str, *, requester_identity: dict[str, Any] | None = None, reason: str = "") -> dict[str, Any]:
+        requester = requester_identity or {}
+        package = self._load_authorized_package(package_id, requester, require_visibility=True)
+        actor = str(requester.get("agent_id") or requester.get("client_id") or "unknown")
+        old_state, new_state = self.index.mark_deprecated(package.package_id, actor=actor, reason=reason)
+        self._audit("evidence.package.deprecate", requester, True, "package_deprecated", {
+            "package_id": package.package_id,
+            "reason": reason,
+            "old_governance_state": old_state,
+            "new_governance_state": new_state,
+        })
+        return {"package_id": package.package_id, "old_governance_state": old_state, "new_governance_state": new_state}
+
+    def supersede_package(self, package_id: str, *, superseded_by_package_id: str, requester_identity: dict[str, Any] | None = None, reason: str = "") -> dict[str, Any]:
+        requester = requester_identity or {}
+        package = self._load_authorized_package(package_id, requester, require_visibility=True)
+        replacement = self._load_authorized_package(superseded_by_package_id, requester, require_visibility=True)
+        self._validate_supersession(package, replacement)
+        old_state, new_state = self.index.mark_superseded(package.package_id, superseded_by_package_id=replacement.package_id, reason=reason)
+        self._audit("evidence.package.supersede", requester, True, "package_superseded", {
+            "package_id": package.package_id,
+            "superseded_by_package_id": replacement.package_id,
+            "reason": reason,
+            "old_governance_state": old_state,
+            "new_governance_state": new_state,
+        })
+        return {"package_id": package.package_id, "superseded_by_package_id": replacement.package_id, "old_governance_state": old_state, "new_governance_state": new_state}
 
     def _load_authorized_package(self, package_id: str, requester: dict[str, Any], *, require_visibility: bool = False) -> EvidencePackage:
         package = EvidenceBrokerService(self.repo_root).load_package(package_id, requester_identity=requester, evaluate_freshness=False)
@@ -276,6 +309,19 @@ class EvidencePackageLifecycleService:
             self._audit("evidence.package.access", requester, False, "evidence_package_visibility_denied", {"package_id": package_id})
             raise ValueError("evidence_package_visibility_denied")
         return package
+
+
+    def _validate_supersession(self, package: EvidencePackage, replacement: EvidencePackage) -> None:
+        if package.package_id == replacement.package_id:
+            raise ValueError("package_cannot_supersede_itself")
+        if not self._package_same_project(package, replacement.requester_identity or {}):
+            raise ValueError("supersession_project_mismatch")
+        if replacement.created_at <= package.created_at:
+            raise ValueError("supersession_replacement_must_be_newer")
+        left_terms = self._terms(package.objective)
+        right_terms = self._terms(replacement.objective)
+        if left_terms and right_terms and not left_terms.intersection(right_terms):
+            raise ValueError("supersession_objective_family_mismatch")
 
     def _package_same_project(self, package: EvidencePackage, requester: dict[str, Any]) -> bool:
         requested_project = str(requester.get("project_id") or "")
@@ -309,6 +355,9 @@ class EvidencePackageLifecycleService:
             return False
         if not require_visibility:
             return True
+        governance = dict(entry.get("governance") or {})
+        if governance.get("status") == "restricted" and not requester.get("allow_restricted_packages"):
+            return False
         scope = dict(entry.get("visibility_scope") or {})
         if not scope:
             try:
@@ -377,7 +426,7 @@ class EvidencePackageLifecycleService:
 
     def _entry_context(self, entry: dict[str, Any]) -> str:
         return " ".join(str(entry.get(key) or "") for key in (
-            "objective", "package_id", "proposal_id", "evidence_plan_id", "freshness_status", "lineage_type", "reuse_reason"
+            "objective", "package_id", "proposal_id", "evidence_plan_id", "freshness_status", "lineage_type", "reuse_reason", "governance_status"
         ))
 
     def _indexed_freshness(self, package_id: str) -> dict[str, Any] | None:
@@ -472,11 +521,68 @@ class EvidencePackageLifecycleService:
         stop = {"need", "understand", "current", "existing", "with", "that", "this", "from", "before", "intent", "evidence", "request", "package"}
         return {word.replace(".", "_").replace("-", "_") for word in re.findall(r"[a-zA-Z_][a-zA-Z0-9_\.\-]*", text.lower()) if len(word) >= 4 and word not in stop}
 
-    def _recommendation_reason(self, similarity: float, entry: dict[str, Any]) -> str:
+    def _recommendation_item(self, entry: dict[str, Any], similarity: float, requester: dict[str, Any]) -> dict[str, Any]:
+        governance = self._governance_for(str(entry.get("package_id") or ""))
+        replacement_id = governance.get("superseded_by_package_id")
+        replacement_visible = bool(replacement_id and self._entry_visible_by_id(str(replacement_id), requester))
+        return {
+            "package_id": entry.get("package_id"),
+            "objective": entry.get("objective"),
+            "proposal_id": entry.get("proposal_id"),
+            "evidence_plan_id": entry.get("evidence_plan_id"),
+            "similarity": similarity,
+            "freshness_status": entry.get("freshness_status", "unchanged"),
+            "stale": bool(entry.get("stale", False)),
+            "governance_status": governance.get("status", "active"),
+            "governance_score": governance.get("governance_score", 100),
+            "governance_reason": governance.get("governance_reason", ""),
+            "usage_signal": governance.get("usage_signal", "neutral"),
+            "freshness_signal": governance.get("freshness_signal", "fresh"),
+            "lineage_signal": governance.get("lineage_signal", "original"),
+            "deprecated": bool(governance.get("deprecated", False)),
+            "superseded_by_package_id": replacement_id,
+            "better_replacement_exists": bool(replacement_id),
+            "better_replacement_visible": replacement_visible,
+            "chair_approval_required": True,
+            "retrieval_confidence": entry.get("retrieval_confidence", 0.0),
+            "primary_count": entry.get("primary_count", 0),
+            "supporting_count": entry.get("supporting_count", 0),
+            "validation_count": entry.get("validation_count", 0),
+            "parent_package_ids": list(entry.get("parent_package_ids") or []),
+            "reused_count": int(entry.get("reused_count") or 0),
+            "recommendation_count": int(entry.get("recommendation_count") or 0),
+            "recommendation_reason": self._recommendation_reason(similarity, entry, governance, replacement_visible),
+        }
+
+    def _recommendation_reason(self, similarity: float, entry: dict[str, Any], governance: dict[str, Any], replacement_visible: bool) -> str:
         freshness = entry.get("freshness_status", "unchanged")
+        parts = [f"Objective similarity {similarity:.2f}", f"freshness is {freshness}", f"governance status is {governance.get('status', 'active')}"]
         if entry.get("stale"):
-            return f"Objective similarity {similarity:.2f}; package is stale ({freshness}) and requires Chair review before reuse."
-        return f"Objective similarity {similarity:.2f}; package freshness is {freshness}."
+            parts.append("package is stale")
+        if governance.get("deprecated"):
+            parts.append("package is deprecated and should not be preferred")
+        if governance.get("superseded_by_package_id"):
+            parts.append("visible replacement should be preferred" if replacement_visible else "replacement exists but is not visible to requester")
+        parts.append("Chair approval is still required before reuse")
+        return "; ".join(parts) + "."
+
+    def _governance_for(self, package_id: str) -> dict[str, Any]:
+        for entry in self.index.list_entries():
+            if entry.get("package_id") == package_id:
+                return dict(entry.get("governance") or {"status": "active", "governance_score": 100})
+        return {"status": "active", "governance_score": 100}
+
+    def _index_value(self, package_id: str, key: str, default: Any = None) -> Any:
+        for entry in self.index.list_entries():
+            if entry.get("package_id") == package_id:
+                return entry.get(key, default)
+        return default
+
+    def _entry_visible_by_id(self, package_id: str, requester: dict[str, Any]) -> bool:
+        for entry in self.index.list_entries():
+            if entry.get("package_id") == package_id:
+                return self._eligible_entry(entry, requester, require_visibility=True)
+        return False
 
     def _limit(self, limit: int | None) -> int:
         if limit is None:

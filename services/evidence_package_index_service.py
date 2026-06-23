@@ -6,7 +6,7 @@ from typing import Any
 
 from datetime import datetime, timezone
 
-from models.evidence_package import EvidencePackage, EvidencePackageIndexEntry, PackageFreshness
+from models.evidence_package import EvidencePackage, EvidencePackageIndexEntry, PackageFreshness, PackageGovernanceMetadata, PackageGovernanceStatus
 
 
 class EvidencePackageIndexService:
@@ -37,8 +37,12 @@ class EvidencePackageIndexService:
             parent_package_ids=list(package.parent_package_ids),
             lineage_type=package.lineage_type,
             reuse_reason=package.reuse_reason,
-            reused_count=self._existing_reused_count(package.package_id),
-            last_reused_at=self._existing_last_reused_at(package.package_id),
+            reused_count=self._existing_int(package.package_id, "reused_count"),
+            last_reused_at=self._existing_str(package.package_id, "last_reused_at"),
+            recommendation_count=self._existing_int(package.package_id, "recommendation_count"),
+            last_recommended_at=self._existing_str(package.package_id, "last_recommended_at"),
+            freshness_check_count=self._existing_int(package.package_id, "freshness_check_count"),
+            governance=self._governance_for_package(package),
             lifecycle=dict(package.lifecycle or {}),
         )
         data = self._load()
@@ -82,8 +86,12 @@ class EvidencePackageIndexService:
                     parent_package_ids=list(package.parent_package_ids),
                     lineage_type=package.lineage_type,
                     reuse_reason=package.reuse_reason,
-                    reused_count=self._existing_reused_count(package.package_id),
-                    last_reused_at=self._existing_last_reused_at(package.package_id),
+                    reused_count=self._existing_int(package.package_id, "reused_count"),
+                    last_reused_at=self._existing_str(package.package_id, "last_reused_at"),
+                    recommendation_count=self._existing_int(package.package_id, "recommendation_count"),
+                    last_recommended_at=self._existing_str(package.package_id, "last_recommended_at"),
+                    freshness_check_count=self._existing_int(package.package_id, "freshness_check_count"),
+                    governance=self._governance_for_package(package),
                     lifecycle=dict(package.lifecycle or {}),
                 ).model_dump())
         entries.sort(key=lambda item: item.get("created_at", ""))
@@ -115,27 +123,124 @@ class EvidencePackageIndexService:
         }
 
     def record_reuse(self, parent_package_ids: list[str]) -> None:
-        if not parent_package_ids:
+        self._increment_usage(parent_package_ids, "reused_count", "last_reused_at")
+
+    def record_recommendation(self, package_ids: list[str]) -> None:
+        self._increment_usage(package_ids, "recommendation_count", "last_recommended_at")
+
+    def record_freshness_check(self, package_id: str) -> None:
+        self._increment_usage([package_id], "freshness_check_count", "last_freshness_check_at")
+
+    def mark_deprecated(self, package_id: str, *, actor: str, reason: str) -> tuple[dict[str, Any], dict[str, Any]]:
+        data = self._load()
+        entry = self._require_entry(data, package_id)
+        old = dict(entry.get("governance") or {})
+        governance = self._coerce_governance(old)
+        now = datetime.now(timezone.utc).isoformat()
+        governance.status = PackageGovernanceStatus.DEPRECATED
+        governance.deprecated = True
+        governance.deprecated_at = now
+        governance.deprecated_by = actor
+        governance.deprecation_reason = str(reason or "Package deprecated by governance action.")
+        governance = self._score_governance(entry, governance)
+        entry["governance"] = governance.model_dump()
+        self._write(data)
+        return old, dict(entry["governance"])
+
+    def mark_superseded(self, package_id: str, *, superseded_by_package_id: str, reason: str) -> tuple[dict[str, Any], dict[str, Any]]:
+        data = self._load()
+        entry = self._require_entry(data, package_id)
+        if package_id == superseded_by_package_id:
+            raise ValueError("package_cannot_supersede_itself")
+        replacement = self._require_entry(data, superseded_by_package_id)
+        if entry.get("project_id") and replacement.get("project_id") and entry.get("project_id") != replacement.get("project_id"):
+            raise ValueError("supersession_project_mismatch")
+        if str(replacement.get("created_at") or "") <= str(entry.get("created_at") or ""):
+            raise ValueError("supersession_replacement_must_be_newer")
+        old = dict(entry.get("governance") or {})
+        governance = self._coerce_governance(old)
+        governance.status = PackageGovernanceStatus.SUPERSEDED
+        governance.superseded_by_package_id = superseded_by_package_id
+        governance.superseded_at = datetime.now(timezone.utc).isoformat()
+        governance.supersession_reason = str(reason or "Package superseded by newer governed evidence package.")
+        governance = self._score_governance(entry, governance)
+        entry["governance"] = governance.model_dump()
+        self._write(data)
+        return old, dict(entry["governance"])
+
+    def _increment_usage(self, package_ids: list[str], count_key: str, timestamp_key: str) -> None:
+        if not package_ids:
             return
         data = self._load()
         now = datetime.now(timezone.utc).isoformat()
         for entry in data.get("packages", []):
-            if entry.get("package_id") in parent_package_ids:
-                entry["reused_count"] = int(entry.get("reused_count") or 0) + 1
-                entry["last_reused_at"] = now
+            if entry.get("package_id") in package_ids:
+                entry[count_key] = int(entry.get(count_key) or 0) + 1
+                entry[timestamp_key] = now
+                entry["governance"] = self._score_governance(entry, self._coerce_governance(entry.get("governance") or {})).model_dump()
         self._write(data)
 
-    def _existing_reused_count(self, package_id: str) -> int:
+    def _require_entry(self, data: dict[str, Any], package_id: str) -> dict[str, Any]:
+        for entry in data.get("packages", []):
+            if entry.get("package_id") == package_id:
+                return entry
+        raise ValueError("evidence_package_index_entry_not_found")
+
+    def _existing_int(self, package_id: str, key: str) -> int:
         for entry in self.list_entries():
             if entry.get("package_id") == package_id:
-                return int(entry.get("reused_count") or 0)
+                return int(entry.get(key) or 0)
         return 0
 
-    def _existing_last_reused_at(self, package_id: str) -> str | None:
+    def _existing_str(self, package_id: str, key: str) -> str | None:
         for entry in self.list_entries():
             if entry.get("package_id") == package_id:
-                return entry.get("last_reused_at")
+                return entry.get(key)
         return None
+
+    def _governance_for_package(self, package: EvidencePackage) -> PackageGovernanceMetadata:
+        existing = {}
+        for entry in self.list_entries():
+            if entry.get("package_id") == package.package_id:
+                existing = dict(entry.get("governance") or {})
+                break
+        return self._score_governance({"stale": bool((package.freshness or PackageFreshness()).stale), "lineage_type": package.lineage_type.value, **existing}, self._coerce_governance(existing))
+
+    def _coerce_governance(self, raw: dict[str, Any]) -> PackageGovernanceMetadata:
+        if not raw:
+            return PackageGovernanceMetadata()
+        return PackageGovernanceMetadata(**raw)
+
+    def _score_governance(self, entry: dict[str, Any], governance: PackageGovernanceMetadata) -> PackageGovernanceMetadata:
+        score = 100
+        reasons: list[str] = []
+        reused = int(entry.get("reused_count") or 0)
+        if reused >= 20:
+            score += 20; reasons.append("high reuse count")
+        elif reused >= 5:
+            score += 10; reasons.append("moderate reuse count")
+        if entry.get("stale"):
+            score -= 20; governance.freshness_signal = "stale"; reasons.append("freshness drift detected")
+        else:
+            governance.freshness_signal = "fresh"
+        if governance.deprecated or governance.status == PackageGovernanceStatus.DEPRECATED:
+            score -= 40; governance.usage_signal = "deprecated"; reasons.append("package deprecated")
+        elif reused >= 5:
+            governance.usage_signal = "high_reuse"
+        elif reused > 0:
+            governance.usage_signal = "reused"
+        else:
+            governance.usage_signal = "neutral"
+        if governance.superseded_by_package_id or governance.status == PackageGovernanceStatus.SUPERSEDED:
+            score -= 60; governance.lineage_signal = "superseded"; reasons.append("package superseded")
+        else:
+            governance.lineage_signal = str(entry.get("lineage_type") or "original")
+        if governance.status == PackageGovernanceStatus.RESTRICTED:
+            score -= 100; reasons.append("package restricted")
+        governance.governance_score = max(0, min(130, score))
+        governance.governance_reason = "; ".join(reasons) if reasons else "Package is active and usable."
+        return governance
+
 
     def _load(self) -> dict:
         if not self.path.exists():

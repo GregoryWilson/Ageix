@@ -124,6 +124,33 @@ def register_capabilities(repo_root: Path):
             "error": None,
         }
 
+
+    def package_deprecate(arguments: dict[str, Any]) -> dict[str, Any]:
+        package_id = str(arguments.get("package_id") or "")
+        if not package_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "package_id_required"}
+        result = EvidencePackageLifecycleService(repo_root).deprecate_package(
+            package_id,
+            requester_identity=requester(arguments),
+            reason=str(arguments.get("reason") or "Package deprecated by governance action."),
+        )
+        return {"success": True, "result": result, "metadata": {"request_mode": "package_deprecation", "package_id": package_id}, "error": None}
+
+    def package_supersede(arguments: dict[str, Any]) -> dict[str, Any]:
+        package_id = str(arguments.get("package_id") or "")
+        replacement_id = str(arguments.get("superseded_by_package_id") or "")
+        if not package_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "package_id_required"}
+        if not replacement_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "superseded_by_package_id_required"}
+        result = EvidencePackageLifecycleService(repo_root).supersede_package(
+            package_id,
+            superseded_by_package_id=replacement_id,
+            requester_identity=requester(arguments),
+            reason=str(arguments.get("reason") or "Package superseded by replacement evidence package."),
+        )
+        return {"success": True, "result": result, "metadata": {"request_mode": "package_supersession", "package_id": package_id, "superseded_by_package_id": replacement_id}, "error": None}
+
     def package_lineage(arguments: dict[str, Any]) -> dict[str, Any]:
         package_id = str(arguments.get("package_id") or "")
         if not package_id:
@@ -261,6 +288,22 @@ def register_capabilities(repo_root: Path):
             description="Create a new immutable child package that records Chair-approved reuse of a visible parent package.",
             requires_proposal=False,
         ), package_reuse),
+        (CapabilityDefinition(
+            capability_id="evidence.package.deprecate",
+            category="evidence",
+            access_level="governed_read",
+            handler="evidence.package.deprecate",
+            description="Mark a visible package deprecated in catalog metadata without mutating package contents.",
+            requires_proposal=False,
+        ), package_deprecate),
+        (CapabilityDefinition(
+            capability_id="evidence.package.supersede",
+            category="evidence",
+            access_level="governed_read",
+            handler="evidence.package.supersede",
+            description="Mark a visible package superseded by a newer compatible package without mutating package contents.",
+            requires_proposal=False,
+        ), package_supersede),
         (CapabilityDefinition(
             capability_id="evidence.package.lineage",
             category="evidence",

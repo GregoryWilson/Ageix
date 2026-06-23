@@ -19,6 +19,29 @@ class PackageFreshnessStatus(str, Enum):
     ERROR = "error"
 
 
+class PackageGovernanceStatus(str, Enum):
+    ACTIVE = "active"
+    DEPRECATED = "deprecated"
+    SUPERSEDED = "superseded"
+    RESTRICTED = "restricted"
+
+
+class PackageGovernanceMetadata(BaseModel):
+    status: PackageGovernanceStatus = PackageGovernanceStatus.ACTIVE
+    deprecated: bool = False
+    deprecated_at: str | None = None
+    deprecated_by: str | None = None
+    deprecation_reason: str = ""
+    superseded_by_package_id: str | None = None
+    superseded_at: str | None = None
+    supersession_reason: str = ""
+    governance_score: int = 100
+    governance_reason: str = "Package is active and usable."
+    usage_signal: str = "neutral"
+    freshness_signal: str = "fresh"
+    lineage_signal: str = "original"
+
+
 class EvidenceProvenance(BaseModel):
     retrieval_method: str = Field(default="unknown")
     retrieval_source: str = Field(default="evidence_broker")
@@ -85,6 +108,10 @@ class EvidencePackageIndexEntry(BaseModel):
     reuse_reason: str = ""
     reused_count: int = 0
     last_reused_at: str | None = None
+    recommendation_count: int = 0
+    last_recommended_at: str | None = None
+    freshness_check_count: int = 0
+    governance: PackageGovernanceMetadata = Field(default_factory=PackageGovernanceMetadata)
     lifecycle: dict[str, Any] = Field(default_factory=dict)
 
 
