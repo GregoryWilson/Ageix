@@ -269,6 +269,30 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
     ),
 
     MCPToolDefinition(
+        name="ageix.architecture.health",
+        capability_id="architecture.health",
+        category="architecture",
+        description="Return deterministic architecture health indicators for one governed architecture node.",
+        input_schema=_object_schema({
+            "architecture_id": _string("Architecture node ID."),
+            "path": _string("Stable architecture path."),
+        }),
+        recommended_next_tools=("ageix.architecture.coverage", "ageix.architecture.context"),
+        related_tools=("ageix.architecture.details", "ageix.evidence.package.summary"),
+    ),
+    MCPToolDefinition(
+        name="ageix.architecture.coverage",
+        capability_id="architecture.coverage",
+        category="architecture",
+        description="Return deterministic architecture coverage metrics for a project registry baseline.",
+        input_schema=_object_schema({
+            "project_id": _string("Explicit project ID."),
+        }, ["project_id"]),
+        recommended_next_tools=("ageix.architecture.health", "ageix.architecture.list"),
+        related_tools=("ageix.architecture.subtree",),
+    ),
+
+    MCPToolDefinition(
         name="ageix.workflow.current",
         capability_id="workflow.current",
         category="workflow",

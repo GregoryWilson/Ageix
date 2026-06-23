@@ -1,14 +1,14 @@
 {
   "approved_at": null,
   "approved_by": null,
-  "architecture_id": "ARCH-AGEIX-ARCHITECTURE",
-  "created_at": "2026-06-23T19:44:40.912797+00:00",
+  "architecture_id": "ARCH-AGEIX-GOVERNANCE-APPROVALCONTROLS",
+  "created_at": "2026-06-23T22:14:35.994389+00:00",
   "created_by": null,
-  "description": "Architecture hierarchy, registry, retrieval, health, and future architecture governance foundations.",
+  "description": "Approval Controls component within the Governance domain.",
   "description_state": "draft",
   "health": {
-    "architecture_id": "ARCH-AGEIX-ARCHITECTURE",
-    "context_status": "available",
+    "architecture_id": "ARCH-AGEIX-GOVERNANCE-APPROVALCONTROLS",
+    "context_status": "failed",
     "coverage_status": "complete_current_state",
     "decision_status": "none",
     "description_status": "partial",
@@ -16,7 +16,7 @@
     "freshness_status": "fresh",
     "health_version": 1,
     "hierarchy_status": "valid",
-    "last_evaluated": "2026-06-23T22:14:35.992202+00:00",
+    "last_evaluated": "2026-06-23T22:14:35.994860+00:00",
     "linked_decision_count": 0,
     "linked_evidence_count": 0,
     "metadata": {
@@ -44,13 +44,13 @@
     "official": true,
     "seeded_by": "sprint_18_2_baseline_v1"
   },
-  "name": "Architecture",
-  "node_key": "Architecture",
-  "node_type": "domain",
-  "parent_id": "ARCH-AGEIX-PROJECT",
-  "path": "Ageix.Architecture",
+  "name": "Approval Controls",
+  "node_key": "ApprovalControls",
+  "node_type": "component",
+  "parent_id": "ARCH-AGEIX-GOVERNANCE",
+  "path": "Ageix.Governance.ApprovalControls",
   "project_id": "Ageix",
   "review_count": 0,
   "status": "active",
-  "updated_at": "2026-06-23T22:14:35.991874+00:00"
+  "updated_at": "2026-06-23T22:14:35.994609+00:00"
 }

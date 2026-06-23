@@ -4,10 +4,13 @@
       "architecture_id": "ARCH-AGEIX-PROJECT",
       "child_ids": [
         "ARCH-AGEIX-ARCHITECTURE",
+        "ARCH-AGEIX-AUTHENTICATION",
         "ARCH-AGEIX-CONSULTATION",
+        "ARCH-AGEIX-CONSULTATIONSYSTEM",
         "ARCH-AGEIX-EVIDENCE",
         "ARCH-AGEIX-GOVERNANCE",
         "ARCH-AGEIX-MCPPLATFORM",
+        "ARCH-AGEIX-PROPOSALSYSTEM",
         "ARCH-AGEIX-VALIDATION"
       ],
       "description_state": "draft",
@@ -25,6 +28,7 @@
     {
       "architecture_id": "ARCH-AGEIX-ARCHITECTURE",
       "child_ids": [
+        "ARCH-AGEIX-ARCHITECTURE-ARCHITECTURECONTEXT",
         "ARCH-AGEIX-ARCHITECTURE-ARCHITECTUREREGISTRY",
         "ARCH-AGEIX-ARCHITECTURE-HEALTHSTUB",
         "ARCH-AGEIX-ARCHITECTURE-HIERARCHYRETRIEVAL"
@@ -39,7 +43,37 @@
       "path": "Ageix.Architecture",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-23T19:44:40.913217+00:00"
+      "updated_at": "2026-06-23T22:14:35.991874+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-ARCHITECTURE-ARCHITECTURECONTEXT",
+      "child_ids": [],
+      "description_state": "draft",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "Architecture Context",
+      "node_key": "ArchitectureContext",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-ARCHITECTURE",
+      "path": "Ageix.Architecture.ArchitectureContext",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-23T22:14:36.028892+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-ARCHITECTURE-HEALTHSTUB",
+      "child_ids": [],
+      "description_state": "draft",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "Architecture Health",
+      "node_key": "ArchitectureHealth",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-ARCHITECTURE",
+      "path": "Ageix.Architecture.ArchitectureHealth",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-23T22:03:32.174583+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-ARCHITECTURE-ARCHITECTUREREGISTRY",
@@ -57,21 +91,6 @@
       "updated_at": "2026-06-23T19:44:40.961755+00:00"
     },
     {
-      "architecture_id": "ARCH-AGEIX-ARCHITECTURE-HEALTHSTUB",
-      "child_ids": [],
-      "description_state": "draft",
-      "linked_decision_count": 0,
-      "linked_evidence_count": 0,
-      "name": "Health Stub",
-      "node_key": "HealthStub",
-      "node_type": "component",
-      "parent_id": "ARCH-AGEIX-ARCHITECTURE",
-      "path": "Ageix.Architecture.HealthStub",
-      "project_id": "Ageix",
-      "status": "active",
-      "updated_at": "2026-06-23T19:44:40.969074+00:00"
-    },
-    {
       "architecture_id": "ARCH-AGEIX-ARCHITECTURE-HIERARCHYRETRIEVAL",
       "child_ids": [],
       "description_state": "draft",
@@ -85,6 +104,86 @@
       "project_id": "Ageix",
       "status": "active",
       "updated_at": "2026-06-23T19:44:40.964507+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-AUTHENTICATION",
+      "child_ids": [
+        "ARCH-AGEIX-AUTHENTICATION-JWKSDISCOVERY",
+        "ARCH-AGEIX-AUTHENTICATION-JWTVALIDATION",
+        "ARCH-AGEIX-AUTHENTICATION-OAUTH",
+        "ARCH-AGEIX-AUTHENTICATION-SCOPEMAPPING"
+      ],
+      "description_state": "draft",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "Authentication",
+      "node_key": "Authentication",
+      "node_type": "domain",
+      "parent_id": "ARCH-AGEIX-PROJECT",
+      "path": "Ageix.Authentication",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-23T22:14:35.987472+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-AUTHENTICATION-JWKSDISCOVERY",
+      "child_ids": [],
+      "description_state": "draft",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "JWKS Discovery",
+      "node_key": "JWKSDiscovery",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-AUTHENTICATION",
+      "path": "Ageix.Authentication.JWKSDiscovery",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-23T22:14:36.022535+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-AUTHENTICATION-JWTVALIDATION",
+      "child_ids": [],
+      "description_state": "draft",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "JWT Validation",
+      "node_key": "JWTValidation",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-AUTHENTICATION",
+      "path": "Ageix.Authentication.JWTValidation",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-23T22:14:36.019914+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-AUTHENTICATION-OAUTH",
+      "child_ids": [],
+      "description_state": "draft",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "OAuth",
+      "node_key": "OAuth",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-AUTHENTICATION",
+      "path": "Ageix.Authentication.OAuth",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-23T22:14:36.017690+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-AUTHENTICATION-SCOPEMAPPING",
+      "child_ids": [],
+      "description_state": "draft",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "Scope Mapping",
+      "node_key": "ScopeMapping",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-AUTHENTICATION",
+      "path": "Ageix.Authentication.ScopeMapping",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-23T22:14:36.025208+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-CONSULTATION",
@@ -151,6 +250,70 @@
       "updated_at": "2026-06-23T19:44:40.935515+00:00"
     },
     {
+      "architecture_id": "ARCH-AGEIX-CONSULTATIONSYSTEM",
+      "child_ids": [
+        "ARCH-AGEIX-CONSULTATIONSYSTEM-ADVISORFEEDBACK",
+        "ARCH-AGEIX-CONSULTATIONSYSTEM-EXTERNALCONSULTATION",
+        "ARCH-AGEIX-CONSULTATIONSYSTEM-PROPOSALCONSULTATION"
+      ],
+      "description_state": "draft",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "Consultation System",
+      "node_key": "ConsultationSystem",
+      "node_type": "domain",
+      "parent_id": "ARCH-AGEIX-PROJECT",
+      "path": "Ageix.ConsultationSystem",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-23T22:14:35.982981+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-CONSULTATIONSYSTEM-ADVISORFEEDBACK",
+      "child_ids": [],
+      "description_state": "draft",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "Advisor Feedback",
+      "node_key": "AdvisorFeedback",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-CONSULTATIONSYSTEM",
+      "path": "Ageix.ConsultationSystem.AdvisorFeedback",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-23T22:14:36.012023+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-CONSULTATIONSYSTEM-EXTERNALCONSULTATION",
+      "child_ids": [],
+      "description_state": "draft",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "External Consultation",
+      "node_key": "ExternalConsultation",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-CONSULTATIONSYSTEM",
+      "path": "Ageix.ConsultationSystem.ExternalConsultation",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-23T22:14:36.007402+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-CONSULTATIONSYSTEM-PROPOSALCONSULTATION",
+      "child_ids": [],
+      "description_state": "draft",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "Proposal Consultation",
+      "node_key": "ProposalConsultation",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-CONSULTATIONSYSTEM",
+      "path": "Ageix.ConsultationSystem.ProposalConsultation",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-23T22:14:36.009968+00:00"
+    },
+    {
       "architecture_id": "ARCH-AGEIX-EVIDENCE",
       "child_ids": [
         "ARCH-AGEIX-EVIDENCE-EVIDENCEPACKAGES",
@@ -169,7 +332,7 @@
       "path": "Ageix.Evidence",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-23T19:44:40.903446+00:00"
+      "updated_at": "2026-06-23T22:14:35.978074+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-EVIDENCE-EVIDENCEPACKAGES",
@@ -249,6 +412,7 @@
     {
       "architecture_id": "ARCH-AGEIX-GOVERNANCE",
       "child_ids": [
+        "ARCH-AGEIX-GOVERNANCE-APPROVALCONTROLS",
         "ARCH-AGEIX-GOVERNANCE-CHAIRREVIEW",
         "ARCH-AGEIX-GOVERNANCE-DECISIONTRACE",
         "ARCH-AGEIX-GOVERNANCE-PROPOSALS",
@@ -264,7 +428,22 @@
       "path": "Ageix.Governance",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-23T19:44:40.901985+00:00"
+      "updated_at": "2026-06-23T22:14:35.971920+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-GOVERNANCE-APPROVALCONTROLS",
+      "child_ids": [],
+      "description_state": "draft",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "Approval Controls",
+      "node_key": "ApprovalControls",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-GOVERNANCE",
+      "path": "Ageix.Governance.ApprovalControls",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-23T22:14:35.994609+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-GOVERNANCE-CHAIRREVIEW",
@@ -330,6 +509,7 @@
       "architecture_id": "ARCH-AGEIX-MCPPLATFORM",
       "child_ids": [
         "ARCH-AGEIX-MCPPLATFORM-CAPABILITYFACADE",
+        "ARCH-AGEIX-MCPPLATFORM-MCPDISCOVERY",
         "ARCH-AGEIX-MCPPLATFORM-OAUTHJWTAUTH",
         "ARCH-AGEIX-MCPPLATFORM-TOOLREGISTRY",
         "ARCH-AGEIX-MCPPLATFORM-TRANSPORTBRIDGE"
@@ -344,7 +524,7 @@
       "path": "Ageix.MCPPlatform",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-23T19:44:40.906710+00:00"
+      "updated_at": "2026-06-23T22:14:35.984876+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-MCPPLATFORM-CAPABILITYFACADE",
@@ -360,6 +540,21 @@
       "project_id": "Ageix",
       "status": "active",
       "updated_at": "2026-06-23T19:44:40.944739+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-MCPPLATFORM-MCPDISCOVERY",
+      "child_ids": [],
+      "description_state": "draft",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "MCP Discovery",
+      "node_key": "MCPDiscovery",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-MCPPLATFORM",
+      "path": "Ageix.MCPPlatform.MCPDiscovery",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-23T22:14:36.014675+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-MCPPLATFORM-OAUTHJWTAUTH",
@@ -407,6 +602,86 @@
       "updated_at": "2026-06-23T19:44:40.947763+00:00"
     },
     {
+      "architecture_id": "ARCH-AGEIX-PROPOSALSYSTEM",
+      "child_ids": [
+        "ARCH-AGEIX-PROPOSALSYSTEM-PROPOSALGOVERNANCE",
+        "ARCH-AGEIX-PROPOSALSYSTEM-PROPOSALORCHESTRATION",
+        "ARCH-AGEIX-PROPOSALSYSTEM-PROPOSALSTATUS",
+        "ARCH-AGEIX-PROPOSALSYSTEM-PROPOSALSUBMISSION"
+      ],
+      "description_state": "draft",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "Proposal System",
+      "node_key": "ProposalSystem",
+      "node_type": "domain",
+      "parent_id": "ARCH-AGEIX-PROJECT",
+      "path": "Ageix.ProposalSystem",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-23T22:14:35.980460+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-PROPOSALSYSTEM-PROPOSALGOVERNANCE",
+      "child_ids": [],
+      "description_state": "draft",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "Proposal Governance",
+      "node_key": "ProposalGovernance",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-PROPOSALSYSTEM",
+      "path": "Ageix.ProposalSystem.ProposalGovernance",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-23T22:14:36.004902+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-PROPOSALSYSTEM-PROPOSALORCHESTRATION",
+      "child_ids": [],
+      "description_state": "draft",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "Proposal Orchestration",
+      "node_key": "ProposalOrchestration",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-PROPOSALSYSTEM",
+      "path": "Ageix.ProposalSystem.ProposalOrchestration",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-23T22:14:36.002697+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-PROPOSALSYSTEM-PROPOSALSTATUS",
+      "child_ids": [],
+      "description_state": "draft",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "Proposal Status",
+      "node_key": "ProposalStatus",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-PROPOSALSYSTEM",
+      "path": "Ageix.ProposalSystem.ProposalStatus",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-23T22:14:36.000448+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-PROPOSALSYSTEM-PROPOSALSUBMISSION",
+      "child_ids": [],
+      "description_state": "draft",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "Proposal Submission",
+      "node_key": "ProposalSubmission",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-PROPOSALSYSTEM",
+      "path": "Ageix.ProposalSystem.ProposalSubmission",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-23T22:14:35.997830+00:00"
+    },
+    {
       "architecture_id": "ARCH-AGEIX-VALIDATION",
       "child_ids": [
         "ARCH-AGEIX-VALIDATION-SMOKEEVIDENCE",
@@ -423,7 +698,7 @@
       "path": "Ageix.Validation",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-23T19:44:40.909170+00:00"
+      "updated_at": "2026-06-23T22:14:35.989540+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-VALIDATION-SMOKEEVIDENCE",

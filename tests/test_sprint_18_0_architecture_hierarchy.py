@@ -110,6 +110,6 @@ def test_official_ageix_architecture_seed(tmp_path: Path) -> None:
     assert result["seeded"] is True
     domains = service.list_nodes(project_id="Ageix", node_type="domain")
     names = {node["name"] for node in domains["nodes"]}
-    assert {"Governance", "Evidence", "Consultation", "MCP Platform", "Validation", "Architecture"}.issubset(names)
+    assert {"Governance", "Evidence", "Proposal System", "Consultation System", "MCP Platform", "Authentication", "Validation", "Architecture"}.issubset(names)
     evidence_children = service.get_children("Ageix.Evidence")
     assert "Evidence Packages" in {child["name"] for child in evidence_children["children"]}

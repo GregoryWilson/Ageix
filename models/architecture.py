@@ -33,6 +33,51 @@ class ArchitectureReviewTransportMode(str, Enum):
     DISABLED = "disabled"
 
 
+class ArchitectureCoverageStatus(str, Enum):
+    UNKNOWN = "unknown"
+    PARTIAL = "partial"
+    SUBSTANTIAL = "substantial"
+    COMPLETE_CURRENT_STATE = "complete_current_state"
+
+
+class ArchitectureDescriptionStatus(str, Enum):
+    MISSING = "missing"
+    PARTIAL = "partial"
+    COMPLETE = "complete"
+
+
+class ArchitectureEvidenceStatus(str, Enum):
+    MISSING = "missing"
+    PRESENT = "present"
+
+
+class ArchitectureDecisionStatus(str, Enum):
+    NONE = "none"
+    PRESENT = "present"
+
+
+class ArchitectureReviewStatus(str, Enum):
+    NEVER_REVIEWED = "never_reviewed"
+    REVIEWED = "reviewed"
+
+
+class ArchitectureContextStatus(str, Enum):
+    AVAILABLE = "available"
+    FAILED = "failed"
+
+
+class ArchitectureFreshnessStatus(str, Enum):
+    FRESH = "fresh"
+    STALE = "stale"
+    UNKNOWN = "unknown"
+
+
+class ArchitectureRegistrationStatus(str, Enum):
+    REGISTERED = "registered"
+    UNREGISTERED = "unregistered"
+    UNKNOWN = "unknown"
+
+
 class ArchitectureMetadataCompleteness(BaseModel):
     name: bool = False
     description: bool = False
@@ -42,10 +87,24 @@ class ArchitectureMetadataCompleteness(BaseModel):
 
 
 class ArchitectureHealth(BaseModel):
+    architecture_id: str = ""
     status: str = "unknown"
+    hierarchy_status: str = "unknown"
+    coverage_status: ArchitectureCoverageStatus = ArchitectureCoverageStatus.UNKNOWN
+    description_status: ArchitectureDescriptionStatus = ArchitectureDescriptionStatus.MISSING
+    evidence_status: ArchitectureEvidenceStatus = ArchitectureEvidenceStatus.MISSING
+    decision_status: ArchitectureDecisionStatus = ArchitectureDecisionStatus.NONE
+    review_status: ArchitectureReviewStatus = ArchitectureReviewStatus.NEVER_REVIEWED
+    context_status: ArchitectureContextStatus = ArchitectureContextStatus.FAILED
+    freshness_status: ArchitectureFreshnessStatus = ArchitectureFreshnessStatus.UNKNOWN
+    registration_status: ArchitectureRegistrationStatus = ArchitectureRegistrationStatus.REGISTERED
     linked_evidence_count: int = 0
     linked_decision_count: int = 0
+    review_count: int = 0
+    health_version: int = 1
     metadata_completeness: ArchitectureMetadataCompleteness = Field(default_factory=ArchitectureMetadataCompleteness)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    last_evaluated: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 class ArchitectureReviewerDefinition(BaseModel):
@@ -74,6 +133,11 @@ class ArchitectureNode(BaseModel):
     linked_decision_trace_ids: list[str] = Field(default_factory=list)
     description_state: ArchitectureDescriptionState = ArchitectureDescriptionState.DRAFT
     metadata: dict[str, Any] = Field(default_factory=dict)
+    created_by: str | None = None
+    approved_by: str | None = None
+    approved_at: str | None = None
+    last_reviewed_at: str | None = None
+    review_count: int = 0
     health: ArchitectureHealth = Field(default_factory=ArchitectureHealth)
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -117,6 +181,23 @@ class ArchitectureContext(BaseModel):
     detail_available: bool = False
     detail: dict[str, Any] = Field(default_factory=dict)
     context_policy: dict[str, Any] = Field(default_factory=dict)
+
+
+class ArchitectureCoverage(BaseModel):
+    project_id: str
+    coverage_status: ArchitectureCoverageStatus = ArchitectureCoverageStatus.UNKNOWN
+    known_domains: int = 0
+    mapped_domains: int = 0
+    known_components: int = 0
+    mapped_components: int = 0
+    known_projects: int = 0
+    mapped_projects: int = 0
+    discovery_known_domains: int = 0
+    discovery_known_components: int = 0
+    discovery_status: ArchitectureRegistrationStatus = ArchitectureRegistrationStatus.UNKNOWN
+    metrics: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    last_evaluated: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 class ArchitectureIndexEntry(BaseModel):

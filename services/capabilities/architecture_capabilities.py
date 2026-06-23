@@ -83,6 +83,20 @@ def register_capabilities(repo_root: Path):
         description = ArchitectureContextService(repo_root).approve_description(description_id, approved_by=str(arguments.get("approved_by") or "chair"))
         return {"success": True, "result": description.model_dump(mode="json"), "metadata": {"request_mode": "architecture_description_approve", "description_id": description.description_id}, "error": None}
 
+
+    def architecture_health(arguments: dict[str, Any]) -> dict[str, Any]:
+        identifier = str(arguments.get("architecture_id") or arguments.get("path") or "")
+        if not identifier:
+            return {"success": False, "result": {}, "metadata": {}, "error": "architecture_id_or_path_required"}
+        result = service().get_health(identifier)
+        return {"success": True, "result": result, "metadata": {"request_mode": "architecture_health", "architecture_id": result["architecture_id"], "deterministic": True}, "error": None}
+
+    def architecture_coverage(arguments: dict[str, Any]) -> dict[str, Any]:
+        project_id = str(arguments.get("project_id") or "")
+        if not project_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "project_id_required"}
+        coverage = service().get_coverage(project_id=project_id)
+        return {"success": True, "result": coverage.model_dump(mode="json"), "metadata": {"request_mode": "architecture_coverage", "project_id": project_id, "deterministic": True}, "error": None}
     def architecture_seed_ageix(arguments: dict[str, Any]) -> dict[str, Any]:
         result = service().seed_official_ageix_architecture()
         return {"success": True, "result": result, "metadata": {"request_mode": "architecture_seed_ageix"}, "error": None}
@@ -93,6 +107,8 @@ def register_capabilities(repo_root: Path):
         (CapabilityDefinition(capability_id="architecture.children", category="architecture", access_level="governed_read", handler="architecture.children", description="Retrieve direct children for an architecture node."), architecture_children),
         (CapabilityDefinition(capability_id="architecture.subtree", category="architecture", access_level="governed_read", handler="architecture.subtree", description="Retrieve an architecture hierarchy subtree."), architecture_subtree),
         (CapabilityDefinition(capability_id="architecture.context", category="architecture", access_level="governed_read", handler="architecture.context", description="Build summary-first architecture context for a node without repository-wide discovery."), architecture_context),
+        (CapabilityDefinition(capability_id="architecture.health", category="architecture", access_level="governed_read", handler="architecture.health", description="Return deterministic architecture health indicators for one architecture node."), architecture_health),
+        (CapabilityDefinition(capability_id="architecture.coverage", category="architecture", access_level="governed_read", handler="architecture.coverage", description="Return deterministic architecture coverage metrics for a project registry baseline."), architecture_coverage),
         (CapabilityDefinition(capability_id="architecture.description.draft", category="architecture", access_level="governed_write", handler="architecture.description.draft", description="Create an ArchitectWorker draft architecture description artifact.", exposed_to_external_agents=False), architecture_description_draft),
         (CapabilityDefinition(capability_id="architecture.description.approve", category="architecture", access_level="governed_write", handler="architecture.description.approve", description="Chair approval for an architecture description artifact.", exposed_to_external_agents=False), architecture_description_approve),
         (CapabilityDefinition(capability_id="architecture.seed_ageix", category="architecture", access_level="governed_write", handler="architecture.seed_ageix", description="Seed the official Ageix project architecture baseline.", exposed_to_external_agents=False), architecture_seed_ageix),
