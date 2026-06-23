@@ -12,6 +12,11 @@ from services.objective_source_service import ObjectiveSourceService
 from services.proposal_quality_service import ProposalQualityService
 from services.behavioral_smoke_verifier import BehavioralSmokeVerifier
 from services.requirement_trace_service import RequirementTraceService
+from services.test_execution_service import TestExecutionService
+from services.project_profile_service import ProjectProfileService
+from services.agent_session_service import AgentSessionService
+from services.capability_execution_service import CapabilityExecutionService
+from models.capability_request import CapabilityRequest
 from services.patch_proposal_contract_service import PatchProposalContractService
 
 MAX_PROPOSAL_QUALITY_RETRIES = 1
@@ -237,6 +242,21 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
 
     step = ready_steps[0]
     agent_key = normalize_agent_key(step.get("agent", "research"))
+
+    work_packet = state.get("plan", {}).get("work_packet", {})
+    if agent_key == "dev_worker" and work_packet.get("planner_revisit_required") is True:
+        step["status"] = "blocked"
+        state["chair_action"] = "target_resolution_failed"
+        state["status"] = "blocked"
+        state["blocked_reason"] = "target_resolution_failed"
+        state["unresolved_target_files"] = work_packet.get("unresolved_target_files", [])
+        state["context_request"] = {
+            "result_type": "context_request",
+            "reason": "target_resolution_failed",
+            "requested_files": work_packet.get("unresolved_target_files", []),
+            "recommended_planner_revisit": True,
+        }
+        return update_plan_status(state)
 
     step["status"] = "in_progress"
 
@@ -737,8 +757,15 @@ def normalize_patch_proposal_deliverable(
 
 
 def validate_patch_proposal_deliverable(
-    deliverable: dict[str, Any]
+    deliverable: dict[str, Any],
+    approved_scope: list[str] | None = None,
 ) -> None:
+
+    if deliverable.get("result_type") == "context_request":
+        reason = deliverable.get("reason")
+        if reason == "architecture_scope_exceeded" and deliverable.get("recommended_planner_revisit") is True:
+            return
+        raise ValueError("unsupported_context_request")
 
     required = [
         "result_type",
@@ -782,6 +809,7 @@ def validate_patch_proposal_deliverable(
     if classification:
         raise ValueError(classification)
 
+    approved = set(approved_scope or [])
     seen_paths: set[str] = set()
 
     for change in deliverable["changes"]:
@@ -805,6 +833,9 @@ def validate_patch_proposal_deliverable(
 
         if not isinstance(path, str) or not path.strip():
             raise ValueError("Patch proposal change missing path.")
+
+        if approved and path not in approved:
+            raise ValueError(f"scope_validation_failed: proposal_targets must be within approved_scope: {path}")
 
         if path.startswith("/") or ".." in path.split("/"):
             raise ValueError(f"Unsafe patch proposal path: {path}")
@@ -860,6 +891,11 @@ def validate_patch_proof_of_delivery(
         objective=devworker_packet.get("objective", ""),
         success_criteria=devworker_packet.get("success_criteria", []),
     )
+
+    test_targets = devworker_packet.get("test_targets", [])
+    if test_targets:
+        TestExecutionService(Path(".")).execute(test_targets, deliverable)
+
     return trace_result, behavior_result
 
 
@@ -1308,6 +1344,10 @@ def parse_chair_args() -> argparse.Namespace:
     parser.add_argument("--objective", help="Objective text to execute.")
     parser.add_argument("--objective-file", help="Path to a file containing the objective.")
     parser.add_argument("--project-id", default="ageix", help="Project identifier.")
+    parser.add_argument("--mode", choices=["orchestrate", "proposal"], default="orchestrate", help="Chair execution mode.")
+    parser.add_argument("--proposal-type", default="investigation", help="Proposal type for proposal mode.")
+    parser.add_argument("--session-id", default="chair-cli", help="External session ID for proposal mode.")
+    parser.add_argument("--agent-id", default="chair", help="Agent ID for proposal mode.")
     return parser.parse_args()
 
 #-----------------------------------------------------------------------#
@@ -1324,6 +1364,32 @@ if __name__ == "__main__":
     )
 
     sprint_prompt = objective_envelope["description"]
+
+    if args.mode == "proposal":
+        root = Path(".")
+        try:
+            ProjectProfileService(root).get_project(args.project_id)
+        except Exception:
+            ProjectProfileService(root).register_project(args.project_id, args.project_id, "python", root)
+        AgentSessionService(root).create_session(args.session_id, args.agent_id, project_id=args.project_id)
+        response = CapabilityExecutionService(root).execute(CapabilityRequest(
+            capability_id="proposal.submit",
+            session_id=args.session_id,
+            agent_id=args.agent_id,
+            arguments={
+                "project_id": args.project_id,
+                "session_id": args.session_id,
+                "agent_id": args.agent_id,
+                "objective": sprint_prompt,
+                "proposal_type": args.proposal_type,
+            },
+        ))
+        print(json.dumps({
+            "mode": "proposal",
+            "chair_action": "proposal_submitted",
+            "capability_response": response.model_dump(),
+        }, indent=2))
+        raise SystemExit(0)
 
     task = {
         "title": "Ageix Sprint 10.0",

@@ -121,3 +121,7 @@ htmlcov/
 .idea/
 # Generated handoff archives
 artifacts/
+
+# Ageix user feedback responses
+.ageix/user_feedback/*
+!.ageix/user_feedback/.gitkeep

@@ -51,14 +51,16 @@ def extract_json(raw: str) -> dict:
 
     if cleaned.startswith("```json"):
         cleaned = cleaned.removeprefix("```json").strip()
-
-    if cleaned.startswith("```"):
+        if "```" in cleaned:
+            cleaned = cleaned.split("```", 1)[0].strip()
+    elif cleaned.startswith("```"):
         cleaned = cleaned.removeprefix("```").strip()
+        if "```" in cleaned:
+            cleaned = cleaned.split("```", 1)[0].strip()
 
-    if cleaned.endswith("```"):
-        cleaned = cleaned.removesuffix("```").strip()
-
-    return json.loads(cleaned)
+    decoder = json.JSONDecoder()
+    value, _ = decoder.raw_decode(cleaned)
+    return value
 
 
 def execute_planner_agent(
