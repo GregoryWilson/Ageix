@@ -47,13 +47,19 @@ def main() -> int:
         assert trace.success, trace.error
 
         service = MCPFacadeService(repo)
-        tools = {item["tool_name"] for item in service.discover_tools()}
+        discovery = service.execute_tool("ageix.capabilities.list", _context(), {})
+        assert discovery.success, discovery.errors
+        tools = {item["tool_name"] for item in discovery.result["tools"]}
+        capabilities = {item["capability_id"] for item in discovery.result["capabilities"]}
         assert "ageix.evidence.package.search" in tools
         assert "ageix.evidence.package.retrieve" in tools
         assert "ageix.decision.trace.search" in tools
         assert "ageix.decision.trace.details" in tools
         assert "ageix.decision.trace.history" in tools
         assert "ageix.decision.trace.create" not in tools
+        assert "evidence.package.search" in capabilities
+        assert "decision.trace.search" in capabilities
+        assert "decision.trace.create" not in capabilities
 
         search = service.execute_tool("ageix.evidence.package.search", _context(), {"query": "MCP capability exposure"})
         details = service.execute_tool("ageix.evidence.package.details", _context(), {"package_id": package.package_id})
@@ -91,8 +97,9 @@ def main() -> int:
             "recommendation_count": len(recommend.result["recommended_packages"]),
             "reuse_child_package_id": approved_reuse.result["package_id"],
             "chair_create_exposed": "ageix.decision.trace.create" in tools,
+            "chair_create_capability_advertised": "decision.trace.create" in capabilities,
         })
-    print("Smoke 17.8 PASS: MCP evidence discovery, summary-first retrieval, explicit package retrieval, governed reuse, and read-only decision trace access validated.")
+    print("Smoke 17.8 PASS: MCP evidence discovery, external capability advertisement, summary-first retrieval, explicit package retrieval, governed reuse, and read-only decision trace access validated.")
     return 0
 
 

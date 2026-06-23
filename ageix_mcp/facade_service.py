@@ -14,6 +14,11 @@ from services.capability_registry_service import CapabilityRegistryService
 from services.mcp_context import AgeixEnvelope, AgeixRequestContext
 
 
+MCP_EXTERNAL_EXCLUDED_CAPABILITIES = {
+    "decision.trace.create",
+}
+
+
 class MCPFacadeService:
     """Transport-independent MCP facade over governed capability execution."""
 
@@ -51,8 +56,15 @@ class MCPFacadeService:
             exposed_only=exposed_only,
         )
 
-    def list_capabilities(self) -> list[dict[str, Any]]:
-        return [definition.model_dump() for definition in self.capability_registry.list_capabilities()]
+    def list_capabilities(self, *, exposed_only: bool = True) -> list[dict[str, Any]]:
+        capabilities = self.capability_registry.list_capabilities()
+        if exposed_only:
+            capabilities = [
+                definition for definition in capabilities
+                if definition.exposed_to_external_agents
+                and definition.capability_id not in MCP_EXTERNAL_EXCLUDED_CAPABILITIES
+            ]
+        return [definition.model_dump() for definition in capabilities]
 
     def execute_tool(
         self,
@@ -104,6 +116,8 @@ class MCPFacadeService:
             requested = str(arguments.get("capability_id") or "")
             if not requested:
                 return AgeixEnvelope.denied("capability_id_required", tool_name=tool.name)
+            if requested in MCP_EXTERNAL_EXCLUDED_CAPABILITIES:
+                return AgeixEnvelope.denied("capability_not_exposed_to_external_agents", tool_name=tool.name, capability_id=requested)
             nested_arguments = arguments.get("arguments") or {}
             if requested == "evidence.package.reuse" and not self._has_reuse_governance_context(nested_arguments):
                 return AgeixEnvelope.denied("proposal_context_required_for_package_reuse", tool_name=tool.name, capability_id=requested)

@@ -152,3 +152,41 @@ def test_decision_trace_visibility_inherits_package_visibility(tmp_path: Path):
             trace.trace_id,
             requester_identity={"session_id": "thread-17-8-other", "agent_id": "other_agent", "project_id": "Ageix", "client_id": "chatgpt"},
         )
+
+
+def test_capabilities_list_exposes_evidence_but_hides_chair_trace_create(tmp_path: Path):
+    service = MCPFacadeService(tmp_path)
+
+    capabilities = service.execute_tool("ageix.capabilities.list", _context(), {})
+    tool_names = {item["tool_name"] for item in capabilities.result["tools"]}
+    capability_ids = {item["capability_id"] for item in capabilities.result["capabilities"]}
+
+    assert capabilities.success is True
+    assert "ageix.evidence.package.search" in tool_names
+    assert "ageix.evidence.package.retrieve" in tool_names
+    assert "ageix.decision.trace.search" in tool_names
+    assert "ageix.decision.trace.history" in tool_names
+    assert "ageix.decision.trace.create" not in tool_names
+    assert "evidence.package.search" in capability_ids
+    assert "decision.trace.search" in capability_ids
+    assert "decision.trace.create" not in capability_ids
+
+
+def test_external_capabilities_execute_cannot_create_decision_trace_but_chair_internal_can(tmp_path: Path):
+    service = MCPFacadeService(tmp_path)
+
+    denied = service.execute_tool("ageix.capabilities.execute", _context(), {
+        "capability_id": "decision.trace.create",
+        "arguments": {"decision_summary": "External create attempt", "outcome": "approved"},
+    })
+    chair = CapabilityExecutionService(tmp_path).execute(CapabilityRequest(
+        capability_id="decision.trace.create",
+        session_id="chair-17-8-1",
+        agent_id="chair",
+        arguments={"project_id": "Ageix", "decision_summary": "Chair trace", "outcome": "approved"},
+    ))
+
+    assert denied.success is False
+    assert denied.governance["reason"] == "capability_not_exposed_to_external_agents"
+    assert chair.success is True
+    assert chair.result["trace_id"].startswith("TRACE-")
