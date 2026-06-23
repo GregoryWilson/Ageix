@@ -183,14 +183,31 @@ class DecisionTraceService:
         requester_project = str(requester.get("project_id") or "")
         if trace_project and requester_project and trace_project != requester_project:
             raise ValueError("decision_trace_project_scope_denied")
+        for package_id in trace.evidence_package_ids:
+            self._assert_package_visible(package_id, requester)
 
     def _entry_visible(self, entry: dict[str, Any], requester: dict[str, Any]) -> bool:
         trace_project = str(entry.get("project_id") or "")
         requester_project = str(requester.get("project_id") or "")
-        return not (trace_project and requester_project and trace_project != requester_project)
+        if trace_project and requester_project and trace_project != requester_project:
+            return False
+        for package_id in list(entry.get("evidence_package_ids") or []):
+            try:
+                self._assert_package_visible(str(package_id), requester)
+            except Exception:
+                return False
+        return True
 
     def _assert_package_visible(self, package_id: str, requester: dict[str, Any]) -> None:
-        EvidenceBrokerService(self.repo_root).load_package(package_id, requester_identity=requester, evaluate_freshness=False)
+        if str(requester.get("agent_id") or "").lower() == "chair":
+            package = EvidenceBrokerService(self.repo_root).load_package(package_id, requester_identity=requester, evaluate_freshness=False)
+            package_project = str((package.requester_identity or {}).get("project_id") or "")
+            requester_project = str(requester.get("project_id") or "")
+            if package_project and requester_project and package_project != requester_project:
+                raise ValueError("evidence_package_project_scope_denied")
+            return
+        from services.evidence_package_lifecycle_service import EvidencePackageLifecycleService
+        EvidencePackageLifecycleService(self.repo_root).rehydrate(package_id, requester_identity=requester)
 
     def _matches(self, entry: dict[str, Any], *, decision_id: str | None, proposal_id: str | None, evidence_package_id: str | None, outcome: str | None, summary_contains: str | None) -> bool:
         if decision_id and entry.get("decision_id") != decision_id:

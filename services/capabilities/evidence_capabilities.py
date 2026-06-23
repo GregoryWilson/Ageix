@@ -41,6 +41,39 @@ def register_capabilities(repo_root: Path):
             "error": None,
         }
 
+    def package_search(arguments: dict[str, Any]) -> dict[str, Any]:
+        query = str(arguments.get("query") or arguments.get("objective") or "").strip()
+        result = EvidencePackageLifecycleService(repo_root).list_packages(
+            requester_identity=requester(arguments),
+            limit=arguments.get("limit"),
+            offset=arguments.get("offset"),
+            proposal_id=arguments.get("proposal_id"),
+            evidence_plan_id=arguments.get("evidence_plan_id"),
+            stale=arguments.get("stale"),
+            objective_contains=arguments.get("objective_contains") or query or None,
+            context_contains=arguments.get("context_contains"),
+            created_before=arguments.get("created_before"),
+            created_after=arguments.get("created_after"),
+        )
+        if query and not result.get("packages"):
+            result = EvidencePackageLifecycleService(repo_root).list_packages(
+                requester_identity=requester(arguments),
+                limit=arguments.get("limit"),
+                offset=arguments.get("offset"),
+                proposal_id=arguments.get("proposal_id"),
+                evidence_plan_id=arguments.get("evidence_plan_id"),
+                stale=arguments.get("stale"),
+                context_contains=query,
+                created_before=arguments.get("created_before"),
+                created_after=arguments.get("created_after"),
+            )
+        return {
+            "success": True,
+            "result": result,
+            "metadata": {"request_mode": "package_search", "summary_only": True, "contents_returned": False},
+            "error": None,
+        }
+
     def package_details(arguments: dict[str, Any]) -> dict[str, Any]:
         package_id = str(arguments.get("package_id") or "")
         if not package_id:
@@ -82,6 +115,23 @@ def register_capabilities(repo_root: Path):
             "error": None,
         }
 
+    def package_retrieve(arguments: dict[str, Any]) -> dict[str, Any]:
+        package_id = str(arguments.get("package_id") or "")
+        if not package_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "package_id_required"}
+        package = EvidencePackageLifecycleService(repo_root).rehydrate(package_id, requester_identity=requester(arguments))
+        return {
+            "success": True,
+            "result": package.model_dump(),
+            "metadata": {
+                "request_mode": "package_retrieve",
+                "package_id": package.package_id,
+                "immutable_contents_returned": True,
+                "freshness_evaluated": False,
+            },
+            "error": None,
+        }
+
     def package_recommend(arguments: dict[str, Any]) -> dict[str, Any]:
         objective = str(arguments.get("objective") or "")
         if not objective:
@@ -89,7 +139,7 @@ def register_capabilities(repo_root: Path):
         result = EvidencePackageLifecycleService(repo_root).recommend(
             objective=objective,
             requester_identity=requester(arguments),
-            limit=arguments.get("limit"),
+            limit=arguments.get("limit") or 5,
             min_similarity=float(arguments.get("min_similarity") or 0.1),
         )
         return {
@@ -249,6 +299,14 @@ def register_capabilities(repo_root: Path):
             requires_proposal=False,
         ), package_list),
         (CapabilityDefinition(
+            capability_id="evidence.package.search",
+            category="evidence",
+            access_level="governed_read",
+            handler="evidence.package.search",
+            description="Search project-scoped evidence package summaries without returning contents.",
+            requires_proposal=False,
+        ), package_search),
+        (CapabilityDefinition(
             capability_id="evidence.package.details",
             category="evidence",
             access_level="governed_read",
@@ -272,6 +330,14 @@ def register_capabilities(repo_root: Path):
             description="Return one immutable historical evidence package by package ID without regenerating or mutating contents.",
             requires_proposal=False,
         ), package_rehydrate),
+        (CapabilityDefinition(
+            capability_id="evidence.package.retrieve",
+            category="evidence",
+            access_level="governed_read",
+            handler="evidence.package.retrieve",
+            description="Retrieve immutable evidence package contents after an explicit package request.",
+            requires_proposal=False,
+        ), package_retrieve),
         (CapabilityDefinition(
             capability_id="evidence.package.recommend",
             category="evidence",

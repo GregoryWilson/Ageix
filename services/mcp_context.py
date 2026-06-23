@@ -70,6 +70,6 @@ class AgeixEnvelope(BaseModel):
             success=False,
             result={},
             errors=[reason],
-            governance={"denied": True, "reason": reason, "security_violation": security_violation},
+            governance={"denied": True, "decision": "denied", "reason": reason, "security_violation": security_violation, "chair_authority_preserved": True},
             metadata=metadata,
         )

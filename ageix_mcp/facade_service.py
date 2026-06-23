@@ -104,7 +104,13 @@ class MCPFacadeService:
             requested = str(arguments.get("capability_id") or "")
             if not requested:
                 return AgeixEnvelope.denied("capability_id_required", tool_name=tool.name)
-            return self.execute_capability(requested, context, arguments.get("arguments") or {}, tool_name=tool.name)
+            nested_arguments = arguments.get("arguments") or {}
+            if requested == "evidence.package.reuse" and not self._has_reuse_governance_context(nested_arguments):
+                return AgeixEnvelope.denied("proposal_context_required_for_package_reuse", tool_name=tool.name, capability_id=requested)
+            return self.execute_capability(requested, context, nested_arguments, tool_name=tool.name)
+
+        if tool.capability_id == "evidence.package.reuse" and not self._has_reuse_governance_context(arguments):
+            return AgeixEnvelope.denied("proposal_context_required_for_package_reuse", tool_name=tool.name, capability_id=tool.capability_id)
 
         return self.execute_capability(tool.capability_id, context, arguments, tool_name=tool.name)
 
@@ -158,6 +164,13 @@ class MCPFacadeService:
             governance=governance,
             metadata={"tool_name": tool_name, **response.metadata},
         )
+
+
+    def _has_reuse_governance_context(self, arguments: dict[str, Any]) -> bool:
+        if arguments.get("proposal_id") or arguments.get("evidence_plan_id"):
+            return True
+        chair_approval = arguments.get("chair_approval")
+        return isinstance(chair_approval, dict) and bool(chair_approval.get("approved"))
 
 
     def _validate_client_trust(self, context: AgeixRequestContext, *, tool_name: str | None, capability_id: str | None) -> AgeixEnvelope | None:

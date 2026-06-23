@@ -159,7 +159,9 @@ def test_mcp_discovery_exposes_decision_trace_tools(tmp_path: Path):
 
     names = {tool.name for tool in MCPToolRegistry().list_tools() if tool.category == "decision_trace"}
 
-    assert "ageix.decision.trace.create" in names
+    assert "ageix.decision.trace.create" not in names
     assert "ageix.decision.trace.get" in names
     assert "ageix.decision.trace.list" in names
     assert "ageix.decision.trace.package_history" in names
+    disabled = {tool.name for tool in MCPToolRegistry().list_tools(include_disabled=True) if tool.category == "decision_trace" and not tool.enabled}
+    assert "ageix.decision.trace.create" in disabled
