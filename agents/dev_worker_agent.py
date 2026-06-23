@@ -6,6 +6,7 @@ from typing import Any
 from services.llm_service import invoke_llm
 from utils.prompt_loader import load_prompt
 from models.patch_proposal import PatchProposal, ContextRequest
+from services.patch_proposal_contract_service import PatchProposalContractService
 
 SYSTEM_PROMPT = load_prompt("dev_worker_system.txt")
 
@@ -72,11 +73,13 @@ def normalize_devworker_result(
 
     data["assumptions"] = ensure_list(data.get("assumptions"))
     data["dependency_risks"] = ensure_list(data.get("dependency_risks"))
+    data["changes"] = ensure_list(data.get("changes"))
     data["proposed_changes"] = ensure_list(data.get("proposed_changes"))
     data["test_plan"] = ensure_list(data.get("test_plan"))
     data["no_write_confirmation"] = True
 
-    return data
+    normalized, _evidence = PatchProposalContractService().normalize(data, source_agent="devworker")
+    return normalized
 
 
 def build_fallback_result(

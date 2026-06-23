@@ -2,6 +2,7 @@ import json
 from typing import Any
 from services.llm_service import invoke_llm
 from schemas.plan_schema import ExecutionPlan
+from services.planner_work_packet_service import PlannerWorkPacketService
 
 from utils.prompt_loader import load_prompt
 
@@ -68,6 +69,7 @@ def execute_planner_agent(
     recent_messages: list[dict] | None = None,
     task_events: list[dict] | None = None,
     known_files: list[str] | None = None,
+    discovery_resolution: dict[str, Any] | None = None,
 ) -> dict:
     prompt = build_planner_prompt(
         task=task,
@@ -172,6 +174,15 @@ def execute_planner_agent(
         plan = ExecutionPlan(**data)
         validation_error = None
 
+        work_packet = PlannerWorkPacketService().build(
+            objective=" ".join([str(task.get("title", "")), str(task.get("description", ""))]).strip() or plan.objective,
+            task=task,
+            planner_data=data,
+            discovery_resolution=discovery_resolution,
+            known_files=known_files,
+        )
+        data["work_packet"] = work_packet.model_dump()
+
     except Exception as ex:
         validation_error = str(ex)
         plan = ExecutionPlan(
@@ -183,6 +194,14 @@ def execute_planner_agent(
                 "raw_response": raw,
             },
         )
+        data = plan.model_dump()
+        work_packet = PlannerWorkPacketService().build(
+            objective=" ".join([str(task.get("title", "")), str(task.get("description", ""))]).strip() or plan.objective,
+            task=task,
+            discovery_resolution=discovery_resolution,
+            known_files=known_files,
+        )
+        data["work_packet"] = work_packet.model_dump()
 
     print(
         f"[Planner] objective='{plan.objective}' "
@@ -192,7 +211,7 @@ def execute_planner_agent(
     return {
         "agent_name": "planner",
         "turn_type": "plan",
-        "content": plan.model_dump(),
+        "content": data,
         "raw_response": raw,
         "validation_error": validation_error,
         "warnings": warnings,
@@ -218,6 +237,7 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
         recent_messages=payload.get("recent_messages"),
         task_events=payload.get("task_events"),
         known_files=payload.get("known_files"),
+        discovery_resolution=payload.get("discovery_resolution"),
     )
 
 

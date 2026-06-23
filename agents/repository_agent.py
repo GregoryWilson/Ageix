@@ -58,6 +58,9 @@ def _read_file(path_text: str, max_chars: int = 12000) -> dict[str, Any]:
         return {
             "path": path_text,
             "error": "File does not exist.",
+            "target_file_missing": True,
+            "file_missing_create_allowed": False,
+            "repository_evidence_status": "missing_violation",
         }
 
     if path.suffix not in TEXT_EXTENSIONS:
@@ -139,10 +142,16 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
 
     read_targets = sorted(set(read_targets + target_files))
 
-    file_reads = [
-        _read_file(path)
-        for path in read_targets
-    ]
+    requested_operation = payload.get("requested_operation")
+    allow_create_files = requested_operation == "create_file" or payload.get("allow_create_files") is True
+
+    file_reads = []
+    for path in read_targets:
+        read = _read_file(path)
+        if read.get("target_file_missing") is True and allow_create_files:
+            read["file_missing_create_allowed"] = True
+            read["repository_evidence_status"] = "missing_allowed_for_create"
+        file_reads.append(read)
 
     search_terms = []
 

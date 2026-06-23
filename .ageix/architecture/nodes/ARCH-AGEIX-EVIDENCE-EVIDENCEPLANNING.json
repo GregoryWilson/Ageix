@@ -1,0 +1,32 @@
+{
+  "architecture_id": "ARCH-AGEIX-EVIDENCE-EVIDENCEPLANNING",
+  "created_at": "2026-06-23T19:44:40.923109+00:00",
+  "description": "Evidence Planning component within the Evidence domain.",
+  "description_state": "draft",
+  "health": {
+    "linked_decision_count": 0,
+    "linked_evidence_count": 0,
+    "metadata_completeness": {
+      "description": true,
+      "name": true,
+      "node_key": true,
+      "parent": true,
+      "path": true
+    },
+    "status": "observable"
+  },
+  "linked_decision_trace_ids": [],
+  "linked_evidence_package_ids": [],
+  "metadata": {
+    "official": true,
+    "seeded_by": "sprint_18_0"
+  },
+  "name": "Evidence Planning",
+  "node_key": "EvidencePlanning",
+  "node_type": "component",
+  "parent_id": "ARCH-AGEIX-EVIDENCE",
+  "path": "Ageix.Evidence.EvidencePlanning",
+  "project_id": "Ageix",
+  "status": "active",
+  "updated_at": "2026-06-23T19:44:40.923500+00:00"
+}

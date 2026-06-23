@@ -1,0 +1,49 @@
+{
+  "reviewers": [
+    {
+      "can_directly_modify_architecture": false,
+      "can_propose_revision": true,
+      "can_submit_review": true,
+      "enabled": true,
+      "metadata": {},
+      "provider": "openai",
+      "reviewer_id": "lex",
+      "role": "cloud_architect",
+      "transport_mode": "mcp_contextual"
+    },
+    {
+      "can_directly_modify_architecture": false,
+      "can_propose_revision": true,
+      "can_submit_review": true,
+      "enabled": false,
+      "metadata": {},
+      "provider": "anthropic",
+      "reviewer_id": "claude",
+      "role": "cloud_architect",
+      "transport_mode": "api_packet"
+    },
+    {
+      "can_directly_modify_architecture": false,
+      "can_propose_revision": true,
+      "can_submit_review": true,
+      "enabled": false,
+      "metadata": {},
+      "provider": "google",
+      "reviewer_id": "gemini",
+      "role": "cloud_architect",
+      "transport_mode": "api_packet"
+    },
+    {
+      "can_directly_modify_architecture": false,
+      "can_propose_revision": true,
+      "can_submit_review": true,
+      "enabled": false,
+      "metadata": {},
+      "provider": "ollama",
+      "reviewer_id": "local_architect",
+      "role": "cloud_architect",
+      "transport_mode": "api_packet"
+    }
+  ],
+  "schema_version": 1
+}

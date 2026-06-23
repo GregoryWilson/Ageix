@@ -205,6 +205,70 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
     ),
 
     MCPToolDefinition(
+        name="ageix.architecture.list",
+        capability_id="architecture.list",
+        category="architecture",
+        description="List governed architecture hierarchy nodes visible to the current project.",
+        input_schema=_object_schema({
+            "node_type": _string("Optional architecture node type filter.", enum=["project", "domain", "component"]),
+            "parent_id": _string("Optional parent architecture ID filter."),
+        }),
+        recommended_next_tools=("ageix.architecture.details", "ageix.architecture.children"),
+        related_tools=("ageix.architecture.subtree",),
+    ),
+    MCPToolDefinition(
+        name="ageix.architecture.details",
+        capability_id="architecture.details",
+        category="architecture",
+        description="Retrieve one governed architecture node by architecture ID or stable path.",
+        input_schema=_object_schema({
+            "architecture_id": _string("Architecture node ID."),
+            "path": _string("Stable architecture path, such as Ageix.MCPPlatform.ToolRegistry."),
+        }),
+        recommended_next_tools=("ageix.architecture.children", "ageix.architecture.subtree"),
+        related_tools=("ageix.architecture.list",),
+    ),
+    MCPToolDefinition(
+        name="ageix.architecture.children",
+        capability_id="architecture.children",
+        category="architecture",
+        description="Retrieve direct children for a governed architecture node.",
+        input_schema=_object_schema({
+            "architecture_id": _string("Architecture node ID."),
+            "path": _string("Stable architecture path."),
+            "include_node": {"type": "boolean", "description": "Include the parent node payload."},
+        }),
+        recommended_next_tools=("ageix.architecture.details", "ageix.architecture.subtree"),
+        related_tools=("ageix.architecture.list",),
+    ),
+    MCPToolDefinition(
+        name="ageix.architecture.subtree",
+        capability_id="architecture.subtree",
+        category="architecture",
+        description="Retrieve a governed architecture hierarchy subtree from a node.",
+        input_schema=_object_schema({
+            "architecture_id": _string("Architecture node ID."),
+            "path": _string("Stable architecture path."),
+        }),
+        recommended_next_tools=("ageix.architecture.details",),
+        related_tools=("ageix.architecture.children", "ageix.architecture.list"),
+    ),
+
+    MCPToolDefinition(
+        name="ageix.architecture.context",
+        capability_id="architecture.context",
+        category="architecture",
+        description="Build summary-first architecture context for a governed architecture node without repository-wide discovery.",
+        input_schema=_object_schema({
+            "architecture_id": _string("Architecture node ID."),
+            "path": _string("Stable architecture path."),
+            "include_detail": {"type": "boolean", "description": "Include detailed node and approved description payloads."},
+        }),
+        recommended_next_tools=("ageix.architecture.details", "ageix.evidence.package.details"),
+        related_tools=("ageix.architecture.children", "ageix.architecture.subtree", "ageix.decision.trace.details"),
+    ),
+
+    MCPToolDefinition(
         name="ageix.workflow.current",
         capability_id="workflow.current",
         category="workflow",
