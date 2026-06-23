@@ -24,10 +24,11 @@ def _package(tmp_path: Path):
 def _execute(tmp_path: Path, capability_id: str, arguments: dict):
     base = {"project_id": "Ageix", "client_id": "chatgpt"}
     base.update(arguments)
+    agent_id = "chair" if capability_id == "decision.trace.create" else "lex"
     return CapabilityExecutionService(tmp_path).execute(CapabilityRequest(
         capability_id=capability_id,
         session_id="thread-17-7",
-        agent_id="lex",
+        agent_id=agent_id,
         arguments=base,
     ))
 

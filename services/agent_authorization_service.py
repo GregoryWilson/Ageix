@@ -31,8 +31,10 @@ class AgentAuthorizationService:
             return AuthorizationDecision(False, self.DIRECT_BYPASS_CAPABILITIES[capability_id])
         if capability is None:
             return AuthorizationDecision(False, "unknown_capability")
-        if not capability.exposed_to_external_agents:
+        if not capability.exposed_to_external_agents and agent_id != "chair":
             return AuthorizationDecision(False, "capability_not_exposed_to_external_agents")
+        if not capability.exposed_to_external_agents and agent_id == "chair":
+            return AuthorizationDecision(True, "chair_internal_capability_allowed")
         profile = self.profile_service.get_profile(agent_id)
         if capability.access_level == "governed_read":
             return AuthorizationDecision(True, f"governed_read_allowed_for_{profile.reputation_level}")

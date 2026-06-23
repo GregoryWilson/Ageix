@@ -110,6 +110,7 @@ def register_capabilities(repo_root: Path):
             handler="decision.trace.create",
             description="Create an append-only Chair decision trace linked to proposals, evidence, validation, and consultations.",
             requires_proposal=False,
+            exposed_to_external_agents=False,
         ), trace_create),
         (CapabilityDefinition(
             capability_id="decision.trace.get",

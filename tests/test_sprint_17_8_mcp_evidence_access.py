@@ -155,7 +155,13 @@ def test_decision_trace_visibility_inherits_package_visibility(tmp_path: Path):
 
 
 def test_capabilities_list_exposes_evidence_but_hides_chair_trace_create(tmp_path: Path):
+    from services.capability_registry_service import CapabilityRegistryService
+
     service = MCPFacadeService(tmp_path)
+    raw_create = CapabilityRegistryService(tmp_path).lookup("decision.trace.create")
+
+    assert raw_create is not None
+    assert raw_create.exposed_to_external_agents is False
 
     capabilities = service.execute_tool("ageix.capabilities.list", _context(), {})
     tool_names = {item["tool_name"] for item in capabilities.result["tools"]}
