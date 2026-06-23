@@ -36,6 +36,8 @@ class AgentAuthorizationService:
         profile = self.profile_service.get_profile(agent_id)
         if capability.access_level == "governed_read":
             return AuthorizationDecision(True, f"governed_read_allowed_for_{profile.reputation_level}")
+        if capability.access_level == "governed_write":
+            return AuthorizationDecision(True, f"governed_write_allowed_for_{profile.reputation_level}")
         if capability.access_level == "read":
             return AuthorizationDecision(True, f"read_allowed_for_{profile.reputation_level}")
         return AuthorizationDecision(False, "unsupported_external_agent_access_level")

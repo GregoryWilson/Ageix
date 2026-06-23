@@ -42,6 +42,8 @@ class EvidencePackageIndexService:
             recommendation_count=self._existing_int(package.package_id, "recommendation_count"),
             last_recommended_at=self._existing_str(package.package_id, "last_recommended_at"),
             freshness_check_count=self._existing_int(package.package_id, "freshness_check_count"),
+            used_in_decision_count=self._existing_int(package.package_id, "used_in_decision_count"),
+            last_used_in_decision_at=self._existing_str(package.package_id, "last_used_in_decision_at"),
             governance=self._governance_for_package(package),
             lifecycle=dict(package.lifecycle or {}),
         )
@@ -91,6 +93,8 @@ class EvidencePackageIndexService:
                     recommendation_count=self._existing_int(package.package_id, "recommendation_count"),
                     last_recommended_at=self._existing_str(package.package_id, "last_recommended_at"),
                     freshness_check_count=self._existing_int(package.package_id, "freshness_check_count"),
+                    used_in_decision_count=self._existing_int(package.package_id, "used_in_decision_count"),
+                    last_used_in_decision_at=self._existing_str(package.package_id, "last_used_in_decision_at"),
                     governance=self._governance_for_package(package),
                     lifecycle=dict(package.lifecycle or {}),
                 ).model_dump())
@@ -130,6 +134,9 @@ class EvidencePackageIndexService:
 
     def record_freshness_check(self, package_id: str) -> None:
         self._increment_usage([package_id], "freshness_check_count", "last_freshness_check_at")
+
+    def record_decision_use(self, package_ids: list[str]) -> None:
+        self._increment_usage(package_ids, "used_in_decision_count", "last_used_in_decision_at")
 
     def mark_deprecated(self, package_id: str, *, actor: str, reason: str) -> tuple[dict[str, Any], dict[str, Any]]:
         data = self._load()

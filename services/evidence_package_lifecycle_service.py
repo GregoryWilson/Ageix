@@ -118,6 +118,7 @@ class EvidencePackageLifecycleService:
             -int(item.get("governance_score") or 0),
             -item["similarity"],
             -float(item.get("retrieval_confidence") or 0.0),
+            -self._created_at_epoch(str(item.get("created_at") or "")),
         ))
         effective_limit = self._limit(limit)
         page = recommendations[:effective_limit]
@@ -528,6 +529,7 @@ class EvidencePackageLifecycleService:
         return {
             "package_id": entry.get("package_id"),
             "objective": entry.get("objective"),
+            "created_at": entry.get("created_at"),
             "proposal_id": entry.get("proposal_id"),
             "evidence_plan_id": entry.get("evidence_plan_id"),
             "similarity": similarity,
@@ -583,6 +585,14 @@ class EvidencePackageLifecycleService:
             if entry.get("package_id") == package_id:
                 return self._eligible_entry(entry, requester, require_visibility=True)
         return False
+
+    def _created_at_epoch(self, value: str) -> float:
+        if not value:
+            return 0.0
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+        except ValueError:
+            return 0.0
 
     def _limit(self, limit: int | None) -> int:
         if limit is None:

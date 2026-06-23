@@ -111,6 +111,8 @@ class EvidencePackageIndexEntry(BaseModel):
     recommendation_count: int = 0
     last_recommended_at: str | None = None
     freshness_check_count: int = 0
+    used_in_decision_count: int = 0
+    last_used_in_decision_at: str | None = None
     governance: PackageGovernanceMetadata = Field(default_factory=PackageGovernanceMetadata)
     lifecycle: dict[str, Any] = Field(default_factory=dict)
 
