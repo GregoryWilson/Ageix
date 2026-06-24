@@ -74,7 +74,7 @@ class MCPClientAdmissionPolicy:
             )
         if claimed_primary is True and not definition.primary:
             return ClientAdmissionDecision(False, "mcp_client_primary_claim_denied", True, definition.client_id)
-        if definition.client_id == "chatgpt" and agent_id is not None and agent_id != "lex":
+        if definition.client_id.lower() == "chatgpt" and agent_id is not None and agent_id != "lex":
             return ClientAdmissionDecision(
                 False,
                 "mcp_client_agent_mismatch",

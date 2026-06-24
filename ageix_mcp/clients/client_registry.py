@@ -68,7 +68,14 @@ class MCPClientRegistry:
         return definition
 
     def get(self, client_id: str) -> MCPClientDefinition | None:
-        return self._clients.get(client_id)
+        client = self._clients.get(client_id)
+        if client is not None:
+            return client
+        normalized = str(client_id).lower()
+        for candidate in self._clients.values():
+            if candidate.client_id.lower() == normalized:
+                return candidate
+        return None
 
     def require(self, client_id: str) -> MCPClientDefinition:
         client = self.get(client_id)

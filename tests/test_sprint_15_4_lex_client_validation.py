@@ -12,6 +12,8 @@ from ageix_mcp.facade_service import MCPFacadeService
 
 
 PROJECT_ID = "Ageix_Test"
+CLIENT_ID = "chatGPT"
+PROVIDER_ID = "chatGPT"
 
 
 def _seed_project(tmp_path: Path) -> None:
@@ -22,11 +24,11 @@ def test_client_registry():
     registry = MCPClientRegistry()
     clients = {client["client_id"]: client for client in registry.list_clients()}
 
-    assert clients["chatGPT"]["display_name"] == "Lex"
-    assert clients["chatGPT"]["provider"] == "openai"
-    assert clients["chatGPT"]["enabled"] is True
-    assert clients["chatGPT"]["primary"] is True
-    assert clients["chatGPT"]["placeholder"] is False
+    assert clients[CLIENT_ID]["display_name"] == "Lex"
+    assert clients[CLIENT_ID]["provider"] == PROVIDER_ID
+    assert clients[CLIENT_ID]["enabled"] is True
+    assert clients[CLIENT_ID]["primary"] is True
+    assert clients[CLIENT_ID]["placeholder"] is False
     assert clients["claude"]["placeholder"] is True
     assert clients["gemini"]["enabled"] is False
     assert clients["openwebui"]["placeholder"] is True
@@ -35,9 +37,9 @@ def test_client_registry():
 def test_client_profile_resolution():
     profile = ChatGPTClientProfile.resolve(MCPClientRegistry())
 
-    assert profile.client_id == "chatGPT"
+    assert profile.client_id == CLIENT_ID
     assert profile.display_name == "Lex"
-    assert profile.provider == "openai"
+    assert profile.provider == PROVIDER_ID
     assert profile.governance_expectations["identity_grants_authority"] is False
     assert profile.discovery_behavior["hardcoded_workflow_paths_allowed"] is False
 
@@ -81,7 +83,7 @@ def test_chatgpt_session_continuity(tmp_path: Path):
     assert session.active_proposal_id is not None
     assert session.active_consultation_ids
     assert session.workflow_stage == "audit_reviewed"
-    assert session.metadata["client_context"]["client_id"] == "chatGPT"
+    assert session.metadata["client_context"]["client_id"] == CLIENT_ID
     assert session.metadata["client_context"]["authority_granted"] is False
 
 
@@ -91,8 +93,8 @@ def test_chatgpt_identity_continuity(tmp_path: Path):
     identity = result.responses["identity"]["result"]
 
     assert result.validation["identity_continuity_succeeded"] is True
-    assert identity["client_id"] == "chatGPT"
-    assert identity["provider"] == "openai"
+    assert identity["client_id"] == CLIENT_ID
+    assert identity["provider"] == PROVIDER_ID
     assert identity["governance_profile"] == "external_agent"
     assert identity["authority_boundary"]["identity_grants_authority"] is False
 
@@ -109,7 +111,7 @@ def test_chatgpt_governance_preservation(tmp_path: Path):
 def test_chatgpt_denied_transitions(tmp_path: Path):
     _seed_project(tmp_path)
     service = MCPFacadeService(tmp_path)
-    context = AgeixRequestContext(client_id="chatGPT", agent_id="lex", participant_id="greg", session_id="no-proposal", project_id=PROJECT_ID)
+    context = AgeixRequestContext(client_id=CLIENT_ID, agent_id="lex", participant_id="greg", session_id="no-proposal", project_id=PROJECT_ID)
 
     response = service.execute_tool("ageix.consultations.submit", context, {"consultation_type": "architecture_review"})
 
@@ -128,12 +130,12 @@ def test_chatgpt_audit_chain(tmp_path: Path):
     assert result.validation["audit_continuity_succeeded"] is True
     assert chain[:5] == ["workflow.current", "identity.current", "proposal.submit", "consultation.submit", "proposal.status"]
     assert chain[-1] == "audit.recent"
-    assert all(record["client_id"] == "chatGPT" for record in records)
+    assert all(record["client_id"] == CLIENT_ID for record in records)
 
 
 def test_chatgpt_readiness_assessment():
     readiness = ClientReadinessService().assess(
-        client_id="chatGPT",
+        client_id=CLIENT_ID,
         validation={
             "discovered_categories": ["proposal", "consultation", "project", "workflow", "identity", "audit"],
             "schema_consumed": True,
@@ -147,7 +149,7 @@ def test_chatgpt_readiness_assessment():
     )
 
     assert readiness == {
-        "client_id": "chatGPT",
+        "client_id": CLIENT_ID,
         "discovery_ready": True,
         "workflow_ready": True,
         "session_ready": True,

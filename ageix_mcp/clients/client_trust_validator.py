@@ -59,10 +59,11 @@ class MCPClientTrustValidator:
         return ClientTrustValidationResult(True, "mcp_client_trusted", False, decision.to_dict())
 
     def build_client_context(self, context: AgeixRequestContext) -> dict[str, Any]:
+        definition = self.policy.registry.get(context.client_id)
         return {
             "client_id": context.client_id,
-            "display_name": context.display_name or ("Lex" if context.client_id == "chatgpt" else context.client_id),
-            "provider": context.provider or ("openai" if context.client_id == "chatgpt" else context.client_id),
+            "display_name": context.display_name or (definition.display_name if definition else ("Lex" if context.client_id.lower() == "chatgpt" else context.client_id)),
+            "provider": context.provider or (definition.provider if definition else ("openai" if context.client_id.lower() == "chatgpt" else context.client_id)),
             "agent_id": context.agent_id,
             "session_id": context.session_id,
             "project_id": context.project_id,

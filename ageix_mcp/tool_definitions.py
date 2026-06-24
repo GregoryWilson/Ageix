@@ -413,7 +413,57 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
             "metadata": _object("Additional revision proposal metadata."),
         }, ["objective", "proposed_changes"]),
         recommended_next_tools=("ageix.proposals.status", "ageix.proposals.get"),
-        related_tools=("ageix.architecture.challenge.get", "ageix.proposals.list"),
+        related_tools=("ageix.architecture.challenge.get", "ageix.proposals.list", "ageix.architecture.history"),
+    ),
+    MCPToolDefinition(
+        name="ageix.architecture.revisions",
+        capability_id="architecture.revisions",
+        category="architecture",
+        description="List immutable governed architecture revisions for a project or architecture node.",
+        input_schema=_object_schema({
+            "project_id": _string("Explicit project ID."),
+            "architecture_id": _string("Optional architecture node ID."),
+            "limit": _integer("Maximum revisions to return."),
+        }),
+        recommended_next_tools=("ageix.architecture.revision.details", "ageix.architecture.baseline.current"),
+        related_tools=("ageix.architecture.history",),
+    ),
+    MCPToolDefinition(
+        name="ageix.architecture.revision.details",
+        capability_id="architecture.revision.details",
+        category="architecture",
+        description="Retrieve immutable architecture revision details and optional full architecture snapshot.",
+        input_schema=_object_schema({
+            "revision_id": _string("Architecture revision ID."),
+            "include_snapshot": {"type": "boolean", "description": "Include the immutable full architecture snapshot."},
+        }, ["revision_id"]),
+        related_tools=("ageix.architecture.revisions", "ageix.architecture.history"),
+    ),
+    MCPToolDefinition(
+        name="ageix.architecture.history",
+        capability_id="architecture.history",
+        category="architecture",
+        description="Retrieve immutable architecture revision history and the current authoritative baseline.",
+        input_schema=_object_schema({
+            "architecture_id": _string("Architecture node ID."),
+            "path": _string("Stable architecture path."),
+            "project_id": _string("Explicit project ID."),
+        }),
+        recommended_next_tools=("ageix.architecture.baseline.current", "ageix.architecture.revision.details"),
+        related_tools=("ageix.architecture.revisions",),
+    ),
+    MCPToolDefinition(
+        name="ageix.architecture.baseline.current",
+        capability_id="architecture.baseline.current",
+        category="architecture",
+        description="Retrieve the current authoritative architecture baseline for an architecture node.",
+        input_schema=_object_schema({
+            "architecture_id": _string("Architecture node ID."),
+            "path": _string("Stable architecture path."),
+            "project_id": _string("Explicit project ID."),
+            "include_snapshot": {"type": "boolean", "description": "Include the immutable full architecture snapshot."},
+        }),
+        related_tools=("ageix.architecture.history", "ageix.architecture.revision.details"),
     ),
 
     MCPToolDefinition(

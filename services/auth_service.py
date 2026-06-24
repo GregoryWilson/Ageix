@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from models.auth_identity import AuthIdentity
+from ageix_mcp.clients.client_registry import MCPClientRegistry
 from services.auth_providers.dev_token_provider import DevTokenProvider
 from services.auth_providers.jwt_provider import JwtAuthProvider
 from services.mcp_context import AgeixRequestContext
@@ -58,14 +59,15 @@ class AuthService:
     def build_resolved_context(self, identity: AuthIdentity, *, session_id: str, project_id: str) -> AgeixRequestContext:
         """Create Ageix-owned execution context from credential identity plus request context."""
         participant_id = identity.participant_id if identity.auth_enabled else None
+        definition = MCPClientRegistry().get(identity.client_id)
         context = AgeixRequestContext(
             client_id=identity.client_id,
             agent_id=identity.agent_id,
             participant_id=participant_id,
             session_id=session_id,
             project_id=project_id,
-            provider="openai" if identity.client_id == "chatgpt" else identity.client_id,
-            display_name="Lex" if identity.agent_id == "lex" else identity.agent_id,
+            provider=definition.provider if definition else ("openai" if identity.client_id.lower() == "chatgpt" else identity.client_id),
+            display_name=definition.display_name if definition else ("Lex" if identity.agent_id == "lex" else identity.agent_id),
             authentication_method=identity.authentication_method,
         )
         self.validate_context(identity, context)

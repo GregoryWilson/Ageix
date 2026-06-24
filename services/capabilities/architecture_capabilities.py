@@ -6,11 +6,15 @@ from typing import Any
 from models.capability_definition import CapabilityDefinition
 from services.architecture_context_service import ArchitectureContextService
 from services.architecture_registry_service import ArchitectureRegistryService
+from services.architecture_revision_service import ArchitectureRevisionService
 
 
 def register_capabilities(repo_root: Path):
     def service() -> ArchitectureRegistryService:
         return ArchitectureRegistryService(repo_root)
+
+    def revision_service() -> ArchitectureRevisionService:
+        return ArchitectureRevisionService(repo_root)
 
     def architecture_list(arguments: dict[str, Any]) -> dict[str, Any]:
         result = service().list_nodes(
@@ -219,6 +223,58 @@ def register_capabilities(repo_root: Path):
         except Exception as exc:
             return {"success": False, "result": {}, "metadata": {"request_mode": "architecture_revision_propose"}, "error": str(exc)}
 
+    def architecture_revisions(arguments: dict[str, Any]) -> dict[str, Any]:
+        result = revision_service().list_revisions(
+            project_id=str(arguments.get("project_id") or "") or None,
+            architecture_id=str(arguments.get("architecture_id") or "") or None,
+            limit=int(arguments.get("limit") or 50),
+        )
+        return {"success": True, "result": result, "metadata": {"request_mode": "architecture_revisions"}, "error": None}
+
+    def architecture_revision_details(arguments: dict[str, Any]) -> dict[str, Any]:
+        revision_id = str(arguments.get("revision_id") or "")
+        if not revision_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "revision_id_required"}
+        try:
+            result = revision_service().get_revision(revision_id, include_snapshot=bool(arguments.get("include_snapshot", False)))
+            return {"success": True, "result": result, "metadata": {"request_mode": "architecture_revision_details", "revision_id": revision_id}, "error": None}
+        except Exception as exc:
+            return {"success": False, "result": {}, "metadata": {"request_mode": "architecture_revision_details"}, "error": str(exc)}
+
+    def architecture_history(arguments: dict[str, Any]) -> dict[str, Any]:
+        architecture_id = str(arguments.get("architecture_id") or arguments.get("path") or "")
+        if arguments.get("path") and not str(arguments.get("architecture_id") or ""):
+            try:
+                architecture_id = service().require_node(str(arguments.get("path"))).architecture_id
+            except Exception as exc:
+                return {"success": False, "result": {}, "metadata": {"request_mode": "architecture_history"}, "error": str(exc)}
+        if not architecture_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "architecture_id_or_path_required"}
+        result = revision_service().get_history(
+            architecture_id=architecture_id,
+            project_id=str(arguments.get("project_id") or "") or None,
+        )
+        return {"success": True, "result": result, "metadata": {"request_mode": "architecture_history", "architecture_id": architecture_id}, "error": None}
+
+    def architecture_baseline_current(arguments: dict[str, Any]) -> dict[str, Any]:
+        architecture_id = str(arguments.get("architecture_id") or arguments.get("path") or "")
+        if arguments.get("path") and not str(arguments.get("architecture_id") or ""):
+            try:
+                architecture_id = service().require_node(str(arguments.get("path"))).architecture_id
+            except Exception as exc:
+                return {"success": False, "result": {}, "metadata": {"request_mode": "architecture_baseline_current"}, "error": str(exc)}
+        if not architecture_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "architecture_id_or_path_required"}
+        try:
+            result = revision_service().current_baseline_details(
+                architecture_id=architecture_id,
+                project_id=str(arguments.get("project_id") or "") or None,
+                include_snapshot=bool(arguments.get("include_snapshot", True)),
+            )
+            return {"success": True, "result": result, "metadata": {"request_mode": "architecture_baseline_current", "architecture_id": architecture_id}, "error": None}
+        except Exception as exc:
+            return {"success": False, "result": {}, "metadata": {"request_mode": "architecture_baseline_current"}, "error": str(exc)}
+
     def architecture_seed_ageix(arguments: dict[str, Any]) -> dict[str, Any]:
         result = service().seed_official_ageix_architecture()
         return {"success": True, "result": result, "metadata": {"request_mode": "architecture_seed_ageix"}, "error": None}
@@ -240,6 +296,10 @@ def register_capabilities(repo_root: Path):
         (CapabilityDefinition(capability_id="architecture.challenge.get", category="architecture", access_level="governed_read", handler="architecture.challenge.get", description="Retrieve a governed architecture challenge."), architecture_challenge_get),
         (CapabilityDefinition(capability_id="architecture.challenge.list", category="architecture", access_level="governed_read", handler="architecture.challenge.list", description="List governed architecture challenges."), architecture_challenge_list),
         (CapabilityDefinition(capability_id="architecture.revision.propose", category="architecture", access_level="governed_write", handler="architecture.revision.propose", description="Propose a governed architecture registry revision through the existing proposal system."), architecture_revision_propose),
+        (CapabilityDefinition(capability_id="architecture.revisions", category="architecture", access_level="governed_read", handler="architecture.revisions", description="List immutable governed architecture revisions."), architecture_revisions),
+        (CapabilityDefinition(capability_id="architecture.revision.details", category="architecture", access_level="governed_read", handler="architecture.revision.details", description="Retrieve immutable architecture revision details, optionally including the snapshot."), architecture_revision_details),
+        (CapabilityDefinition(capability_id="architecture.history", category="architecture", access_level="governed_read", handler="architecture.history", description="Retrieve architecture revision history and current authoritative baseline."), architecture_history),
+        (CapabilityDefinition(capability_id="architecture.baseline.current", category="architecture", access_level="governed_read", handler="architecture.baseline.current", description="Retrieve the current authoritative architecture baseline."), architecture_baseline_current),
         (CapabilityDefinition(capability_id="architecture.description.draft", category="architecture", access_level="governed_write", handler="architecture.description.draft", description="Create an ArchitectWorker draft architecture description artifact.", exposed_to_external_agents=False), architecture_description_draft),
         (CapabilityDefinition(capability_id="architecture.description.approve", category="architecture", access_level="governed_write", handler="architecture.description.approve", description="Chair approval for an architecture description artifact.", exposed_to_external_agents=False), architecture_description_approve),
         (CapabilityDefinition(capability_id="architecture.seed_ageix", category="architecture", access_level="governed_write", handler="architecture.seed_ageix", description="Seed the official Ageix project architecture baseline.", exposed_to_external_agents=False), architecture_seed_ageix),

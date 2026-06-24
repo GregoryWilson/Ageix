@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from models.auth_identity import AuthIdentity
+from ageix_mcp.clients.client_registry import MCPClientRegistry
 from services.agent_profile_service import AgentProfileService
 from services.mcp_context import AgeixRequestContext
 
@@ -25,10 +26,12 @@ class IdentityResolutionService:
     def __init__(self, repo_root: str | Path = ".") -> None:
         self.repo_root = Path(repo_root).resolve()
         self.profile_service = AgentProfileService(self.repo_root)
+        self.client_registry = MCPClientRegistry()
 
     def resolve(self, context: AgeixRequestContext, identity: AuthIdentity | None = None) -> dict[str, Any]:
         profile = self.profile_service.get_profile(context.agent_id)
-        provider = self.PROVIDER_HINTS.get(context.client_id.lower(), context.client_id)
+        definition = self.client_registry.get(context.client_id)
+        provider = context.provider or (definition.provider if definition else self.PROVIDER_HINTS.get(context.client_id.lower(), context.client_id))
         authenticated = bool(identity.authenticated) if identity is not None else False
         auth_enabled = bool(identity.auth_enabled) if identity is not None else False
         return {
