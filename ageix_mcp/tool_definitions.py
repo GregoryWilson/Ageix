@@ -987,4 +987,70 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
         placeholder_reason="validation sandbox not yet implemented",
         input_schema=_object_schema({"result_id": _string("Validation result identifier.")}, ["result_id"]),
     ),
+    MCPToolDefinition(
+        name="ageix.repo.info",
+        capability_id="repo.info",
+        category="repository",
+        description="Return summary-first repository identity and git availability.",
+        input_schema=_object_schema({}),
+    ),
+    MCPToolDefinition(
+        name="ageix.repo.status",
+        capability_id="repo.status",
+        category="repository",
+        description="Return summary-first repository status and cleanliness.",
+        input_schema=_object_schema({}),
+    ),
+    MCPToolDefinition(
+        name="ageix.repo.branch.current",
+        capability_id="repo.branch.current",
+        category="repository",
+        description="Return the active repository branch.",
+        input_schema=_object_schema({}),
+    ),
+    MCPToolDefinition(
+        name="ageix.repo.branch.list",
+        capability_id="repo.branch.list",
+        category="repository",
+        description="List local repository branches with summaries.",
+        input_schema=_object_schema({}),
+    ),
+    MCPToolDefinition(
+        name="ageix.repo.history",
+        capability_id="repo.history",
+        category="repository",
+        description="Return paginated recent commit summaries.",
+        input_schema=_object_schema({
+            "limit": _integer("Maximum commits to return."),
+            "offset": _integer("Zero-based commit offset."),
+        }),
+    ),
+    MCPToolDefinition(
+        name="ageix.repo.diff.summary",
+        capability_id="repo.diff.summary",
+        category="repository",
+        description="Return changed-file and shortstat summaries without full diffs.",
+        input_schema=_object_schema({}),
+    ),
+    MCPToolDefinition(
+        name="ageix.repo.archive.create",
+        capability_id="repo.archive.create",
+        category="repository",
+        description="Create a governed repository archive for selected paths or the whole repo with static exclusions.",
+        input_schema=_object_schema({
+            "paths": _array("Optional repo-relative paths to include. Omit for whole-repo snapshot."),
+            "archive_name": _string("Optional archive file name."),
+        }),
+    ),
+    MCPToolDefinition(
+        name="ageix.repo.archive.list",
+        capability_id="repo.archive.list",
+        category="repository",
+        description="List governed repository archives.",
+        input_schema=_object_schema({
+            "limit": _integer("Maximum archives to return."),
+            "offset": _integer("Zero-based archive offset."),
+        }),
+    ),
+
 )
