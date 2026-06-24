@@ -1052,5 +1052,56 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
             "offset": _integer("Zero-based archive offset."),
         }),
     ),
+    MCPToolDefinition(
+        name="ageix.validation.profile.list",
+        capability_id="validation.profile.list",
+        category="validation",
+        description="List approved validation profiles available for governed execution.",
+        input_schema=_object_schema({
+            "limit": _integer("Maximum profiles to return."),
+            "offset": _integer("Zero-based profile offset."),
+        }),
+    ),
+    MCPToolDefinition(
+        name="ageix.validation.profile.get",
+        capability_id="validation.profile.get",
+        category="validation",
+        description="Get an approved validation profile by ID.",
+        input_schema=_object_schema({"profile_id": _string("Validation profile ID.")}, ["profile_id"]),
+    ),
+    MCPToolDefinition(
+        name="ageix.validation.run.start",
+        capability_id="validation.run.start",
+        category="validation",
+        description="Start an approved validation profile asynchronously. No arbitrary command input is accepted.",
+        input_schema=_object_schema({"profile_id": _string("Validation profile ID to execute.")}, ["profile_id"]),
+        recommended_next_tools=("ageix.validation.run.status", "ageix.validation.run.result"),
+    ),
+    MCPToolDefinition(
+        name="ageix.validation.run.status",
+        capability_id="validation.run.status",
+        category="validation",
+        description="Return summary-first status for an asynchronous validation run.",
+        input_schema=_object_schema({"run_id": _string("Validation run ID.")}, ["run_id"]),
+        recommended_next_tools=("ageix.validation.run.result",),
+    ),
+    MCPToolDefinition(
+        name="ageix.validation.run.result",
+        capability_id="validation.run.result",
+        category="validation",
+        description="Return validation run result, evidence package ID, and truncated output tails.",
+        input_schema=_object_schema({"run_id": _string("Validation run ID.")}, ["run_id"]),
+    ),
+    MCPToolDefinition(
+        name="ageix.validation.history",
+        capability_id="validation.history",
+        category="validation",
+        description="List historical validation runs summary-first.",
+        input_schema=_object_schema({
+            "limit": _integer("Maximum runs to return."),
+            "offset": _integer("Zero-based run offset."),
+        }),
+    ),
+
 
 )
