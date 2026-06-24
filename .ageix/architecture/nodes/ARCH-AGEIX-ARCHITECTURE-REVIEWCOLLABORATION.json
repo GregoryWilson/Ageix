@@ -1,13 +1,13 @@
 {
   "approved_at": null,
   "approved_by": null,
-  "architecture_id": "ARCH-AGEIX-GOVERNANCE",
-  "created_at": "2026-06-23T19:44:40.901524+00:00",
+  "architecture_id": "ARCH-AGEIX-ARCHITECTURE-REVIEWCOLLABORATION",
+  "created_at": "2026-06-23T22:40:21.917612+00:00",
   "created_by": null,
-  "description": "Decision, trust boundary, and Chair authority capabilities.",
+  "description": "Architecture Review Collaboration component within the Architecture domain.",
   "description_state": "draft",
   "health": {
-    "architecture_id": "ARCH-AGEIX-GOVERNANCE",
+    "architecture_id": "ARCH-AGEIX-ARCHITECTURE-REVIEWCOLLABORATION",
     "context_status": "available",
     "coverage_status": "complete_current_state",
     "decision_status": "none",
@@ -16,7 +16,7 @@
     "freshness_status": "fresh",
     "health_version": 1,
     "hierarchy_status": "valid",
-    "last_evaluated": "2026-06-23T22:42:14.402614+00:00",
+    "last_evaluated": "2026-06-23T22:42:14.469827+00:00",
     "linked_decision_count": 0,
     "linked_evidence_count": 0,
     "metadata": {
@@ -33,24 +33,24 @@
       "path": true
     },
     "registration_status": "registered",
-    "review_count": 0,
-    "review_status": "never_reviewed",
+    "review_count": 1,
+    "review_status": "reviewed",
     "status": "partial"
   },
-  "last_reviewed_at": null,
+  "last_reviewed_at": "2026-06-23T22:42:14.468513+00:00",
   "linked_decision_trace_ids": [],
   "linked_evidence_package_ids": [],
   "metadata": {
     "official": true,
-    "seeded_by": "sprint_18_2_baseline_v1"
+    "seeded_by": "sprint_18_3_review_collaboration"
   },
-  "name": "Governance",
-  "node_key": "Governance",
-  "node_type": "domain",
-  "parent_id": "ARCH-AGEIX-PROJECT",
-  "path": "Ageix.Governance",
+  "name": "Architecture Review Collaboration",
+  "node_key": "ArchitectureReviewCollaboration",
+  "node_type": "component",
+  "parent_id": "ARCH-AGEIX-ARCHITECTURE",
+  "path": "Ageix.Architecture.ArchitectureReviewCollaboration",
   "project_id": "Ageix",
-  "review_count": 0,
+  "review_count": 1,
   "status": "active",
-  "updated_at": "2026-06-23T22:42:14.401730+00:00"
+  "updated_at": "2026-06-23T22:42:14.469446+00:00"
 }

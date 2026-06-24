@@ -119,6 +119,98 @@ class ArchitectureReviewerDefinition(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class ArchitectureReviewStatusLifecycle(str, Enum):
+    SUBMITTED = "submitted"
+    CLOSED = "closed"
+
+
+class ArchitectureFindingSeverity(str, Enum):
+    INFORMATIONAL = "informational"
+    CONCERN = "concern"
+    SIGNIFICANT_CONCERN = "significant_concern"
+    CRITICAL_CONCERN = "critical_concern"
+
+
+class ArchitectureFindingCategory(str, Enum):
+    DOCUMENTATION_GAP = "documentation_gap"
+    EVIDENCE_GAP = "evidence_gap"
+    DECISION_GAP = "decision_gap"
+    ARCHITECTURE_INCONSISTENCY = "architecture_inconsistency"
+    ARCHITECTURE_STALENESS = "architecture_staleness"
+    COVERAGE_GAP = "coverage_gap"
+    INTENT_MISS = "intent_miss"
+    REQUIRES_ADDITIONAL_DISCOVERY = "requires_additional_discovery"
+    OTHER = "other"
+
+
+class ArchitectureReview(BaseModel):
+    review_id: str = Field(default_factory=lambda: f"ARCHREV-{uuid4().hex[:12].upper()}")
+    project_id: str = Field(min_length=1)
+    architecture_id: str = Field(min_length=1)
+    reviewer_id: str = Field(min_length=1)
+    reviewer_role: str = "architect"
+    status: ArchitectureReviewStatusLifecycle = ArchitectureReviewStatusLifecycle.SUBMITTED
+    summary: str = ""
+    rationale: str = ""
+    finding_ids: list[str] = Field(default_factory=list)
+    no_findings: bool = False
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+class ArchitectureFinding(BaseModel):
+    finding_id: str = Field(default_factory=lambda: f"ARCHFIND-{uuid4().hex[:12].upper()}")
+    review_id: str | None = None
+    project_id: str = Field(min_length=1)
+    affected_architecture_ids: list[str] = Field(default_factory=list)
+    severity: ArchitectureFindingSeverity = ArchitectureFindingSeverity.CONCERN
+    category: ArchitectureFindingCategory = ArchitectureFindingCategory.OTHER
+    summary: str = Field(min_length=1)
+    rationale: str = ""
+    other_explanation: str = ""
+    created_by: str = Field(min_length=1)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+class ArchitectureChallenge(BaseModel):
+    challenge_id: str = Field(default_factory=lambda: f"ARCHCHAL-{uuid4().hex[:12].upper()}")
+    project_id: str = Field(min_length=1)
+    architecture_id: str = Field(min_length=1)
+    finding_id: str | None = None
+    submitted_by: str = Field(min_length=1)
+    challenge_summary: str = Field(min_length=1)
+    context: str = Field(min_length=1)
+    intent: str = Field(min_length=1)
+    rationale: str = ""
+    proposed_direction: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+class ArchitectureRevisionProposal(BaseModel):
+    revision_id: str = Field(default_factory=lambda: f"ARCHREVPROP-{uuid4().hex[:12].upper()}")
+    project_id: str = Field(min_length=1)
+    architecture_id: str = Field(min_length=1)
+    challenge_id: str | None = None
+    submitted_by: str = Field(min_length=1)
+    objective: str = Field(min_length=1)
+    proposed_changes: dict[str, Any] = Field(default_factory=dict)
+    allowed_scope: list[str] = Field(default_factory=lambda: [
+        "description",
+        "metadata",
+        "relationships",
+        "hierarchy_placement",
+        "evidence_links",
+        "decision_links",
+        "review_metadata",
+    ])
+    linked_proposal_id: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
 class ArchitectureNode(BaseModel):
     architecture_id: str = Field(default_factory=lambda: f"ARCH-{uuid4().hex[:12].upper()}")
     project_id: str = Field(min_length=1)

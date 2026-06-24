@@ -8,7 +8,7 @@
   "description_state": "draft",
   "health": {
     "architecture_id": "ARCH-AGEIX-AUTHENTICATION",
-    "context_status": "failed",
+    "context_status": "available",
     "coverage_status": "complete_current_state",
     "decision_status": "none",
     "description_status": "partial",
@@ -16,7 +16,7 @@
     "freshness_status": "fresh",
     "health_version": 1,
     "hierarchy_status": "valid",
-    "last_evaluated": "2026-06-23T22:14:35.987646+00:00",
+    "last_evaluated": "2026-06-23T22:42:14.418045+00:00",
     "linked_decision_count": 0,
     "linked_evidence_count": 0,
     "metadata": {
@@ -52,5 +52,5 @@
   "project_id": "Ageix",
   "review_count": 0,
   "status": "active",
-  "updated_at": "2026-06-23T22:14:35.987472+00:00"
+  "updated_at": "2026-06-23T22:42:14.417600+00:00"
 }

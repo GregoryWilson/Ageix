@@ -22,7 +22,12 @@ from models.architecture import (
     ArchitectureNode,
     ArchitectureNodeStatus,
     ArchitectureNodeType,
+    ArchitectureChallenge,
+    ArchitectureFinding,
+    ArchitectureFindingCategory,
+    ArchitectureReview,
     ArchitectureReviewerDefinition,
+    ArchitectureRevisionProposal,
     ArchitectureReviewTransportMode,
 )
 
@@ -42,6 +47,10 @@ class ArchitectureRegistryService:
         self.nodes_root = self.root / "nodes"
         self.index_path = self.root / "index.json"
         self.reviewers_path = self.root / "reviewers.json"
+        self.reviews_root = self.root / "reviews"
+        self.findings_root = self.root / "findings"
+        self.challenges_root = self.root / "challenges"
+        self.revision_proposals_root = self.root / "revision_proposals"
 
     def upsert_node(self, node: ArchitectureNode) -> ArchitectureNode:
         node = self._normalize_node(node)
@@ -370,6 +379,247 @@ class ArchitectureRegistryService:
         except Exception:
             return None
 
+
+    def submit_review(
+        self,
+        *,
+        architecture_id_or_path: str,
+        reviewer_id: str,
+        project_id: str,
+        summary: str = "",
+        rationale: str = "",
+        no_findings: bool = False,
+        metadata: dict[str, Any] | None = None,
+        provider: str | None = None,
+    ) -> ArchitectureReview:
+        node = self.require_node(architecture_id_or_path)
+        self._require_authorized_architect_reviewer(reviewer_id, project_id=project_id, provider=provider, require_revision=False)
+        review = ArchitectureReview(
+            project_id=project_id or node.project_id,
+            architecture_id=node.architecture_id,
+            reviewer_id=reviewer_id,
+            reviewer_role="architect",
+            summary=summary,
+            rationale=rationale,
+            no_findings=bool(no_findings),
+            metadata={"governed_revision_required": False, **dict(metadata or {})},
+        )
+        self._write_review(review)
+        node.last_reviewed_at = review.created_at
+        node.review_count = max(0, int(node.review_count or 0)) + 1
+        self.upsert_node(node)
+        return review
+
+    def get_review(self, review_id: str) -> ArchitectureReview:
+        path = self.reviews_root / str(review_id) / "review.json"
+        if not path.exists():
+            raise FileNotFoundError("architecture_review_not_found")
+        return ArchitectureReview(**json.loads(path.read_text(encoding="utf-8")))
+
+    def list_reviews(self, *, project_id: str | None = None, architecture_id: str | None = None, limit: int = 50) -> dict[str, Any]:
+        items: list[ArchitectureReview] = []
+        if self.reviews_root.exists():
+            for path in sorted(self.reviews_root.glob("*/review.json"), reverse=True):
+                review = ArchitectureReview(**json.loads(path.read_text(encoding="utf-8")))
+                if project_id and review.project_id != project_id:
+                    continue
+                if architecture_id and review.architecture_id != architecture_id:
+                    continue
+                items.append(review)
+                if len(items) >= max(1, int(limit or 50)):
+                    break
+        return {"reviews": [item.model_dump(mode="json") for item in items], "count": len(items)}
+
+    def submit_finding(
+        self,
+        *,
+        project_id: str,
+        created_by: str,
+        summary: str,
+        affected_architecture_ids: list[str],
+        review_id: str | None = None,
+        severity: str = "concern",
+        category: str = "other",
+        rationale: str = "",
+        other_explanation: str = "",
+        metadata: dict[str, Any] | None = None,
+        provider: str | None = None,
+    ) -> ArchitectureFinding:
+        self._require_authorized_architect_reviewer(created_by, project_id=project_id, provider=provider, require_revision=False)
+        if not affected_architecture_ids:
+            raise ValueError("affected_architecture_ids_required")
+        resolved_ids = [self.require_node(value).architecture_id for value in affected_architecture_ids]
+        if ArchitectureFindingCategory(str(category)) == ArchitectureFindingCategory.OTHER and not str(other_explanation or "").strip():
+            raise ValueError("other_explanation_required")
+        finding = ArchitectureFinding(
+            review_id=review_id,
+            project_id=project_id,
+            affected_architecture_ids=resolved_ids,
+            severity=severity,
+            category=category,
+            summary=summary,
+            rationale=rationale,
+            other_explanation=other_explanation,
+            created_by=created_by,
+            metadata=dict(metadata or {}),
+        )
+        self._write_finding(finding)
+        if review_id:
+            review = self.get_review(review_id)
+            if finding.finding_id not in review.finding_ids:
+                review.finding_ids.append(finding.finding_id)
+                review.no_findings = False
+                review.updated_at = datetime.now(timezone.utc).isoformat()
+                self._write_review(review)
+        return finding
+
+    def get_finding(self, finding_id: str) -> ArchitectureFinding:
+        path = self.findings_root / str(finding_id) / "finding.json"
+        if not path.exists():
+            raise FileNotFoundError("architecture_finding_not_found")
+        return ArchitectureFinding(**json.loads(path.read_text(encoding="utf-8")))
+
+    def submit_challenge(
+        self,
+        *,
+        project_id: str,
+        architecture_id_or_path: str,
+        submitted_by: str,
+        challenge_summary: str,
+        context: str,
+        intent: str,
+        finding_id: str | None = None,
+        rationale: str = "",
+        proposed_direction: str = "",
+        metadata: dict[str, Any] | None = None,
+        provider: str | None = None,
+    ) -> ArchitectureChallenge:
+        node = self.require_node(architecture_id_or_path)
+        self._require_authorized_architect_reviewer(submitted_by, project_id=project_id, provider=provider, require_revision=False)
+        challenge = ArchitectureChallenge(
+            project_id=project_id,
+            architecture_id=node.architecture_id,
+            finding_id=finding_id,
+            submitted_by=submitted_by,
+            challenge_summary=challenge_summary,
+            context=context,
+            intent=intent,
+            rationale=rationale,
+            proposed_direction=proposed_direction,
+            metadata=dict(metadata or {}),
+        )
+        self._write_challenge(challenge)
+        return challenge
+
+    def get_challenge(self, challenge_id: str) -> ArchitectureChallenge:
+        path = self.challenges_root / str(challenge_id) / "challenge.json"
+        if not path.exists():
+            raise FileNotFoundError("architecture_challenge_not_found")
+        return ArchitectureChallenge(**json.loads(path.read_text(encoding="utf-8")))
+
+    def list_challenges(self, *, project_id: str | None = None, architecture_id: str | None = None, limit: int = 50) -> dict[str, Any]:
+        items: list[ArchitectureChallenge] = []
+        if self.challenges_root.exists():
+            for path in sorted(self.challenges_root.glob("*/challenge.json"), reverse=True):
+                challenge = ArchitectureChallenge(**json.loads(path.read_text(encoding="utf-8")))
+                if project_id and challenge.project_id != project_id:
+                    continue
+                if architecture_id and challenge.architecture_id != architecture_id:
+                    continue
+                items.append(challenge)
+                if len(items) >= max(1, int(limit or 50)):
+                    break
+        return {"challenges": [item.model_dump(mode="json") for item in items], "count": len(items)}
+
+    def propose_revision(
+        self,
+        *,
+        project_id: str,
+        architecture_id_or_path: str,
+        submitted_by: str,
+        objective: str,
+        proposed_changes: dict[str, Any],
+        challenge_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        provider: str | None = None,
+    ) -> ArchitectureRevisionProposal:
+        node = self.require_node(architecture_id_or_path)
+        self._require_authorized_architect_reviewer(submitted_by, project_id=project_id, provider=provider, require_revision=True)
+        self._validate_revision_scope(proposed_changes)
+        from models.proposal import Proposal, ProposalType
+        from services.proposal_service import ProposalService
+
+        proposal = ProposalService(self.repo_root).create_proposal(Proposal(
+            project_id=project_id,
+            session_id=str((metadata or {}).get("session_id") or "architecture-review"),
+            agent_id=submitted_by,
+            objective=objective,
+            proposal_type=ProposalType.ARCHITECTURE,
+            metadata={
+                "source": "architecture_revision_proposal",
+                "architecture_id": node.architecture_id,
+                "challenge_id": challenge_id,
+                "proposed_changes": proposed_changes,
+                "scope": "architecture_registry_only",
+                "requires_chair_approval": True,
+            },
+        ))
+        revision = ArchitectureRevisionProposal(
+            project_id=project_id,
+            architecture_id=node.architecture_id,
+            challenge_id=challenge_id,
+            submitted_by=submitted_by,
+            objective=objective,
+            proposed_changes=proposed_changes,
+            linked_proposal_id=proposal.proposal_id,
+            metadata={"proposal_system_reused": True, "direct_registry_mutation": False, **dict(metadata or {})},
+        )
+        self._write_revision_proposal(revision)
+        return revision
+
+    def _write_review(self, review: ArchitectureReview) -> None:
+        path = self.reviews_root / review.review_id / "review.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(review.model_dump(mode="json"), indent=2, sort_keys=True), encoding="utf-8")
+
+    def _write_finding(self, finding: ArchitectureFinding) -> None:
+        path = self.findings_root / finding.finding_id / "finding.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(finding.model_dump(mode="json"), indent=2, sort_keys=True), encoding="utf-8")
+
+    def _write_challenge(self, challenge: ArchitectureChallenge) -> None:
+        path = self.challenges_root / challenge.challenge_id / "challenge.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(challenge.model_dump(mode="json"), indent=2, sort_keys=True), encoding="utf-8")
+
+    def _write_revision_proposal(self, revision: ArchitectureRevisionProposal) -> None:
+        path = self.revision_proposals_root / revision.revision_id / "revision_proposal.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(revision.model_dump(mode="json"), indent=2, sort_keys=True), encoding="utf-8")
+
+    def _require_authorized_architect_reviewer(self, reviewer_id: str, *, project_id: str, provider: str | None = None, require_revision: bool = False) -> ArchitectureReviewerDefinition:
+        payload = self.ensure_reviewers()
+        reviewers = [ArchitectureReviewerDefinition(**item) for item in payload.get("reviewers", [])]
+        reviewer = next((item for item in reviewers if item.reviewer_id == reviewer_id), None)
+        if reviewer is None or not reviewer.enabled:
+            raise PermissionError("architecture_reviewer_not_authorized")
+        if provider and reviewer.provider != provider:
+            raise PermissionError("architecture_reviewer_provider_mismatch")
+        if not reviewer.can_submit_review:
+            raise PermissionError("architecture_review_submit_not_allowed")
+        if require_revision and not reviewer.can_propose_revision:
+            raise PermissionError("architecture_revision_proposal_not_allowed")
+        allowed_projects = reviewer.metadata.get("allowed_projects") if isinstance(reviewer.metadata, dict) else None
+        if allowed_projects and project_id not in set(str(item) for item in allowed_projects):
+            raise PermissionError("architecture_project_not_authorized_for_reviewer")
+        return reviewer
+
+    def _validate_revision_scope(self, proposed_changes: dict[str, Any]) -> None:
+        allowed = {"description", "metadata", "relationships", "hierarchy_placement", "evidence_links", "decision_links", "review_metadata"}
+        forbidden = set(proposed_changes.keys()) - allowed
+        if forbidden:
+            raise ValueError("architecture_revision_scope_violation:" + ",".join(sorted(forbidden)))
+
     def default_reviewers(self) -> dict[str, Any]:
         return {
             "schema_version": 1,
@@ -444,7 +694,7 @@ class ArchitectureRegistryService:
             "MCP Platform": ["Tool Registry", "Capability Facade", "Transport Bridge", "MCP Discovery"],
             "Authentication": ["OAuth", "JWT Validation", "JWKS Discovery", "Scope Mapping"],
             "Validation": ["Validation Agent", "Validation Profiles", "Smoke Evidence"],
-            "Architecture": ["Architecture Registry", "Hierarchy Retrieval", "Architecture Context", "Architecture Health"],
+            "Architecture": ["Architecture Registry", "Hierarchy Retrieval", "Architecture Context", "Architecture Health", "Architecture Review Collaboration"],
         }
         for domain_name, component_names in components.items():
             parent = domain_nodes[domain_name]
@@ -497,7 +747,7 @@ class ArchitectureRegistryService:
             "MCP Platform": ["Tool Registry", "Capability Facade", "Transport Bridge", "MCP Discovery"],
             "Authentication": ["OAuth", "JWT Validation", "JWKS Discovery", "Scope Mapping"],
             "Validation": ["Validation Agent", "Validation Profiles", "Smoke Evidence"],
-            "Architecture": ["Architecture Registry", "Hierarchy Retrieval", "Architecture Context", "Architecture Health"],
+            "Architecture": ["Architecture Registry", "Hierarchy Retrieval", "Architecture Context", "Architecture Health", "Architecture Review Collaboration"],
         }
         # Rename the 18.1 placeholder if present so existing repositories get the official v1 health node.
         placeholder = self.get_node("Ageix.Architecture.HealthStub")
