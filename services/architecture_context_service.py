@@ -12,6 +12,7 @@ from models.architecture import (
     ArchitectureNode,
 )
 from services.architecture_registry_service import ArchitectureRegistryService
+from services.architecture_guidance_service import ArchitectureGuidanceService
 
 
 class ArchitectureContextService:
@@ -20,6 +21,7 @@ class ArchitectureContextService:
     def __init__(self, repo_root: str | Path = ".") -> None:
         self.repo_root = Path(repo_root).resolve()
         self.registry = ArchitectureRegistryService(self.repo_root)
+        self.guidance_service = ArchitectureGuidanceService(self.repo_root)
         self.root = self.repo_root / ".ageix" / "architecture"
         self.descriptions_root = self.root / "descriptions"
         self.description_index_path = self.descriptions_root / "index.json"
@@ -144,7 +146,10 @@ class ArchitectureContextService:
         child_context = self._child_context(node)
         evidence_summary = self._evidence_summary(node.linked_evidence_package_ids, requester_identity or {"project_id": node.project_id})
         decision_summary = self._decision_summary(node.linked_decision_trace_ids, requester_identity or {"project_id": node.project_id})
-        summary = self._compile_summary(node, purpose, evidence_summary, decision_summary, child_context)
+        guidance = self.guidance_service.get_guidance(project_id=node.project_id, architecture_id=node.architecture_id)
+        active_principles = guidance.get("principles", [])
+        active_intents = guidance.get("intents", [])
+        summary = self._compile_summary(node, purpose, evidence_summary, decision_summary, child_context, active_principles, active_intents)
         context = ArchitectureContext(
             architecture_id=node.architecture_id,
             project_id=node.project_id,
@@ -160,6 +165,9 @@ class ArchitectureContextService:
             child_context=child_context,
             linked_evidence_summary=evidence_summary,
             linked_decision_summary=decision_summary,
+            active_principles=active_principles,
+            active_intents=active_intents,
+            guidance=guidance,
             description=self._description_summary(description) if description else None,
             detail_available=bool(description and (description.detailed_description or description.metadata)),
             context_policy={
@@ -168,6 +176,7 @@ class ArchitectureContextService:
                 "evidence_is_linked_not_absorbed": True,
                 "repository_wide_discovery_performed": False,
                 "detail_request_supported": True,
+                "active_guidance_included": True,
             },
         )
         if include_detail:
@@ -176,6 +185,7 @@ class ArchitectureContextService:
                 "description": description.model_dump(mode="json") if description else None,
                 "evidence_link_policy": "Architecture links to evidence package summaries and never owns evidence contents.",
                 "decision_link_policy": "Architecture links to decision trace summaries and never rewrites decision history.",
+                "guidance_policy": "Architecture context includes accepted principles and intent as derived guidance without storing a separate guidance artifact.",
             }
         return context
 
@@ -305,11 +315,12 @@ class ArchitectureContextService:
             })
         return summaries
 
-    def _compile_summary(self, node: ArchitectureNode, purpose: str, evidence: list[dict[str, Any]], decisions: list[dict[str, Any]], children: list[dict[str, Any]]) -> str:
+    def _compile_summary(self, node: ArchitectureNode, purpose: str, evidence: list[dict[str, Any]], decisions: list[dict[str, Any]], children: list[dict[str, Any]], principles: list[dict[str, Any]] | None = None, intents: list[dict[str, Any]] | None = None) -> str:
         purpose_text = purpose.strip() or f"{node.name} is a {node.node_type.value} architecture node."
         return (
             f"{node.path}: {purpose_text} "
-            f"Children={len(children)}; linked_evidence={len(evidence)}; linked_decisions={len(decisions)}."
+            f"Children={len(children)}; linked_evidence={len(evidence)}; linked_decisions={len(decisions)}; "
+            f"active_principles={len(principles or [])}; active_intents={len(intents or [])}."
         )
 
     def _rebuild_description_index(self) -> None:

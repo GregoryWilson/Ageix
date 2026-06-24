@@ -6,6 +6,7 @@ from typing import Any
 from models.capability_definition import CapabilityDefinition
 from services.architecture_context_service import ArchitectureContextService
 from services.architecture_decision_record_service import ArchitectureDecisionRecordService
+from services.architecture_guidance_service import ArchitectureGuidanceService
 from services.architecture_registry_service import ArchitectureRegistryService
 from services.architecture_revision_service import ArchitectureRevisionService
 
@@ -19,6 +20,9 @@ def register_capabilities(repo_root: Path):
 
     def adr_service() -> ArchitectureDecisionRecordService:
         return ArchitectureDecisionRecordService(repo_root)
+
+    def guidance_service() -> ArchitectureGuidanceService:
+        return ArchitectureGuidanceService(repo_root)
 
     def architecture_list(arguments: dict[str, Any]) -> dict[str, Any]:
         result = service().list_nodes(
@@ -335,6 +339,125 @@ def register_capabilities(repo_root: Path):
         except Exception as exc:
             return {"success": False, "result": {}, "metadata": {"request_mode": "architecture_adr_history"}, "error": str(exc)}
 
+
+    def architecture_principle_propose(arguments: dict[str, Any]) -> dict[str, Any]:
+        try:
+            principle = guidance_service().propose_principle(
+                project_id=str(arguments.get("project_id") or ""),
+                session_id=str(arguments.get("session_id") or "architecture-principle"),
+                created_by=str(arguments.get("agent_id") or arguments.get("created_by") or ""),
+                title=str(arguments.get("title") or ""),
+                statement=str(arguments.get("statement") or ""),
+                rationale=str(arguments.get("rationale") or ""),
+                scope=str(arguments.get("scope") or "project"),
+                architecture_ids=arguments.get("architecture_ids") or ([arguments.get("architecture_id")] if arguments.get("architecture_id") else []),
+                adr_ids=arguments.get("adr_ids") or ([arguments.get("adr_id")] if arguments.get("adr_id") else []),
+                revision_ids=arguments.get("revision_ids") or ([arguments.get("revision_id")] if arguments.get("revision_id") else []),
+                related_principle_ids=arguments.get("related_principle_ids") or [],
+                supersedes_principle_id=arguments.get("supersedes_principle_id"),
+                evidence_package_ids=arguments.get("evidence_package_ids") or [],
+                metadata={"session_id": arguments.get("session_id"), **dict(arguments.get("metadata") or {})},
+            )
+            return {"success": True, "result": principle.model_dump(mode="json"), "metadata": {"request_mode": "architecture_principle_propose", "principle_id": principle.principle_id, "proposal_id": principle.proposal_id, "direct_principle_acceptance": False}, "error": None}
+        except Exception as exc:
+            return {"success": False, "result": {}, "metadata": {"request_mode": "architecture_principle_propose"}, "error": str(exc)}
+
+    def architecture_principles(arguments: dict[str, Any]) -> dict[str, Any]:
+        result = guidance_service().list_principles(
+            project_id=str(arguments.get("project_id") or "") or None,
+            architecture_id=str(arguments.get("architecture_id") or "") or None,
+            adr_id=str(arguments.get("adr_id") or "") or None,
+            revision_id=str(arguments.get("revision_id") or "") or None,
+            status=str(arguments.get("status") or "") or None,
+            limit=int(arguments.get("limit") or 50),
+        )
+        return {"success": True, "result": result, "metadata": {"request_mode": "architecture_principles"}, "error": None}
+
+    def architecture_principle_details(arguments: dict[str, Any]) -> dict[str, Any]:
+        principle_id = str(arguments.get("principle_id") or "")
+        if not principle_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "principle_id_required"}
+        try:
+            result = guidance_service().get_principle(principle_id)
+            return {"success": True, "result": result, "metadata": {"request_mode": "architecture_principle_details", "principle_id": principle_id}, "error": None}
+        except Exception as exc:
+            return {"success": False, "result": {}, "metadata": {"request_mode": "architecture_principle_details"}, "error": str(exc)}
+
+    def architecture_principle_history(arguments: dict[str, Any]) -> dict[str, Any]:
+        principle_id = str(arguments.get("principle_id") or "")
+        if not principle_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "principle_id_required"}
+        try:
+            result = guidance_service().get_principle_history(principle_id)
+            return {"success": True, "result": result, "metadata": {"request_mode": "architecture_principle_history", "principle_id": principle_id}, "error": None}
+        except Exception as exc:
+            return {"success": False, "result": {}, "metadata": {"request_mode": "architecture_principle_history"}, "error": str(exc)}
+
+    def architecture_intent_propose(arguments: dict[str, Any]) -> dict[str, Any]:
+        try:
+            intent = guidance_service().propose_intent(
+                project_id=str(arguments.get("project_id") or ""),
+                session_id=str(arguments.get("session_id") or "architecture-intent"),
+                created_by=str(arguments.get("agent_id") or arguments.get("created_by") or ""),
+                title=str(arguments.get("title") or ""),
+                summary=str(arguments.get("summary") or ""),
+                details=str(arguments.get("details") or ""),
+                scope=str(arguments.get("scope") or "project"),
+                future_considerations=arguments.get("future_considerations") or [],
+                architecture_ids=arguments.get("architecture_ids") or ([arguments.get("architecture_id")] if arguments.get("architecture_id") else []),
+                adr_ids=arguments.get("adr_ids") or ([arguments.get("adr_id")] if arguments.get("adr_id") else []),
+                principle_ids=arguments.get("principle_ids") or ([arguments.get("principle_id")] if arguments.get("principle_id") else []),
+                revision_ids=arguments.get("revision_ids") or ([arguments.get("revision_id")] if arguments.get("revision_id") else []),
+                related_intent_ids=arguments.get("related_intent_ids") or [],
+                supersedes_intent_id=arguments.get("supersedes_intent_id"),
+                evidence_package_ids=arguments.get("evidence_package_ids") or [],
+                metadata={"session_id": arguments.get("session_id"), **dict(arguments.get("metadata") or {})},
+            )
+            return {"success": True, "result": intent.model_dump(mode="json"), "metadata": {"request_mode": "architecture_intent_propose", "intent_id": intent.intent_id, "proposal_id": intent.proposal_id, "direct_intent_acceptance": False}, "error": None}
+        except Exception as exc:
+            return {"success": False, "result": {}, "metadata": {"request_mode": "architecture_intent_propose"}, "error": str(exc)}
+
+    def architecture_intents(arguments: dict[str, Any]) -> dict[str, Any]:
+        result = guidance_service().list_intents(
+            project_id=str(arguments.get("project_id") or "") or None,
+            architecture_id=str(arguments.get("architecture_id") or "") or None,
+            adr_id=str(arguments.get("adr_id") or "") or None,
+            principle_id=str(arguments.get("principle_id") or "") or None,
+            revision_id=str(arguments.get("revision_id") or "") or None,
+            status=str(arguments.get("status") or "") or None,
+            limit=int(arguments.get("limit") or 50),
+        )
+        return {"success": True, "result": result, "metadata": {"request_mode": "architecture_intents"}, "error": None}
+
+    def architecture_intent_details(arguments: dict[str, Any]) -> dict[str, Any]:
+        intent_id = str(arguments.get("intent_id") or "")
+        if not intent_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "intent_id_required"}
+        try:
+            result = guidance_service().get_intent(intent_id)
+            return {"success": True, "result": result, "metadata": {"request_mode": "architecture_intent_details", "intent_id": intent_id}, "error": None}
+        except Exception as exc:
+            return {"success": False, "result": {}, "metadata": {"request_mode": "architecture_intent_details"}, "error": str(exc)}
+
+    def architecture_intent_history(arguments: dict[str, Any]) -> dict[str, Any]:
+        intent_id = str(arguments.get("intent_id") or "")
+        if not intent_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "intent_id_required"}
+        try:
+            result = guidance_service().get_intent_history(intent_id)
+            return {"success": True, "result": result, "metadata": {"request_mode": "architecture_intent_history", "intent_id": intent_id}, "error": None}
+        except Exception as exc:
+            return {"success": False, "result": {}, "metadata": {"request_mode": "architecture_intent_history"}, "error": str(exc)}
+
+    def architecture_guidance(arguments: dict[str, Any]) -> dict[str, Any]:
+        result = guidance_service().get_guidance(
+            project_id=str(arguments.get("project_id") or "") or None,
+            architecture_id=str(arguments.get("architecture_id") or "") or None,
+            adr_id=str(arguments.get("adr_id") or "") or None,
+            revision_id=str(arguments.get("revision_id") or "") or None,
+        )
+        return {"success": True, "result": result, "metadata": {"request_mode": "architecture_guidance", "derived_guidance": True}, "error": None}
+
     def architecture_seed_ageix(arguments: dict[str, Any]) -> dict[str, Any]:
         result = service().seed_official_ageix_architecture()
         return {"success": True, "result": result, "metadata": {"request_mode": "architecture_seed_ageix"}, "error": None}
@@ -364,6 +487,15 @@ def register_capabilities(repo_root: Path):
         (CapabilityDefinition(capability_id="architecture.adrs", category="architecture", access_level="governed_read", handler="architecture.adrs", description="List governed Architecture Decision Records."), architecture_adrs),
         (CapabilityDefinition(capability_id="architecture.adr.details", category="architecture", access_level="governed_read", handler="architecture.adr.details", description="Retrieve Architecture Decision Record details."), architecture_adr_details),
         (CapabilityDefinition(capability_id="architecture.adr.history", category="architecture", access_level="governed_read", handler="architecture.adr.history", description="Retrieve Architecture Decision Record supersession history."), architecture_adr_history),
+        (CapabilityDefinition(capability_id="architecture.principle.propose", category="architecture", access_level="governed_write", handler="architecture.principle.propose", description="Propose a governed Architecture Principle through the existing proposal system."), architecture_principle_propose),
+        (CapabilityDefinition(capability_id="architecture.principles", category="architecture", access_level="governed_read", handler="architecture.principles", description="List governed Architecture Principles."), architecture_principles),
+        (CapabilityDefinition(capability_id="architecture.principle.details", category="architecture", access_level="governed_read", handler="architecture.principle.details", description="Retrieve Architecture Principle details."), architecture_principle_details),
+        (CapabilityDefinition(capability_id="architecture.principle.history", category="architecture", access_level="governed_read", handler="architecture.principle.history", description="Retrieve Architecture Principle supersession history."), architecture_principle_history),
+        (CapabilityDefinition(capability_id="architecture.intent.propose", category="architecture", access_level="governed_write", handler="architecture.intent.propose", description="Propose governed Architecture Intent through the existing proposal system."), architecture_intent_propose),
+        (CapabilityDefinition(capability_id="architecture.intents", category="architecture", access_level="governed_read", handler="architecture.intents", description="List governed Architecture Intent records."), architecture_intents),
+        (CapabilityDefinition(capability_id="architecture.intent.details", category="architecture", access_level="governed_read", handler="architecture.intent.details", description="Retrieve Architecture Intent details."), architecture_intent_details),
+        (CapabilityDefinition(capability_id="architecture.intent.history", category="architecture", access_level="governed_read", handler="architecture.intent.history", description="Retrieve Architecture Intent supersession history."), architecture_intent_history),
+        (CapabilityDefinition(capability_id="architecture.guidance", category="architecture", access_level="governed_read", handler="architecture.guidance", description="Return derived architecture guidance from accepted principles and intent."), architecture_guidance),
         (CapabilityDefinition(capability_id="architecture.description.draft", category="architecture", access_level="governed_write", handler="architecture.description.draft", description="Create an ArchitectWorker draft architecture description artifact.", exposed_to_external_agents=False), architecture_description_draft),
         (CapabilityDefinition(capability_id="architecture.description.approve", category="architecture", access_level="governed_write", handler="architecture.description.approve", description="Chair approval for an architecture description artifact.", exposed_to_external_agents=False), architecture_description_approve),
         (CapabilityDefinition(capability_id="architecture.seed_ageix", category="architecture", access_level="governed_write", handler="architecture.seed_ageix", description="Seed the official Ageix project architecture baseline.", exposed_to_external_agents=False), architecture_seed_ageix),

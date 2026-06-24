@@ -269,6 +269,9 @@ class ArchitectureContext(BaseModel):
     child_context: list[dict[str, Any]] = Field(default_factory=list)
     linked_evidence_summary: list[dict[str, Any]] = Field(default_factory=list)
     linked_decision_summary: list[dict[str, Any]] = Field(default_factory=list)
+    active_principles: list[dict[str, Any]] = Field(default_factory=list)
+    active_intents: list[dict[str, Any]] = Field(default_factory=list)
+    guidance: dict[str, Any] = Field(default_factory=dict)
     description: dict[str, Any] | None = None
     detail_available: bool = False
     detail: dict[str, Any] = Field(default_factory=dict)
