@@ -13,9 +13,9 @@ class ChatGPTClientProfile:
     behavior. It does not provide execution authority.
     """
 
-    client_id: str = "chatgpt"
+    client_id: str = "chatGPT"
     display_name: str = "Lex"
-    provider: str = "openai"
+    provider: str = "chatGPT"
     agent_id: str = "lex"
     discovery_behavior: dict[str, object] = field(default_factory=lambda: {
         "uses_mcp_discovery": True,
@@ -42,7 +42,7 @@ class ChatGPTClientProfile:
 
     @classmethod
     def resolve(cls, registry: MCPClientRegistry | None = None) -> "ChatGPTClientProfile":
-        client = (registry or MCPClientRegistry()).require("chatgpt")
+        client = (registry or MCPClientRegistry()).require("chatGPT")
         if not client.enabled or client.placeholder:
             raise ValueError("chatgpt_client_profile_not_enabled")
         return cls.from_definition(client)

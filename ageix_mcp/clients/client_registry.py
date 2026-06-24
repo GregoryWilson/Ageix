@@ -30,9 +30,9 @@ class MCPClientDefinition:
 
 DEFAULT_CLIENTS: tuple[MCPClientDefinition, ...] = (
     MCPClientDefinition(
-        client_id="chatgpt",
+        client_id="chatGPT",
         display_name="Lex",
-        provider="openai",
+        provider="chatGPT",
         enabled=True,
         primary=True,
         placeholder=False,
