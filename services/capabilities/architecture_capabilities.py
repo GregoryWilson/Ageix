@@ -7,6 +7,7 @@ from models.capability_definition import CapabilityDefinition
 from services.architecture_context_service import ArchitectureContextService
 from services.architecture_decision_record_service import ArchitectureDecisionRecordService
 from services.architecture_guidance_service import ArchitectureGuidanceService
+from services.architecture_guidance_context_service import ArchitectureGuidanceContextService
 from services.architecture_registry_service import ArchitectureRegistryService
 from services.architecture_revision_service import ArchitectureRevisionService
 
@@ -23,6 +24,9 @@ def register_capabilities(repo_root: Path):
 
     def guidance_service() -> ArchitectureGuidanceService:
         return ArchitectureGuidanceService(repo_root)
+
+    def guidance_context_service() -> ArchitectureGuidanceContextService:
+        return ArchitectureGuidanceContextService(repo_root)
 
     def architecture_list(arguments: dict[str, Any]) -> dict[str, Any]:
         result = service().list_nodes(
@@ -458,6 +462,34 @@ def register_capabilities(repo_root: Path):
         )
         return {"success": True, "result": result, "metadata": {"request_mode": "architecture_guidance", "derived_guidance": True}, "error": None}
 
+
+    def architecture_guidance_context(arguments: dict[str, Any]) -> dict[str, Any]:
+        try:
+            package = guidance_context_service().build_context_package(
+                project_id=str(arguments.get("project_id") or "") or None,
+                architecture_id=str(arguments.get("architecture_id") or "") or None,
+                path=str(arguments.get("path") or "") or None,
+                adr_id=str(arguments.get("adr_id") or "") or None,
+                revision_id=str(arguments.get("revision_id") or "") or None,
+                principle_id=str(arguments.get("principle_id") or "") or None,
+                intent_id=str(arguments.get("intent_id") or "") or None,
+                persist=bool(arguments.get("persist", False)),
+                created_by=str(arguments.get("agent_id") or "architecture_guidance_context_service"),
+            )
+            return {"success": True, "result": package.model_dump(mode="json"), "metadata": {"request_mode": "architecture_guidance_context", "package_id": package.package_id, "persisted_snapshot": package.persisted_snapshot}, "error": None}
+        except Exception as exc:
+            return {"success": False, "result": {}, "metadata": {"request_mode": "architecture_guidance_context"}, "error": str(exc)}
+
+    def architecture_guidance_context_get(arguments: dict[str, Any]) -> dict[str, Any]:
+        package_id = str(arguments.get("package_id") or "")
+        if not package_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "package_id_required"}
+        try:
+            result = guidance_context_service().get_package(package_id)
+            return {"success": True, "result": result, "metadata": {"request_mode": "architecture_guidance_context_get", "package_id": package_id}, "error": None}
+        except Exception as exc:
+            return {"success": False, "result": {}, "metadata": {"request_mode": "architecture_guidance_context_get"}, "error": str(exc)}
+
     def architecture_seed_ageix(arguments: dict[str, Any]) -> dict[str, Any]:
         result = service().seed_official_ageix_architecture()
         return {"success": True, "result": result, "metadata": {"request_mode": "architecture_seed_ageix"}, "error": None}
@@ -496,6 +528,8 @@ def register_capabilities(repo_root: Path):
         (CapabilityDefinition(capability_id="architecture.intent.details", category="architecture", access_level="governed_read", handler="architecture.intent.details", description="Retrieve Architecture Intent details."), architecture_intent_details),
         (CapabilityDefinition(capability_id="architecture.intent.history", category="architecture", access_level="governed_read", handler="architecture.intent.history", description="Retrieve Architecture Intent supersession history."), architecture_intent_history),
         (CapabilityDefinition(capability_id="architecture.guidance", category="architecture", access_level="governed_read", handler="architecture.guidance", description="Return derived architecture guidance from accepted principles and intent."), architecture_guidance),
+        (CapabilityDefinition(capability_id="architecture.guidance.context", category="architecture", access_level="governed_read", handler="architecture.guidance.context", description="Build or persist a summary-first Architecture Guidance Context Package."), architecture_guidance_context),
+        (CapabilityDefinition(capability_id="architecture.guidance.context.get", category="architecture", access_level="governed_read", handler="architecture.guidance.context.get", description="Retrieve a persisted Architecture Guidance Context Package."), architecture_guidance_context_get),
         (CapabilityDefinition(capability_id="architecture.description.draft", category="architecture", access_level="governed_write", handler="architecture.description.draft", description="Create an ArchitectWorker draft architecture description artifact.", exposed_to_external_agents=False), architecture_description_draft),
         (CapabilityDefinition(capability_id="architecture.description.approve", category="architecture", access_level="governed_write", handler="architecture.description.approve", description="Chair approval for an architecture description artifact.", exposed_to_external_agents=False), architecture_description_approve),
         (CapabilityDefinition(capability_id="architecture.seed_ageix", category="architecture", access_level="governed_write", handler="architecture.seed_ageix", description="Seed the official Ageix project architecture baseline.", exposed_to_external_agents=False), architecture_seed_ageix),

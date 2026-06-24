@@ -13,6 +13,7 @@ from models.architecture import (
 )
 from services.architecture_registry_service import ArchitectureRegistryService
 from services.architecture_guidance_service import ArchitectureGuidanceService
+from services.architecture_guidance_context_service import ArchitectureGuidanceContextService
 
 
 class ArchitectureContextService:
@@ -22,6 +23,7 @@ class ArchitectureContextService:
         self.repo_root = Path(repo_root).resolve()
         self.registry = ArchitectureRegistryService(self.repo_root)
         self.guidance_service = ArchitectureGuidanceService(self.repo_root)
+        self.guidance_context_service = ArchitectureGuidanceContextService(self.repo_root)
         self.root = self.repo_root / ".ageix" / "architecture"
         self.descriptions_root = self.root / "descriptions"
         self.description_index_path = self.descriptions_root / "index.json"
@@ -149,6 +151,21 @@ class ArchitectureContextService:
         guidance = self.guidance_service.get_guidance(project_id=node.project_id, architecture_id=node.architecture_id)
         active_principles = guidance.get("principles", [])
         active_intents = guidance.get("intents", [])
+        try:
+            guidance_context = self.guidance_context_service.build_context_package(architecture_id=node.architecture_id, persist=False)
+            guidance_summary = {
+                "brief_summary": guidance_context.brief_summary,
+                "governing_principles_count": len(guidance_context.governing_principles),
+                "active_intent_count": len(guidance_context.active_intent),
+                "related_adrs": [item.get("adr_id") for item in guidance_context.decision_context],
+                "constraints": guidance_context.constraints,
+                "future_direction": guidance_context.future_direction,
+                "open_considerations": guidance_context.open_considerations,
+                "detail_available": True,
+                "detail_path": guidance_context.detail_path,
+            }
+        except Exception:
+            guidance_summary = {"brief_summary": "Guidance context unavailable for this node.", "detail_available": False}
         summary = self._compile_summary(node, purpose, evidence_summary, decision_summary, child_context, active_principles, active_intents)
         context = ArchitectureContext(
             architecture_id=node.architecture_id,
@@ -167,7 +184,7 @@ class ArchitectureContextService:
             linked_decision_summary=decision_summary,
             active_principles=active_principles,
             active_intents=active_intents,
-            guidance=guidance,
+            guidance={**guidance, "guidance_summary": guidance_summary},
             description=self._description_summary(description) if description else None,
             detail_available=bool(description and (description.detailed_description or description.metadata)),
             context_policy={
@@ -185,7 +202,7 @@ class ArchitectureContextService:
                 "description": description.model_dump(mode="json") if description else None,
                 "evidence_link_policy": "Architecture links to evidence package summaries and never owns evidence contents.",
                 "decision_link_policy": "Architecture links to decision trace summaries and never rewrites decision history.",
-                "guidance_policy": "Architecture context includes accepted principles and intent as derived guidance without storing a separate guidance artifact.",
+                "guidance_policy": "Architecture context includes lightweight guidance summary; use architecture.guidance.context for full package detail.",
             }
         return context
 

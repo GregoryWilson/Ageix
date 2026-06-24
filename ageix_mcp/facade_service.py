@@ -56,7 +56,7 @@ class MCPFacadeService:
             exposed_only=exposed_only,
         )
 
-    def list_capabilities(self, *, exposed_only: bool = True) -> list[dict[str, Any]]:
+    def list_capabilities(self, *, exposed_only: bool = True, category: str | None = None, query: str | None = None, limit: int | None = None, offset: int = 0) -> list[dict[str, Any]]:
         capabilities = self.capability_registry.list_capabilities()
         if exposed_only:
             capabilities = [
@@ -64,7 +64,20 @@ class MCPFacadeService:
                 if definition.exposed_to_external_agents
                 and definition.capability_id not in MCP_EXTERNAL_EXCLUDED_CAPABILITIES
             ]
-        return [definition.model_dump() for definition in capabilities]
+        if category:
+            capabilities = [definition for definition in capabilities if definition.category == category]
+        if query:
+            lowered = str(query).lower()
+            capabilities = [
+                definition for definition in capabilities
+                if lowered in definition.capability_id.lower()
+                or lowered in definition.category.lower()
+                or lowered in definition.description.lower()
+                or lowered in definition.handler.lower()
+            ]
+        start = max(0, int(offset or 0))
+        end = None if limit is None else start + max(0, int(limit or 0))
+        return [definition.model_dump() for definition in capabilities[start:end]]
 
     def execute_tool(
         self,
@@ -107,8 +120,21 @@ class MCPFacadeService:
 
         arguments = arguments or {}
         if tool.capability_id == "capabilities.list":
+            category = str(arguments.get("category") or "") or None
+            query = str(arguments.get("query") or "") or None
+            limit = arguments.get("limit")
+            offset = int(arguments.get("offset") or 0)
+            tools = self.discover_tools(category=category)
+            if query:
+                lowered = query.lower()
+                tools = [tool_def for tool_def in tools if lowered in str(tool_def.get("tool_name") or "").lower() or lowered in str(tool_def.get("description") or "").lower() or lowered in str(tool_def.get("category") or "").lower()]
+            total = len(tools)
+            start = max(0, offset)
+            end = None if limit is None else start + max(0, int(limit or 0))
+            tools = tools[start:end]
+            capabilities = self.list_capabilities(category=category, query=query, limit=int(limit) if limit is not None else None, offset=offset)
             return AgeixEnvelope.ok(
-                {"tools": self.discover_tools(), "categories": self.discover_categories(), "capabilities": self.list_capabilities()},
+                {"tools": tools, "categories": self.discover_categories(), "capabilities": capabilities, "count": len(tools), "total_count": total, "limit": limit, "offset": offset, "filters": {"category": category, "query": query}},
                 tool_name=tool.name,
                 capability_id=tool.capability_id,
             )

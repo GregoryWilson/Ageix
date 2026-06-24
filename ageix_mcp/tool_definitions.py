@@ -95,8 +95,14 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
         name="ageix.capabilities.list",
         capability_id="capabilities.list",
         category="capability",
-        description="List governed Ageix capabilities and MCP tools exposed to external clients.",
+        description="List governed Ageix capabilities and MCP tools exposed to external clients with optional filtering and pagination.",
         requires_project=False,
+        input_schema=_object_schema({
+            "category": _string("Optional capability/tool category filter."),
+            "query": _string("Optional case-insensitive capability/tool search text."),
+            "limit": _integer("Maximum rows to return."),
+            "offset": _integer("Zero-based pagination offset."),
+        }),
     ),
     MCPToolDefinition(
         name="ageix.capabilities.execute",
@@ -892,6 +898,31 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
             "revision_id": _string("Optional architecture revision ID."),
         }),
         related_tools=("ageix.architecture.principles", "ageix.architecture.intents", "ageix.architecture.context"),
+    ),
+    MCPToolDefinition(
+        name="ageix.architecture.guidance.context",
+        capability_id="architecture.guidance.context",
+        category="architecture",
+        description="Build or explicitly persist a summary-first Architecture Guidance Context Package.",
+        input_schema=_object_schema({
+            "project_id": _string("Explicit project ID."),
+            "architecture_id": _string("Optional architecture node ID."),
+            "path": _string("Optional stable architecture path."),
+            "adr_id": _string("Optional ADR ID."),
+            "revision_id": _string("Optional architecture revision ID."),
+            "principle_id": _string("Optional Architecture Principle ID."),
+            "intent_id": _string("Optional Architecture Intent ID."),
+            "persist": {"type": "boolean", "description": "Persist immutable GUIDECTX package snapshot when true."},
+        }),
+        related_tools=("ageix.architecture.guidance", "ageix.architecture.context", "ageix.architecture.principles", "ageix.architecture.intents"),
+    ),
+    MCPToolDefinition(
+        name="ageix.architecture.guidance.context.get",
+        capability_id="architecture.guidance.context.get",
+        category="architecture",
+        description="Retrieve a persisted Architecture Guidance Context Package by ID.",
+        input_schema=_object_schema({"package_id": _string("GUIDECTX package ID.")}, ["package_id"]),
+        related_tools=("ageix.architecture.guidance.context",),
     ),
 
     MCPToolDefinition(
