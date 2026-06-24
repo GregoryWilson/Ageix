@@ -5,7 +5,11 @@
       "can_propose_revision": true,
       "can_submit_review": true,
       "enabled": true,
-      "metadata": {},
+      "metadata": {
+        "provider_aliases": [
+          "chatGPT"
+        ]
+      },
       "provider": "openai",
       "reviewer_id": "lex",
       "role": "cloud_architect",

@@ -16,7 +16,7 @@
     "freshness_status": "fresh",
     "health_version": 1,
     "hierarchy_status": "valid",
-    "last_evaluated": "2026-06-23T22:42:14.420742+00:00",
+    "last_evaluated": "2026-06-24T02:54:04.157260+00:00",
     "linked_decision_count": 0,
     "linked_evidence_count": 0,
     "metadata": {
@@ -52,5 +52,5 @@
   "project_id": "Ageix",
   "review_count": 0,
   "status": "active",
-  "updated_at": "2026-06-23T22:42:14.420371+00:00"
+  "updated_at": "2026-06-24T02:54:04.156895+00:00"
 }

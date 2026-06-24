@@ -98,6 +98,11 @@ def register_capabilities(repo_root: Path):
         coverage = service().get_coverage(project_id=project_id)
         return {"success": True, "result": coverage.model_dump(mode="json"), "metadata": {"request_mode": "architecture_coverage", "project_id": project_id, "deterministic": True}, "error": None}
 
+    def architecture_baseline_validate(arguments: dict[str, Any]) -> dict[str, Any]:
+        project_id = str(arguments.get("project_id") or "Ageix")
+        result = service().validate_baseline(project_id=project_id)
+        return {"success": True, "result": result, "metadata": {"request_mode": "architecture_baseline_validate", "project_id": project_id, "deterministic": True}, "error": None}
+
 
     def architecture_review_submit(arguments: dict[str, Any]) -> dict[str, Any]:
         identifier = str(arguments.get("architecture_id") or arguments.get("path") or "")
@@ -226,6 +231,7 @@ def register_capabilities(repo_root: Path):
         (CapabilityDefinition(capability_id="architecture.context", category="architecture", access_level="governed_read", handler="architecture.context", description="Build summary-first architecture context for a node without repository-wide discovery."), architecture_context),
         (CapabilityDefinition(capability_id="architecture.health", category="architecture", access_level="governed_read", handler="architecture.health", description="Return deterministic architecture health indicators for one architecture node."), architecture_health),
         (CapabilityDefinition(capability_id="architecture.coverage", category="architecture", access_level="governed_read", handler="architecture.coverage", description="Return deterministic architecture coverage metrics for a project registry baseline."), architecture_coverage),
+        (CapabilityDefinition(capability_id="architecture.baseline.validate", category="architecture", access_level="governed_read", handler="architecture.baseline.validate", description="Validate the official architecture baseline using registry and health data."), architecture_baseline_validate),
         (CapabilityDefinition(capability_id="architecture.review.submit", category="architecture", access_level="governed_write", handler="architecture.review.submit", description="Submit a governed architecture review from an authorized architect MCP partner."), architecture_review_submit),
         (CapabilityDefinition(capability_id="architecture.review.get", category="architecture", access_level="governed_read", handler="architecture.review.get", description="Retrieve a governed architecture review."), architecture_review_get),
         (CapabilityDefinition(capability_id="architecture.review.list", category="architecture", access_level="governed_read", handler="architecture.review.list", description="List governed architecture reviews."), architecture_review_list),

@@ -1,0 +1,16 @@
+{
+  "affected_architecture_ids": [
+    "ARCH-AGEIX-ARCHITECTURE"
+  ],
+  "category": "requires_additional_discovery",
+  "created_at": "2026-06-24T02:54:04.283075+00:00",
+  "created_by": "lex",
+  "finding_id": "ARCHFIND-3AEA6BC1E246",
+  "metadata": {},
+  "other_explanation": "",
+  "project_id": "Ageix",
+  "rationale": "The architecture platform is operational only when external review, challenge, and proposal handoff are validated.",
+  "review_id": "ARCHREV-587BD5E1ADCA",
+  "severity": "informational",
+  "summary": "Architecture platform hardening should retain live MCP validation evidence."
+}

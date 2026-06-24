@@ -604,7 +604,9 @@ class ArchitectureRegistryService:
         if reviewer is None or not reviewer.enabled:
             raise PermissionError("architecture_reviewer_not_authorized")
         if provider and reviewer.provider != provider:
-            raise PermissionError("architecture_reviewer_provider_mismatch")
+            aliases = set(str(item) for item in reviewer.metadata.get("provider_aliases", []) if str(item)) if isinstance(reviewer.metadata, dict) else set()
+            if provider not in aliases:
+                raise PermissionError("architecture_reviewer_provider_mismatch")
         if not reviewer.can_submit_review:
             raise PermissionError("architecture_review_submit_not_allowed")
         if require_revision and not reviewer.can_propose_revision:
@@ -620,6 +622,83 @@ class ArchitectureRegistryService:
         if forbidden:
             raise ValueError("architecture_revision_scope_violation:" + ",".join(sorted(forbidden)))
 
+
+    def validate_baseline(self, *, project_id: str = "Ageix") -> dict[str, Any]:
+        """Deterministically validate architecture baseline structure using registry and health only."""
+        expected_paths = [
+            "Ageix",
+            "Ageix.Governance",
+            "Ageix.Evidence",
+            "Ageix.ProposalSystem",
+            "Ageix.ConsultationSystem",
+            "Ageix.MCPPlatform",
+            "Ageix.Authentication",
+            "Ageix.Validation",
+            "Ageix.Architecture",
+            "Ageix.MCPPlatform.ToolRegistry",
+            "Ageix.MCPPlatform.CapabilityFacade",
+            "Ageix.MCPPlatform.TransportBridge",
+            "Ageix.MCPPlatform.MCPDiscovery",
+            "Ageix.Architecture.ArchitectureRegistry",
+            "Ageix.Architecture.HierarchyRetrieval",
+            "Ageix.Architecture.ArchitectureContext",
+            "Ageix.Architecture.ArchitectureHealth",
+            "Ageix.Architecture.ArchitectureReviewCollaboration",
+        ]
+        coverage = self.get_coverage(project_id=project_id)
+        missing_paths: list[str] = []
+        health_gaps: list[dict[str, Any]] = []
+        explanations: list[str] = []
+
+        for path in expected_paths:
+            node = self.get_node(path)
+            if node is None:
+                missing_paths.append(path)
+                explanations.append(f"missing_expected_architecture_path:{path}")
+                continue
+            health = self.health_for_node(node)
+            if health.status not in {"complete"}:
+                health_gaps.append({
+                    "architecture_id": node.architecture_id,
+                    "path": node.path,
+                    "status": health.status,
+                    "description_status": health.description_status.value,
+                    "evidence_status": health.evidence_status.value,
+                    "decision_status": health.decision_status.value,
+                    "review_status": health.review_status.value,
+                    "freshness_status": health.freshness_status.value,
+                    "context_status": health.context_status.value,
+                })
+
+        status = "complete_current_state"
+        if missing_paths or coverage.coverage_status.value != "complete_current_state" or health_gaps:
+            status = "partial"
+        if coverage.coverage_status.value == "unknown" and not missing_paths:
+            status = "unknown"
+        if health_gaps:
+            explanations.append("one_or_more_architecture_nodes_have_partial_health")
+        if coverage.coverage_status.value != "complete_current_state":
+            explanations.append(f"coverage_status:{coverage.coverage_status.value}")
+
+        return {
+            "project_id": project_id,
+            "status": status,
+            "validation_source": "architecture_registry_plus_health",
+            "deterministic": True,
+            "repository_wide_discovery_performed": False,
+            "coverage": coverage.model_dump(mode="json"),
+            "expected_path_count": len(expected_paths),
+            "missing_paths": missing_paths,
+            "health_gap_count": len(health_gaps),
+            "health_gaps": health_gaps,
+            "explanations": explanations,
+            "metadata": {
+                "sprint": "18.4",
+                "canonical_project_required": project_id == "Ageix",
+                "registry_and_health_only": True,
+            },
+        }
+
     def default_reviewers(self) -> dict[str, Any]:
         return {
             "schema_version": 1,
@@ -630,6 +709,7 @@ class ArchitectureRegistryService:
                     role="cloud_architect",
                     enabled=True,
                     transport_mode=ArchitectureReviewTransportMode.MCP_CONTEXTUAL,
+                    metadata={"provider_aliases": ["chatGPT"]},
                 ).model_dump(mode="json"),
                 ArchitectureReviewerDefinition(
                     reviewer_id="claude",
@@ -660,7 +740,20 @@ class ArchitectureRegistryService:
         if not self.reviewers_path.exists():
             payload = self.default_reviewers()
             self.reviewers_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
-        return json.loads(self.reviewers_path.read_text(encoding="utf-8"))
+            return payload
+        payload = json.loads(self.reviewers_path.read_text(encoding="utf-8"))
+        changed = False
+        for reviewer in payload.get("reviewers", []):
+            if reviewer.get("reviewer_id") == "lex":
+                metadata = reviewer.setdefault("metadata", {})
+                aliases = list(metadata.get("provider_aliases") or [])
+                if "chatGPT" not in aliases:
+                    aliases.append("chatGPT")
+                    metadata["provider_aliases"] = aliases
+                    changed = True
+        if changed:
+            self.reviewers_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        return payload
 
     def seed_official_ageix_architecture(self) -> dict[str, Any]:
         if self.get_node("Ageix"):

@@ -23,7 +23,7 @@
       "path": "Ageix",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-23T19:44:40.892412+00:00"
+      "updated_at": "2026-06-24T02:54:04.267927+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-ARCHITECTURE",
@@ -44,7 +44,7 @@
       "path": "Ageix.Architecture",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-23T22:42:14.422931+00:00"
+      "updated_at": "2026-06-24T02:54:04.278202+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-ARCHITECTURE-ARCHITECTURECONTEXT",
@@ -139,7 +139,7 @@
       "path": "Ageix.Authentication",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-23T22:42:14.417600+00:00"
+      "updated_at": "2026-06-24T02:54:04.153827+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-AUTHENTICATION-JWKSDISCOVERY",
@@ -282,7 +282,7 @@
       "path": "Ageix.ConsultationSystem",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-23T22:42:14.412096+00:00"
+      "updated_at": "2026-06-24T02:54:04.148537+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-CONSULTATIONSYSTEM-ADVISORFEEDBACK",
@@ -348,7 +348,7 @@
       "path": "Ageix.Evidence",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-23T22:42:14.406641+00:00"
+      "updated_at": "2026-06-24T02:54:04.143083+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-EVIDENCE-EVIDENCEPACKAGES",
@@ -444,7 +444,7 @@
       "path": "Ageix.Governance",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-23T22:42:14.401730+00:00"
+      "updated_at": "2026-06-24T02:54:04.137429+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-GOVERNANCE-APPROVALCONTROLS",
@@ -540,7 +540,7 @@
       "path": "Ageix.MCPPlatform",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-23T22:42:14.414871+00:00"
+      "updated_at": "2026-06-24T02:54:04.273102+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-MCPPLATFORM-CAPABILITYFACADE",
@@ -635,7 +635,7 @@
       "path": "Ageix.ProposalSystem",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-23T22:42:14.409496+00:00"
+      "updated_at": "2026-06-24T02:54:04.145861+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-PROPOSALSYSTEM-PROPOSALGOVERNANCE",
@@ -714,7 +714,7 @@
       "path": "Ageix.Validation",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-23T22:42:14.420371+00:00"
+      "updated_at": "2026-06-24T02:54:04.156895+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-VALIDATION-SMOKEEVIDENCE",

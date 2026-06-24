@@ -291,6 +291,17 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
         recommended_next_tools=("ageix.architecture.health", "ageix.architecture.list"),
         related_tools=("ageix.architecture.subtree",),
     ),
+    MCPToolDefinition(
+        name="ageix.architecture.baseline.validate",
+        capability_id="architecture.baseline.validate",
+        category="architecture",
+        description="Validate an architecture baseline using deterministic registry and health data.",
+        input_schema=_object_schema({
+            "project_id": _string("Explicit project ID."),
+        }, ["project_id"]),
+        recommended_next_tools=("ageix.architecture.coverage", "ageix.architecture.review.submit"),
+        related_tools=("ageix.architecture.health",),
+    ),
 
 
     MCPToolDefinition(

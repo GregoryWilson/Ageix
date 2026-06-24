@@ -96,12 +96,13 @@ class AuthService:
 
         if not merged.get("tokens") and data.get("dev_token"):
             merged["tokens"] = [{
+                "name": "legacy-dev-token",
                 "token_value": data["dev_token"],
-                "client_id": "chatgpt",
-                "agent_id": "lex",
-                "provider": "openai",
-                "allowed_projects": ["*"],
-                "allowed_capabilities": ["*"],
+                "client_id": str(data.get("client_id") or "chatgpt"),
+                "agent_id": str(data.get("agent_id") or "lex"),
+                "provider": str(data.get("provider") or "openai"),
+                "allowed_projects": list(data.get("allowed_projects") or ["*"]),
+                "allowed_capabilities": list(data.get("allowed_capabilities") or ["*"]),
                 "authentication_method": "dev_token",
             }]
 

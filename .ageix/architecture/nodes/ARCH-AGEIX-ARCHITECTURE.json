@@ -16,7 +16,7 @@
     "freshness_status": "fresh",
     "health_version": 1,
     "hierarchy_status": "valid",
-    "last_evaluated": "2026-06-23T22:42:14.423478+00:00",
+    "last_evaluated": "2026-06-24T02:54:04.278720+00:00",
     "linked_decision_count": 0,
     "linked_evidence_count": 0,
     "metadata": {
@@ -33,11 +33,11 @@
       "path": true
     },
     "registration_status": "registered",
-    "review_count": 0,
-    "review_status": "never_reviewed",
+    "review_count": 1,
+    "review_status": "reviewed",
     "status": "partial"
   },
-  "last_reviewed_at": null,
+  "last_reviewed_at": "2026-06-24T02:54:04.277904+00:00",
   "linked_decision_trace_ids": [],
   "linked_evidence_package_ids": [],
   "metadata": {
@@ -50,7 +50,7 @@
   "parent_id": "ARCH-AGEIX-PROJECT",
   "path": "Ageix.Architecture",
   "project_id": "Ageix",
-  "review_count": 0,
+  "review_count": 1,
   "status": "active",
-  "updated_at": "2026-06-23T22:42:14.422931+00:00"
+  "updated_at": "2026-06-24T02:54:04.278202+00:00"
 }
