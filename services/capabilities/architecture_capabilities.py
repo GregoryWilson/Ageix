@@ -5,6 +5,7 @@ from typing import Any
 
 from models.capability_definition import CapabilityDefinition
 from services.architecture_context_service import ArchitectureContextService
+from services.architecture_decision_record_service import ArchitectureDecisionRecordService
 from services.architecture_registry_service import ArchitectureRegistryService
 from services.architecture_revision_service import ArchitectureRevisionService
 
@@ -15,6 +16,9 @@ def register_capabilities(repo_root: Path):
 
     def revision_service() -> ArchitectureRevisionService:
         return ArchitectureRevisionService(repo_root)
+
+    def adr_service() -> ArchitectureDecisionRecordService:
+        return ArchitectureDecisionRecordService(repo_root)
 
     def architecture_list(arguments: dict[str, Any]) -> dict[str, Any]:
         result = service().list_nodes(
@@ -275,6 +279,62 @@ def register_capabilities(repo_root: Path):
         except Exception as exc:
             return {"success": False, "result": {}, "metadata": {"request_mode": "architecture_baseline_current"}, "error": str(exc)}
 
+
+    def architecture_adr_propose(arguments: dict[str, Any]) -> dict[str, Any]:
+        try:
+            adr = adr_service().propose_adr(
+                project_id=str(arguments.get("project_id") or ""),
+                session_id=str(arguments.get("session_id") or "architecture-adr"),
+                created_by=str(arguments.get("agent_id") or arguments.get("created_by") or ""),
+                title=str(arguments.get("title") or ""),
+                context=str(arguments.get("context") or ""),
+                decision=str(arguments.get("decision") or ""),
+                rationale=str(arguments.get("rationale") or ""),
+                alternatives_considered=arguments.get("alternatives_considered") or [],
+                consequences=arguments.get("consequences") or [],
+                tradeoffs=arguments.get("tradeoffs") or [],
+                future_considerations=arguments.get("future_considerations") or [],
+                architecture_ids=arguments.get("architecture_ids") or ([arguments.get("architecture_id")] if arguments.get("architecture_id") else []),
+                revision_ids=arguments.get("revision_ids") or ([arguments.get("revision_id")] if arguments.get("revision_id") else []),
+                related_adr_ids=arguments.get("related_adr_ids") or [],
+                supersedes_adr_id=arguments.get("supersedes_adr_id"),
+                evidence_package_ids=arguments.get("evidence_package_ids") or [],
+                metadata={"session_id": arguments.get("session_id"), **dict(arguments.get("metadata") or {})},
+            )
+            return {"success": True, "result": adr.model_dump(mode="json"), "metadata": {"request_mode": "architecture_adr_propose", "adr_id": adr.adr_id, "proposal_id": adr.proposal_id, "direct_adr_acceptance": False}, "error": None}
+        except Exception as exc:
+            return {"success": False, "result": {}, "metadata": {"request_mode": "architecture_adr_propose"}, "error": str(exc)}
+
+    def architecture_adrs(arguments: dict[str, Any]) -> dict[str, Any]:
+        result = adr_service().list_adrs(
+            project_id=str(arguments.get("project_id") or "") or None,
+            architecture_id=str(arguments.get("architecture_id") or "") or None,
+            revision_id=str(arguments.get("revision_id") or "") or None,
+            status=str(arguments.get("status") or "") or None,
+            limit=int(arguments.get("limit") or 50),
+        )
+        return {"success": True, "result": result, "metadata": {"request_mode": "architecture_adrs"}, "error": None}
+
+    def architecture_adr_details(arguments: dict[str, Any]) -> dict[str, Any]:
+        adr_id = str(arguments.get("adr_id") or "")
+        if not adr_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "adr_id_required"}
+        try:
+            result = adr_service().get_adr(adr_id)
+            return {"success": True, "result": result, "metadata": {"request_mode": "architecture_adr_details", "adr_id": adr_id}, "error": None}
+        except Exception as exc:
+            return {"success": False, "result": {}, "metadata": {"request_mode": "architecture_adr_details"}, "error": str(exc)}
+
+    def architecture_adr_history(arguments: dict[str, Any]) -> dict[str, Any]:
+        adr_id = str(arguments.get("adr_id") or "")
+        if not adr_id:
+            return {"success": False, "result": {}, "metadata": {}, "error": "adr_id_required"}
+        try:
+            result = adr_service().get_history(adr_id)
+            return {"success": True, "result": result, "metadata": {"request_mode": "architecture_adr_history", "adr_id": adr_id}, "error": None}
+        except Exception as exc:
+            return {"success": False, "result": {}, "metadata": {"request_mode": "architecture_adr_history"}, "error": str(exc)}
+
     def architecture_seed_ageix(arguments: dict[str, Any]) -> dict[str, Any]:
         result = service().seed_official_ageix_architecture()
         return {"success": True, "result": result, "metadata": {"request_mode": "architecture_seed_ageix"}, "error": None}
@@ -300,6 +360,10 @@ def register_capabilities(repo_root: Path):
         (CapabilityDefinition(capability_id="architecture.revision.details", category="architecture", access_level="governed_read", handler="architecture.revision.details", description="Retrieve immutable architecture revision details, optionally including the snapshot."), architecture_revision_details),
         (CapabilityDefinition(capability_id="architecture.history", category="architecture", access_level="governed_read", handler="architecture.history", description="Retrieve architecture revision history and current authoritative baseline."), architecture_history),
         (CapabilityDefinition(capability_id="architecture.baseline.current", category="architecture", access_level="governed_read", handler="architecture.baseline.current", description="Retrieve the current authoritative architecture baseline."), architecture_baseline_current),
+        (CapabilityDefinition(capability_id="architecture.adr.propose", category="architecture", access_level="governed_write", handler="architecture.adr.propose", description="Propose a governed Architecture Decision Record through the existing proposal system."), architecture_adr_propose),
+        (CapabilityDefinition(capability_id="architecture.adrs", category="architecture", access_level="governed_read", handler="architecture.adrs", description="List governed Architecture Decision Records."), architecture_adrs),
+        (CapabilityDefinition(capability_id="architecture.adr.details", category="architecture", access_level="governed_read", handler="architecture.adr.details", description="Retrieve Architecture Decision Record details."), architecture_adr_details),
+        (CapabilityDefinition(capability_id="architecture.adr.history", category="architecture", access_level="governed_read", handler="architecture.adr.history", description="Retrieve Architecture Decision Record supersession history."), architecture_adr_history),
         (CapabilityDefinition(capability_id="architecture.description.draft", category="architecture", access_level="governed_write", handler="architecture.description.draft", description="Create an ArchitectWorker draft architecture description artifact.", exposed_to_external_agents=False), architecture_description_draft),
         (CapabilityDefinition(capability_id="architecture.description.approve", category="architecture", access_level="governed_write", handler="architecture.description.approve", description="Chair approval for an architecture description artifact.", exposed_to_external_agents=False), architecture_description_approve),
         (CapabilityDefinition(capability_id="architecture.seed_ageix", category="architecture", access_level="governed_write", handler="architecture.seed_ageix", description="Seed the official Ageix project architecture baseline.", exposed_to_external_agents=False), architecture_seed_ageix),
