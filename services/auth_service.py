@@ -86,11 +86,32 @@ class AuthService:
     def _load_config(self) -> dict[str, Any]:
         if not self.config_path.exists():
             return dict(self.DEFAULT_CONFIG)
+
         data = json.loads(self.config_path.read_text(encoding="utf-8"))
         merged = dict(self.DEFAULT_CONFIG)
         merged.update(data)
-        return merged
 
+        if "auth_enabled" in data and "enabled" not in data:
+            merged["enabled"] = bool(data.get("auth_enabled"))
+
+        if not merged.get("tokens") and data.get("dev_token"):
+            merged["tokens"] = [{
+                "token_value": data["dev_token"],
+                "client_id": "chatgpt",
+                "agent_id": "lex",
+                "provider": "openai",
+                "allowed_projects": ["*"],
+                "allowed_capabilities": ["*"],
+                "authentication_method": "dev_token",
+            }]
+
+        if "mode" not in data and data.get("oauth", {}).get("enabled"):
+            merged["mode"] = "hybrid"
+
+        if not merged.get("jwt") and data.get("oauth"):
+            merged["jwt"] = data["oauth"]
+
+        return merged
 
 class AuthRequiredError(Exception):
     pass
