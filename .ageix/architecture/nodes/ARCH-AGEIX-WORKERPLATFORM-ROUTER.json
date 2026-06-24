@@ -1,0 +1,65 @@
+{
+  "approved_at": "2026-06-24T19:26:39.478502+00:00",
+  "approved_by": "chair",
+  "architecture_id": "ARCH-AGEIX-WORKERPLATFORM-ROUTER",
+  "created_at": "2026-06-24T19:26:39.475512+00:00",
+  "created_by": null,
+  "description": "Routes requests to appropriate capabilities, participants, or worker roles based on context and policy. It keeps execution paths explicit and auditable.",
+  "description_state": "approved",
+  "health": {
+    "architecture_id": "ARCH-AGEIX-WORKERPLATFORM-ROUTER",
+    "context_status": "available",
+    "coverage_status": "complete_current_state",
+    "decision_status": "none",
+    "description_status": "complete",
+    "evidence_status": "missing",
+    "freshness_status": "fresh",
+    "health_version": 1,
+    "hierarchy_status": "valid",
+    "last_evaluated": "2026-06-24T19:26:39.906279+00:00",
+    "linked_decision_count": 0,
+    "linked_evidence_count": 0,
+    "metadata": {
+      "context_failure_scope": "context_status_only",
+      "deterministic": true,
+      "freshness_days": 30,
+      "no_ai_scoring": true
+    },
+    "metadata_completeness": {
+      "description": true,
+      "name": true,
+      "node_key": true,
+      "parent": true,
+      "path": true
+    },
+    "registration_status": "registered",
+    "review_count": 0,
+    "review_status": "never_reviewed",
+    "status": "partial"
+  },
+  "last_reviewed_at": null,
+  "linked_decision_trace_ids": [],
+  "linked_evidence_package_ids": [],
+  "metadata": {
+    "canonical_ageix_baseline": true,
+    "official": true,
+    "seeded_by": "sprint_18_10",
+    "service_count": 1,
+    "service_summaries": [
+      {
+        "architecture_id": "ARCH-AGEIX-SVC-ROUTINGSERVICE",
+        "name": "RoutingService",
+        "summary": "Selects target capabilities, participants, or worker paths based on explicit context. It exists to keep routing decisions auditable and policy-aware."
+      }
+    ]
+  },
+  "name": "Router",
+  "node_key": "Router",
+  "node_type": "component",
+  "parent_id": "ARCH-AGEIX-WORKERPLATFORM",
+  "path": "Ageix.WorkerPlatform.Router",
+  "project_id": "Ageix",
+  "review_count": 0,
+  "status": "active",
+  "updated_at": "2026-06-24T19:26:39.904905+00:00"
+}

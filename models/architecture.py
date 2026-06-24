@@ -12,6 +12,7 @@ class ArchitectureNodeType(str, Enum):
     PROJECT = "project"
     DOMAIN = "domain"
     COMPONENT = "component"
+    SERVICE = "service"
 
 
 class ArchitectureNodeStatus(str, Enum):

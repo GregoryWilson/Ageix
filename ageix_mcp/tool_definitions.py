@@ -216,7 +216,7 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
         category="architecture",
         description="List governed architecture hierarchy nodes visible to the current project.",
         input_schema=_object_schema({
-            "node_type": _string("Optional architecture node type filter.", enum=["project", "domain", "component"]),
+            "node_type": _string("Optional architecture node type filter.", enum=["project", "domain", "component", "service"]),
             "parent_id": _string("Optional parent architecture ID filter."),
         }),
         recommended_next_tools=("ageix.architecture.details", "ageix.architecture.children"),

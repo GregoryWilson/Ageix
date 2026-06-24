@@ -38,7 +38,8 @@ class ArchitectureRegistryService:
     VALID_CHILD_TYPES = {
         ArchitectureNodeType.PROJECT: {ArchitectureNodeType.DOMAIN},
         ArchitectureNodeType.DOMAIN: {ArchitectureNodeType.COMPONENT},
-        ArchitectureNodeType.COMPONENT: set(),
+        ArchitectureNodeType.COMPONENT: {ArchitectureNodeType.SERVICE},
+        ArchitectureNodeType.SERVICE: set(),
     }
 
     def __init__(self, repo_root: str | Path = ".") -> None:
@@ -232,20 +233,24 @@ class ArchitectureRegistryService:
         known_projects = len([entry for entry in entries if entry.get("node_type") == ArchitectureNodeType.PROJECT.value])
         known_domains = len([entry for entry in entries if entry.get("node_type") == ArchitectureNodeType.DOMAIN.value])
         known_components = len([entry for entry in entries if entry.get("node_type") == ArchitectureNodeType.COMPONENT.value])
+        known_services = len([entry for entry in entries if entry.get("node_type") == ArchitectureNodeType.SERVICE.value])
         mapped_projects = len([entry for entry in entries if entry.get("node_type") == ArchitectureNodeType.PROJECT.value and entry.get("path")])
         mapped_domains = 0
         mapped_components = 0
+        mapped_services = 0
         for entry in entries:
             node_type = entry.get("node_type")
-            if node_type not in {ArchitectureNodeType.DOMAIN.value, ArchitectureNodeType.COMPONENT.value}:
+            if node_type not in {ArchitectureNodeType.DOMAIN.value, ArchitectureNodeType.COMPONENT.value, ArchitectureNodeType.SERVICE.value}:
                 continue
             if entry.get("parent_id") and entry.get("path"):
                 if node_type == ArchitectureNodeType.DOMAIN.value:
                     mapped_domains += 1
                 elif node_type == ArchitectureNodeType.COMPONENT.value:
                     mapped_components += 1
-        total_known = known_projects + known_domains + known_components
-        total_mapped = mapped_projects + mapped_domains + mapped_components
+                elif node_type == ArchitectureNodeType.SERVICE.value:
+                    mapped_services += 1
+        total_known = known_projects + known_domains + known_components + known_services
+        total_mapped = mapped_projects + mapped_domains + mapped_components + mapped_services
         ratio = (total_mapped / total_known) if total_known else 0.0
         if total_known == 0:
             coverage_status = ArchitectureCoverageStatus.UNKNOWN
@@ -268,6 +273,8 @@ class ArchitectureRegistryService:
             metrics={
                 "known_total": total_known,
                 "mapped_total": total_mapped,
+                "known_services": known_services,
+                "mapped_services": mapped_services,
                 "mapped_ratio": ratio,
                 "coverage_source": "architecture_registry",
             },

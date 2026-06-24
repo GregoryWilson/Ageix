@@ -10,6 +10,7 @@ from services.architecture_guidance_service import ArchitectureGuidanceService
 from services.architecture_guidance_context_service import ArchitectureGuidanceContextService
 from services.architecture_registry_service import ArchitectureRegistryService
 from services.architecture_work_context_service import ArchitectureWorkContextService
+from services.ageix_architecture_baseline_service import AgeixArchitectureBaselineService
 from services.architecture_revision_service import ArchitectureRevisionService
 
 
@@ -31,6 +32,9 @@ def register_capabilities(repo_root: Path):
 
     def work_context_service() -> ArchitectureWorkContextService:
         return ArchitectureWorkContextService(repo_root)
+
+    def ageix_baseline_service() -> AgeixArchitectureBaselineService:
+        return AgeixArchitectureBaselineService(repo_root)
 
     def architecture_list(arguments: dict[str, Any]) -> dict[str, Any]:
         result = service().list_nodes(
@@ -532,6 +536,18 @@ def register_capabilities(repo_root: Path):
         result = service().seed_official_ageix_architecture()
         return {"success": True, "result": result, "metadata": {"request_mode": "architecture_seed_ageix"}, "error": None}
 
+    def architecture_ageix_baseline_populate(arguments: dict[str, Any]) -> dict[str, Any]:
+        result = ageix_baseline_service().populate(include_review=bool(arguments.get("include_review", True)))
+        return {"success": True, "result": result, "metadata": {"request_mode": "architecture_ageix_baseline_populate", "baseline_version": result.get("baseline_version")}, "error": None}
+
+    def architecture_ageix_baseline_validate(arguments: dict[str, Any]) -> dict[str, Any]:
+        result = ageix_baseline_service().validate()
+        return {"success": True, "result": result, "metadata": {"request_mode": "architecture_ageix_baseline_validate", "baseline_version": result.get("baseline_version")}, "error": None}
+
+    def architecture_ageix_baseline_probe(arguments: dict[str, Any]) -> dict[str, Any]:
+        result = ageix_baseline_service().retrieval_probe()
+        return {"success": True, "result": result, "metadata": {"request_mode": "architecture_ageix_baseline_probe"}, "error": None}
+
     return [
         (CapabilityDefinition(capability_id="architecture.list", category="architecture", access_level="governed_read", handler="architecture.list", description="List project-scoped architecture hierarchy nodes."), architecture_list),
         (CapabilityDefinition(capability_id="architecture.details", category="architecture", access_level="governed_read", handler="architecture.details", description="Retrieve one architecture node by architecture ID or path."), architecture_details),
@@ -573,4 +589,7 @@ def register_capabilities(repo_root: Path):
         (CapabilityDefinition(capability_id="architecture.description.draft", category="architecture", access_level="governed_write", handler="architecture.description.draft", description="Create an ArchitectWorker draft architecture description artifact.", exposed_to_external_agents=False), architecture_description_draft),
         (CapabilityDefinition(capability_id="architecture.description.approve", category="architecture", access_level="governed_write", handler="architecture.description.approve", description="Chair approval for an architecture description artifact.", exposed_to_external_agents=False), architecture_description_approve),
         (CapabilityDefinition(capability_id="architecture.seed_ageix", category="architecture", access_level="governed_write", handler="architecture.seed_ageix", description="Seed the official Ageix project architecture baseline.", exposed_to_external_agents=False), architecture_seed_ageix),
+        (CapabilityDefinition(capability_id="architecture.ageix.baseline.populate", category="architecture", access_level="governed_write", handler="architecture.ageix.baseline.populate", description="Populate the canonical Sprint 18.10 Ageix architecture baseline.", exposed_to_external_agents=False), architecture_ageix_baseline_populate),
+        (CapabilityDefinition(capability_id="architecture.ageix.baseline.validate", category="architecture", access_level="governed_read", handler="architecture.ageix.baseline.validate", description="Validate the canonical Sprint 18.10 Ageix architecture baseline.", exposed_to_external_agents=False), architecture_ageix_baseline_validate),
+        (CapabilityDefinition(capability_id="architecture.ageix.baseline.probe", category="architecture", access_level="governed_read", handler="architecture.ageix.baseline.probe", description="Probe Ageix self-architecture retrieval using guidance and work context.", exposed_to_external_agents=False), architecture_ageix_baseline_probe),
     ]
