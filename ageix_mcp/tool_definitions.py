@@ -988,6 +988,37 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
         input_schema=_object_schema({"result_id": _string("Validation result identifier.")}, ["result_id"]),
     ),
     MCPToolDefinition(
+        name="ageix.artifact.list",
+        capability_id="artifact.list",
+        category="artifact",
+        description="List governed artifacts with pagination and filters.",
+        input_schema=_object_schema({
+            "artifact_category": _string("Optional artifact category filter."),
+            "artifact_type": _string("Optional artifact type filter."),
+            "source_id": _string("Optional source ID filter, such as validation run or archive ID."),
+            "created_by": _string("Optional producer capability filter."),
+            "limit": _integer("Maximum artifacts to return."),
+            "offset": _integer("Zero-based artifact offset."),
+        }),
+        recommended_next_tools=("ageix.artifact.metadata", "ageix.artifact.get"),
+    ),
+    MCPToolDefinition(
+        name="ageix.artifact.get",
+        capability_id="artifact.get",
+        category="artifact",
+        description="Retrieve one governed artifact registry record.",
+        input_schema=_object_schema({"artifact_id": _string("Artifact ID.")}, ["artifact_id"]),
+    ),
+    MCPToolDefinition(
+        name="ageix.artifact.metadata",
+        capability_id="artifact.metadata",
+        category="artifact",
+        description="Retrieve summary-first artifact metadata and relationships.",
+        input_schema=_object_schema({"artifact_id": _string("Artifact ID.")}, ["artifact_id"]),
+        related_tools=("ageix.artifact.get",),
+    ),
+
+    MCPToolDefinition(
         name="ageix.repo.info",
         capability_id="repo.info",
         category="repository",

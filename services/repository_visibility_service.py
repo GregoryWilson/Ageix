@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from services.artifact_registry_service import ArtifactRegistryService
+
 
 REPOSITORY_ARCHIVE_EXCLUDE_PATTERNS: tuple[str, ...] = (
     ".git/*",
@@ -195,6 +197,24 @@ class RepositoryVisibilityService:
             "repository_cleanliness": self.status().get("working_tree_state"),
             "summary": f"created repository archive with {len(included_files)} files",
         }
+        artifact = ArtifactRegistryService(self.repo_root).register_artifact(
+            artifact_category="repository",
+            artifact_type="repository_archive",
+            created_by="repo.archive.create",
+            source_id=archive_id,
+            summary=record["summary"],
+            path=archive_path,
+            references=[{"reference_type": "repository_archive", "reference_id": archive_id, "relationship": "describes"}],
+            metadata={
+                "archive_id": archive_id,
+                "filename": archive_path.name,
+                "included_roots": requested_paths or ["."],
+                "excluded_patterns_applied": len(REPOSITORY_ARCHIVE_EXCLUDE_PATTERNS),
+                "file_count": len(included_files),
+                "repository_cleanliness": record["repository_cleanliness"],
+            },
+        )
+        record["artifact_id"] = artifact["artifact_id"]
         records = self._read_archive_index()
         records.append(record)
         self._write_archive_index(records)

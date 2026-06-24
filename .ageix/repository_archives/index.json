@@ -1,0 +1,16 @@
+[
+  {
+    "archive_id": "REPOARCH-473B4324C133",
+    "artifact_id": "ART-3E3123A56392",
+    "created_at": "2026-06-24T21:43:37.691864+00:00",
+    "excluded_patterns_applied": 43,
+    "file_count": 1,
+    "filename": "mcp_19_2_artifact_probe.zip",
+    "included_roots": [
+      "services/artifact_registry_service.py"
+    ],
+    "path": "/home/gwilson/ageix/.ageix/repository_archives/mcp_19_2_artifact_probe.zip",
+    "repository_cleanliness": "dirty",
+    "summary": "created repository archive with 1 files"
+  }
+]

@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from models.evidence_package import EvidencePackage, EvidencePackageItem, EvidenceProvenance
 from services.evidence_package_index_service import EvidencePackageIndexService
+from services.artifact_registry_service import ArtifactRegistryService
 
 
 @dataclass(frozen=True)
@@ -85,6 +86,7 @@ class ValidationOperationsService:
             "stdout_path": str(stdout_path.relative_to(self.repo_root)),
             "stderr_path": str(stderr_path.relative_to(self.repo_root)),
             "evidence_package_id": None,
+            "artifact_id": None,
             "agent_id": agent_id,
             "session_id": session_id,
             "summary": f"Validation profile {profile.profile_id} started.",
@@ -201,6 +203,7 @@ class ValidationOperationsService:
         duration = (datetime.fromisoformat(completed_at) - started_at).total_seconds()
         record.update({"status": status, "completed_at": completed_at, "duration_seconds": round(duration, 3), "returncode": returncode, "summary": summary})
         record["evidence_package_id"] = self._create_evidence_package(record)
+        record["artifact_id"] = self._register_validation_artifact(record)
         self._write_record(str(record["run_id"]), record)
         return record
 
@@ -241,6 +244,33 @@ class ValidationOperationsService:
         (package_dir / "package.json").write_text(package.model_dump_json(indent=2), encoding="utf-8")
         EvidencePackageIndexService(self.repo_root).upsert_package(package)
         return package.package_id
+
+
+    def _register_validation_artifact(self, record: dict[str, Any]) -> str:
+        artifact = ArtifactRegistryService(self.repo_root).register_artifact(
+            artifact_category="validation",
+            artifact_type="validation_output",
+            created_by="validation.run",
+            source_id=str(record.get("run_id")),
+            summary=f"Validation {record.get('profile_id')} completed with status {record.get('status')}.",
+            path=self.run_root / str(record.get("run_id")),
+            references=[
+                {"reference_type": "validation_run", "reference_id": str(record.get("run_id")), "relationship": "generated_by"},
+                {"reference_type": "evidence_package", "reference_id": str(record.get("evidence_package_id")), "relationship": "supported_by"},
+            ],
+            metadata={
+                "run_id": record.get("run_id"),
+                "profile_id": record.get("profile_id"),
+                "profile_name": record.get("profile_name"),
+                "status": record.get("status"),
+                "returncode": record.get("returncode"),
+                "duration_seconds": record.get("duration_seconds"),
+                "stdout_path": record.get("stdout_path"),
+                "stderr_path": record.get("stderr_path"),
+                "evidence_package_id": record.get("evidence_package_id"),
+            },
+        )
+        return str(artifact["artifact_id"])
 
     def _pid_running(self, pid: int) -> bool:
         if pid <= 0:
