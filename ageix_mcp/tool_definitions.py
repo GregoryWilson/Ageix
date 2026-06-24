@@ -926,6 +926,38 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
     ),
 
     MCPToolDefinition(
+        name="ageix.architecture.work.context",
+        capability_id="architecture.work.context",
+        category="architecture",
+        description="Build or explicitly persist a summary-first Architecture Work Context Package.",
+        input_schema=_object_schema({
+            "project_id": _string("Explicit project ID."),
+            "work_summary": _string("Human-readable summary of the proposed work."),
+            "architecture_id": _string("Optional architecture node ID."),
+            "architecture_ids": {"type": "array", "description": "Optional architecture node IDs."},
+            "path": _string("Optional stable architecture path."),
+            "adr_id": _string("Optional ADR ID."),
+            "revision_id": _string("Optional architecture revision ID."),
+            "principle_id": _string("Optional Architecture Principle ID."),
+            "intent_id": _string("Optional Architecture Intent ID."),
+            "node_key": _string("Optional exact architecture node key."),
+            "name": _string("Optional exact architecture node name."),
+            "max_depth": _integer("Impact traversal depth. Sprint 18.9 supports 1 only."),
+            "persist": {"type": "boolean", "description": "Persist immutable WORKCTX package snapshot when true."},
+            "persist_guidance_context": {"type": "boolean", "description": "Persist underlying GUIDECTX snapshot when true."},
+        }),
+        related_tools=("ageix.architecture.guidance.context", "ageix.architecture.context", "ageix.architecture.details"),
+    ),
+    MCPToolDefinition(
+        name="ageix.architecture.work.context.get",
+        capability_id="architecture.work.context.get",
+        category="architecture",
+        description="Retrieve a persisted Architecture Work Context Package by ID.",
+        input_schema=_object_schema({"work_context_id": _string("WORKCTX package ID.")}, ["work_context_id"]),
+        related_tools=("ageix.architecture.work.context",),
+    ),
+
+    MCPToolDefinition(
         name="ageix.validation.scenarios.list",
         capability_id="validation.scenarios.list",
         category="validation",
