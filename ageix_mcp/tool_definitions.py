@@ -1026,6 +1026,52 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
     ),
 
     MCPToolDefinition(
+        name="ageix.patch.create",
+        capability_id="patch.create",
+        category="patch",
+        description="Store unified diff text as a governed patch artifact without applying it.",
+        input_schema=_object_schema({
+            "patch_name": _string("Patch file name."),
+            "patch_content": _string("Unified diff patch content, limited to 1 MB."),
+            "summary": _string("Patch summary."),
+            "metadata": _object("Additional patch metadata."),
+        }, ["patch_content"]),
+        recommended_next_tools=("ageix.patch.metadata", "ageix.artifact.metadata"),
+    ),
+    MCPToolDefinition(
+        name="ageix.patch.list",
+        capability_id="patch.list",
+        category="patch",
+        description="List governed patch packages.",
+        input_schema=_object_schema({
+            "status": _string("Optional patch status filter."),
+            "validation_status": _string("Optional validation status filter."),
+            "limit": _integer("Maximum patches to return."),
+            "offset": _integer("Zero-based patch offset."),
+        }),
+        recommended_next_tools=("ageix.patch.metadata", "ageix.patch.get"),
+    ),
+    MCPToolDefinition(
+        name="ageix.patch.get",
+        capability_id="patch.get",
+        category="patch",
+        description="Retrieve governed patch package metadata and optionally patch content.",
+        input_schema=_object_schema({
+            "patch_id": _string("Patch package ID."),
+            "include_content": _boolean("Include patch content when true."),
+        }, ["patch_id"]),
+        related_tools=("ageix.patch.metadata",),
+    ),
+    MCPToolDefinition(
+        name="ageix.patch.metadata",
+        capability_id="patch.metadata",
+        category="patch",
+        description="Retrieve summary-first governed patch metadata.",
+        input_schema=_object_schema({"patch_id": _string("Patch package ID.")}, ["patch_id"]),
+        related_tools=("ageix.patch.get",),
+    ),
+
+    MCPToolDefinition(
         name="ageix.artifact.push",
         capability_id="artifact.push",
         category="artifact_delivery",

@@ -7,7 +7,7 @@ from typing import Any
 from models.artifact import ArtifactRecord, ArtifactReference
 
 
-ARTIFACT_CATEGORIES = {"repository", "validation", "report", "other"}
+ARTIFACT_CATEGORIES = {"repository", "validation", "report", "patch", "other"}
 
 
 class ArtifactRegistryService:

@@ -18,5 +18,29 @@
     "project_id": "Ageix",
     "status": "completed",
     "summary": "Delivered artifact ART-AA0F9FD9EE39 to local_export."
+  },
+  {
+    "artifact_id": "ART-111AA40BC9A4",
+    "created_at": "2026-06-24T22:38:44.443064+00:00",
+    "created_by": "artifact.push",
+    "delivery_id": "DELIV-CF9264BE454C",
+    "delivery_reference": null,
+    "destination": "requesting_agent",
+    "metadata": {
+      "agent_id": "lex",
+      "artifact_category": "repository",
+      "artifact_source_id": "REPOARCH-42617F87B992",
+      "artifact_type": "repository_archive",
+      "client_id": "chatGPT",
+      "consumption_ready": true,
+      "destination_type": "requesting_agent",
+      "filename": "mcp_19_4_requesting_agent_probe.zip",
+      "provider": "chatGPT",
+      "size_bytes": 22866,
+      "transport": "mcp_governed_artifact_reference"
+    },
+    "project_id": "Ageix",
+    "status": "completed",
+    "summary": "Prepared artifact ART-111AA40BC9A4 for authenticated requesting agent."
   }
 ]

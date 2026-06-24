@@ -28,5 +28,20 @@
     "path": "/home/gwilson/ageix/.ageix/repository_archives/mcp_19_3_repo_delivery_probe.zip",
     "repository_cleanliness": "clean",
     "summary": "created repository archive with 235 files"
+  },
+  {
+    "archive_id": "REPOARCH-42617F87B992",
+    "artifact_id": "ART-111AA40BC9A4",
+    "created_at": "2026-06-24T22:38:20.082810+00:00",
+    "excluded_patterns_applied": 43,
+    "file_count": 15,
+    "filename": "mcp_19_4_requesting_agent_probe.zip",
+    "included_roots": [
+      "services/artifact_delivery_service.py",
+      "services/capabilities"
+    ],
+    "path": "/home/gwilson/ageix/.ageix/repository_archives/mcp_19_4_requesting_agent_probe.zip",
+    "repository_cleanliness": "clean",
+    "summary": "created repository archive with 15 files"
   }
 ]
