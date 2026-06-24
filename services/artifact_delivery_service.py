@@ -10,7 +10,7 @@ from models.artifact_delivery import ArtifactDeliveryRecord
 from services.artifact_registry_service import ArtifactRegistryService
 
 
-SUPPORTED_ARTIFACT_DELIVERY_DESTINATIONS = {"local_export"}
+SUPPORTED_ARTIFACT_DELIVERY_DESTINATIONS = {"local_export", "requesting_agent"}
 
 
 class ArtifactDeliveryService:
@@ -27,14 +27,37 @@ class ArtifactDeliveryService:
         self.local_export_root = self.delivery_root / "local_export"
         self.index_path = self.delivery_root / "index.json"
 
-    def push(self, *, artifact_id: str, destination: str = "local_export", project_id: str = "Ageix") -> dict[str, Any]:
-        normalized_destination = str(destination or "local_export").strip().lower()
+    def push(
+        self,
+        *,
+        artifact_id: str,
+        destination: str = "requesting_agent",
+        project_id: str = "Ageix",
+        agent_id: str | None = None,
+        client_id: str | None = None,
+        provider: str | None = None,
+        client_context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        normalized_destination = str(destination or "requesting_agent").strip().lower()
         if normalized_destination not in SUPPORTED_ARTIFACT_DELIVERY_DESTINATIONS:
             raise ValueError("artifact_delivery_destination_not_supported")
 
         artifact = ArtifactRegistryService(self.repo_root).get_artifact(str(artifact_id or ""))
         if artifact.get("status") != "available":
             raise ValueError("artifact_not_available_for_delivery")
+
+        if normalized_destination == "requesting_agent":
+            return self._push_to_requesting_agent(
+                artifact,
+                project_id=project_id,
+                agent_id=agent_id,
+                client_id=client_id,
+                provider=provider,
+                client_context=client_context,
+            )
+        return self._push_to_local_export(artifact, project_id=project_id)
+
+    def _push_to_local_export(self, artifact: dict[str, Any], *, project_id: str = "Ageix") -> dict[str, Any]:
         source = self._resolve_artifact_source(artifact)
 
         self._ensure_layout()
@@ -62,6 +85,45 @@ class ArtifactDeliveryService:
         record.metadata["delivery_kind"] = delivery_kind
         record.metadata["filename"] = delivery_path.name
         record.metadata["size_bytes"] = delivery_path.stat().st_size if delivery_path.exists() else 0
+        self._write_record(record)
+        return record.to_detail(include_reference=False)
+
+    def _push_to_requesting_agent(
+        self,
+        artifact: dict[str, Any],
+        *,
+        project_id: str = "Ageix",
+        agent_id: str | None = None,
+        client_id: str | None = None,
+        provider: str | None = None,
+        client_context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        context = dict(client_context or {})
+        resolved_agent = str(agent_id or context.get("agent_id") or "unknown")
+        resolved_client = str(client_id or context.get("client_id") or "unknown")
+        resolved_provider = str(provider or context.get("provider") or resolved_client or "unknown")
+        if not resolved_agent or resolved_agent == "unknown":
+            raise ValueError("requesting_agent_identity_required")
+        record = ArtifactDeliveryRecord(
+            artifact_id=str(artifact["artifact_id"]),
+            destination="requesting_agent",
+            project_id=str(project_id or artifact.get("project_id") or "Ageix"),
+            status="completed",
+            summary=f"Prepared artifact {artifact['artifact_id']} for authenticated requesting agent.",
+            metadata={
+                "artifact_category": artifact.get("artifact_category"),
+                "artifact_type": artifact.get("artifact_type"),
+                "artifact_source_id": artifact.get("source_id"),
+                "agent_id": resolved_agent,
+                "client_id": resolved_client,
+                "provider": resolved_provider,
+                "destination_type": "requesting_agent",
+                "consumption_ready": True,
+                "transport": "mcp_governed_artifact_reference",
+                "filename": Path(str(artifact.get("path") or artifact["artifact_id"])).name if artifact.get("path") else None,
+                "size_bytes": self._artifact_size(artifact),
+            },
+        )
         self._write_record(record)
         return record.to_detail(include_reference=False)
 
@@ -133,6 +195,17 @@ class ArtifactDeliveryService:
             for path in sorted(source.rglob("*")):
                 if path.is_file():
                     zf.write(path, path.relative_to(source).as_posix())
+
+    def _artifact_size(self, artifact: dict[str, Any]) -> int | None:
+        try:
+            source = self._resolve_artifact_source(artifact)
+        except Exception:
+            return None
+        if source.is_file():
+            return source.stat().st_size
+        if source.is_dir():
+            return sum(path.stat().st_size for path in source.rglob("*") if path.is_file())
+        return None
 
     def _write_record(self, record: ArtifactDeliveryRecord) -> None:
         self._ensure_layout()

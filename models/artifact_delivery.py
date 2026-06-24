@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 
 ArtifactDeliveryStatus = Literal["completed", "failed"]
-ArtifactDeliveryDestination = Literal["local_export"]
+ArtifactDeliveryDestination = Literal["local_export", "requesting_agent"]
 
 
 class ArtifactDeliveryRecord(BaseModel):
@@ -27,7 +27,7 @@ class ArtifactDeliveryRecord(BaseModel):
 
     def to_summary(self) -> dict[str, Any]:
         """Return summary-first delivery metadata without exposing filesystem paths."""
-        return {
+        payload = {
             "delivery_id": self.delivery_id,
             "artifact_id": self.artifact_id,
             "destination": self.destination,
@@ -40,6 +40,15 @@ class ArtifactDeliveryRecord(BaseModel):
             "size_bytes": self.metadata.get("size_bytes"),
             "summary": self.summary,
         }
+        if self.destination == "requesting_agent":
+            payload.update({
+                "destination_type": "requesting_agent",
+                "agent_id": self.metadata.get("agent_id"),
+                "client_id": self.metadata.get("client_id"),
+                "provider": self.metadata.get("provider"),
+                "consumption_ready": bool(self.metadata.get("consumption_ready")),
+            })
+        return payload
 
     def to_detail(self, *, include_reference: bool = False) -> dict[str, Any]:
         """Return delivery details, hiding raw delivery references by default."""

@@ -153,3 +153,68 @@ def test_artifact_delivery_mcp_tools_are_discoverable() -> None:
     assert "ageix.artifact.delivery.get" in tools
     assert "ageix.artifact.delivery.list" in tools
     assert tools["ageix.artifact.push"]["capability_id"] == "artifact.push"
+
+
+def test_artifact_push_defaults_to_authenticated_requesting_agent(tmp_path: Path) -> None:
+    repo = _make_repo(tmp_path)
+    archive = RepositoryVisibilityService(repo).create_archive(paths=["services"], archive_name="services_only.zip")
+    execution = CapabilityExecutionService(repo)
+
+    response = execution.execute(CapabilityRequest(
+        capability_id="artifact.push",
+        session_id="S19_4",
+        agent_id="lex",
+        arguments={
+            "artifact_id": archive["artifact_id"],
+            "client_id": "chatGPT",
+            "provider": "OpenAI",
+            "client_context": {"client_id": "chatGPT", "provider": "OpenAI", "agent_id": "lex"},
+        },
+    ))
+
+    assert response.success is True
+    assert response.result["destination"] == "requesting_agent"
+    assert response.result["destination_type"] == "requesting_agent"
+    assert response.result["agent_id"] == "lex"
+    assert response.result["client_id"] == "chatGPT"
+    assert response.result["provider"] == "OpenAI"
+    assert response.result["consumption_ready"] is True
+    assert response.result["has_delivery_reference"] is False
+    assert "delivery_reference" not in response.result
+
+    fetched = execution.execute(CapabilityRequest(
+        capability_id="artifact.delivery.get",
+        session_id="S19_4",
+        agent_id="lex",
+        arguments={"delivery_id": response.result["delivery_id"]},
+    ))
+    assert fetched.success is True
+    assert fetched.result["destination"] == "requesting_agent"
+    assert fetched.result["agent_id"] == "lex"
+    assert fetched.result["client_id"] == "chatGPT"
+    assert fetched.result["metadata"]["transport"] == "mcp_governed_artifact_reference"
+
+
+def test_artifact_delivery_supports_requesting_agent_and_local_export_side_by_side(tmp_path: Path) -> None:
+    repo = _make_repo(tmp_path)
+    archive = RepositoryVisibilityService(repo).create_archive(paths=["services"], archive_name="services_only.zip")
+    service = ArtifactDeliveryService(repo)
+
+    agent_delivery = service.push(
+        artifact_id=archive["artifact_id"],
+        destination="requesting_agent",
+        agent_id="lex",
+        client_id="chatGPT",
+        provider="OpenAI",
+    )
+    export_delivery = service.push(artifact_id=archive["artifact_id"], destination="local_export")
+    listed_agent = service.list_deliveries(artifact_id=archive["artifact_id"], destination="requesting_agent")
+    listed_export = service.list_deliveries(artifact_id=archive["artifact_id"], destination="local_export")
+
+    assert agent_delivery["delivery_id"].startswith("DELIV-")
+    assert agent_delivery["has_delivery_reference"] is False
+    assert export_delivery["has_delivery_reference"] is True
+    assert listed_agent["count"] == 1
+    assert listed_export["count"] == 1
+    assert listed_agent["deliveries"][0]["destination_type"] == "requesting_agent"
+    assert listed_agent["deliveries"][0]["client_id"] == "chatGPT"

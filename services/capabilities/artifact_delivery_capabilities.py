@@ -17,8 +17,12 @@ def register_capabilities(repo_root: Path):
     def artifact_push(arguments: dict[str, Any]) -> dict[str, Any]:
         result = service().push(
             artifact_id=str(arguments.get("artifact_id") or ""),
-            destination=str(arguments.get("destination") or "local_export"),
+            destination=str(arguments.get("destination") or "requesting_agent"),
             project_id=str(arguments.get("project_id") or "Ageix"),
+            agent_id=str(arguments.get("agent_id") or ""),
+            client_id=str(arguments.get("client_id") or ""),
+            provider=str(arguments.get("provider") or ""),
+            client_context=dict(arguments.get("client_context") or {}),
         )
         return ok(result, "artifact_push")
 
@@ -43,7 +47,7 @@ def register_capabilities(repo_root: Path):
         return ok(result, "artifact_delivery_list")
 
     return [
-        (CapabilityDefinition(capability_id="artifact.push", category="artifact_delivery", access_level="governed_read", handler="artifact.push", description="Deliver an existing governed artifact to an approved destination."), artifact_push),
+        (CapabilityDefinition(capability_id="artifact.push", category="artifact_delivery", access_level="governed_read", handler="artifact.push", description="Deliver an existing governed artifact to an approved destination or the authenticated requesting agent."), artifact_push),
         (CapabilityDefinition(capability_id="artifact.delivery.get", category="artifact_delivery", access_level="governed_read", handler="artifact.delivery.get", description="Retrieve one artifact delivery record."), delivery_get),
         (CapabilityDefinition(capability_id="artifact.delivery.list", category="artifact_delivery", access_level="governed_read", handler="artifact.delivery.list", description="List artifact delivery records with pagination and filters."), delivery_list),
     ]

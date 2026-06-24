@@ -1029,10 +1029,10 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
         name="ageix.artifact.push",
         capability_id="artifact.push",
         category="artifact_delivery",
-        description="Deliver an existing governed artifact to an approved destination.",
+        description="Deliver an existing governed artifact to an approved destination or the authenticated requesting agent.",
         input_schema=_object_schema({
             "artifact_id": _string("Artifact ID to deliver."),
-            "destination": _string("Approved delivery destination.", enum=["local_export"]),
+            "destination": _string("Approved delivery destination. Defaults to authenticated requesting agent.", enum=["requesting_agent", "local_export"]),
         }, ["artifact_id"]),
         recommended_next_tools=("ageix.artifact.delivery.get", "ageix.artifact.delivery.list"),
     ),
