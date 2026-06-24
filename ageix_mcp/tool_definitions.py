@@ -1019,6 +1019,38 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
     ),
 
     MCPToolDefinition(
+        name="ageix.artifact.push",
+        capability_id="artifact.push",
+        category="artifact_delivery",
+        description="Deliver an existing governed artifact to an approved destination.",
+        input_schema=_object_schema({
+            "artifact_id": _string("Artifact ID to deliver."),
+            "destination": _string("Approved delivery destination.", enum=["local_export"]),
+        }, ["artifact_id"]),
+        recommended_next_tools=("ageix.artifact.delivery.get", "ageix.artifact.delivery.list"),
+    ),
+    MCPToolDefinition(
+        name="ageix.artifact.delivery.get",
+        capability_id="artifact.delivery.get",
+        category="artifact_delivery",
+        description="Retrieve one artifact delivery record.",
+        input_schema=_object_schema({"delivery_id": _string("Artifact delivery ID.")}, ["delivery_id"]),
+    ),
+    MCPToolDefinition(
+        name="ageix.artifact.delivery.list",
+        capability_id="artifact.delivery.list",
+        category="artifact_delivery",
+        description="List artifact delivery records with pagination and filters.",
+        input_schema=_object_schema({
+            "artifact_id": _string("Optional artifact ID filter."),
+            "destination": _string("Optional destination filter."),
+            "status": _string("Optional delivery status filter."),
+            "limit": _integer("Maximum deliveries to return."),
+            "offset": _integer("Zero-based delivery offset."),
+        }),
+    ),
+
+    MCPToolDefinition(
         name="ageix.repo.info",
         capability_id="repo.info",
         category="repository",
