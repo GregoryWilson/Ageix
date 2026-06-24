@@ -70,6 +70,13 @@ def _integer(description: str = "") -> dict[str, Any]:
     return payload
 
 
+def _boolean(description: str = "") -> dict[str, Any]:
+    payload: dict[str, Any] = {"type": "boolean"}
+    if description:
+        payload["description"] = description
+    return payload
+
+
 def _array(description: str = "") -> dict[str, Any]:
     payload: dict[str, Any] = {"type": "array"}
     if description:
@@ -1034,7 +1041,10 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
         capability_id="artifact.delivery.get",
         category="artifact_delivery",
         description="Retrieve one artifact delivery record.",
-        input_schema=_object_schema({"delivery_id": _string("Artifact delivery ID.")}, ["delivery_id"]),
+        input_schema=_object_schema({
+            "delivery_id": _string("Artifact delivery ID."),
+            "include_reference": _boolean("Explicitly include internal delivery reference details when true."),
+        }, ["delivery_id"]),
     ),
     MCPToolDefinition(
         name="ageix.artifact.delivery.list",

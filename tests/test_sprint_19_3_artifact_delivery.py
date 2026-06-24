@@ -58,7 +58,10 @@ def test_artifact_push_delivers_repository_archive_to_local_export(tmp_path: Pat
     assert delivery["artifact_id"] == archive["artifact_id"]
     assert delivery["destination"] == "local_export"
     assert delivery["status"] == "completed"
-    delivered_path = repo / delivery["delivery_reference"]
+    assert delivery["has_delivery_reference"] is True
+    assert "delivery_reference" not in delivery
+    detailed = ArtifactDeliveryService(repo).get_delivery(delivery["delivery_id"], include_reference=True)
+    delivered_path = repo / detailed["delivery_reference"]
     assert delivered_path.exists()
     assert delivered_path.is_file()
     assert delivered_path.parent == repo / ".ageix" / "artifact_deliveries" / "local_export"
@@ -75,9 +78,17 @@ def test_artifact_delivery_get_and_list_are_summary_first(tmp_path: Path) -> Non
     listed = service.list_deliveries(artifact_id=archive["artifact_id"])
 
     assert fetched["delivery_id"] == delivery["delivery_id"]
+    assert fetched["has_delivery_reference"] is True
+    assert "delivery_reference" not in fetched
     assert listed["count"] == 1
     assert listed["deliveries"][0]["delivery_id"] == delivery["delivery_id"]
+    assert listed["deliveries"][0]["has_delivery_reference"] is True
+    assert "delivery_reference" not in listed["deliveries"][0]
     assert "metadata" not in listed["deliveries"][0]
+
+    explicit = service.get_delivery(delivery["delivery_id"], include_reference=True)
+    assert explicit["delivery_reference"].endswith(".zip")
+    assert explicit["metadata"]["source_path"].endswith("services_only.zip")
 
 
 def test_artifact_delivery_rejects_unsupported_destinations_and_non_artifacts(tmp_path: Path) -> None:
@@ -99,11 +110,12 @@ def test_artifact_delivery_can_package_directory_artifacts(tmp_path: Path) -> No
 
     delivery = ArtifactDeliveryService(repo).push(artifact_id=result["artifact_id"], destination="local_export")
 
-    delivered_path = repo / delivery["delivery_reference"]
+    detailed = ArtifactDeliveryService(repo).get_delivery(delivery["delivery_id"], include_reference=True)
+    delivered_path = repo / detailed["delivery_reference"]
     assert result["status"] == "PASS"
     assert delivered_path.exists()
     assert delivered_path.suffix == ".zip"
-    assert delivery["metadata"]["delivery_kind"] == "zip_directory"
+    assert detailed["metadata"]["delivery_kind"] == "zip_directory"
 
 
 def test_artifact_delivery_capabilities_are_registered_and_audited(tmp_path: Path) -> None:
@@ -123,6 +135,11 @@ def test_artifact_delivery_capabilities_are_registered_and_audited(tmp_path: Pat
     fetched = execution.execute(CapabilityRequest(capability_id="artifact.delivery.get", session_id="S19_3", agent_id="lex", arguments={"delivery_id": delivery_id}))
     assert fetched.success is True
     assert fetched.result["delivery_id"] == delivery_id
+    assert fetched.result["has_delivery_reference"] is True
+    assert "delivery_reference" not in fetched.result
+    fetched_explicit = execution.execute(CapabilityRequest(capability_id="artifact.delivery.get", session_id="S19_3", agent_id="lex", arguments={"delivery_id": delivery_id, "include_reference": True}))
+    assert fetched_explicit.success is True
+    assert fetched_explicit.result["delivery_reference"].endswith(".zip")
     records = CapabilityAuditService(repo).list_records()
     assert records[-1]["capability_id"] == "artifact.delivery.get"
     assert records[-1]["success"] is True

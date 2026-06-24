@@ -26,6 +26,7 @@ class ArtifactDeliveryRecord(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     def to_summary(self) -> dict[str, Any]:
+        """Return summary-first delivery metadata without exposing filesystem paths."""
         return {
             "delivery_id": self.delivery_id,
             "artifact_id": self.artifact_id,
@@ -34,6 +35,19 @@ class ArtifactDeliveryRecord(BaseModel):
             "created_by": self.created_by,
             "project_id": self.project_id,
             "status": self.status,
-            "delivery_reference": self.delivery_reference,
+            "has_delivery_reference": bool(self.delivery_reference),
+            "filename": self.metadata.get("filename"),
+            "size_bytes": self.metadata.get("size_bytes"),
             "summary": self.summary,
         }
+
+    def to_detail(self, *, include_reference: bool = False) -> dict[str, Any]:
+        """Return delivery details, hiding raw delivery references by default."""
+        payload = self.to_summary()
+        payload["metadata"] = dict(self.metadata)
+        payload["metadata"].pop("source_path", None)
+        payload["metadata"].pop("delivery_reference", None)
+        if include_reference:
+            payload["delivery_reference"] = self.delivery_reference
+            payload["metadata"]["source_path"] = self.metadata.get("source_path")
+        return payload

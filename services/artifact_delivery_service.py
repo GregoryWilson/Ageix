@@ -63,10 +63,10 @@ class ArtifactDeliveryService:
         record.metadata["filename"] = delivery_path.name
         record.metadata["size_bytes"] = delivery_path.stat().st_size if delivery_path.exists() else 0
         self._write_record(record)
-        return record.model_dump()
+        return record.to_detail(include_reference=False)
 
-    def get_delivery(self, delivery_id: str) -> dict[str, Any]:
-        return self._require_delivery(delivery_id).model_dump()
+    def get_delivery(self, delivery_id: str, *, include_reference: bool = False) -> dict[str, Any]:
+        return self._require_delivery(delivery_id).to_detail(include_reference=include_reference)
 
     def list_deliveries(
         self,

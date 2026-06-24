@@ -60,10 +60,14 @@ def main() -> None:
         listed = execution.execute(CapabilityRequest(capability_id="artifact.delivery.list", session_id="S19_3", agent_id="lex", arguments={"artifact_id": archive["artifact_id"]}))
         fetched = execution.execute(CapabilityRequest(capability_id="artifact.delivery.get", session_id="S19_3", agent_id="lex", arguments={"delivery_id": delivery["delivery_id"]}))
         audit = CapabilityAuditService(repo).list_records()
+        explicit_delivery = delivery_service.get_delivery(delivery["delivery_id"], include_reference=True)
         summary = {
             "archive_artifact_id": archive.get("artifact_id"),
             "archive_delivery_id": delivery.get("delivery_id"),
-            "archive_delivery_exists": (repo / delivery["delivery_reference"]).exists(),
+            "delivery_reference_hidden": "delivery_reference" not in fetched.result,
+            "delivery_list_reference_hidden": "delivery_reference" not in listed.result["deliveries"][0],
+            "has_delivery_reference": fetched.result.get("has_delivery_reference"),
+            "archive_delivery_exists": (repo / explicit_delivery["delivery_reference"]).exists(),
             "validation_status": validation.get("status"),
             "validation_artifact_id": validation.get("artifact_id"),
             "validation_delivery_id": validation_delivery.get("delivery_id"),
@@ -74,6 +78,9 @@ def main() -> None:
         pprint.pprint(summary)
         assert str(summary["archive_artifact_id"]).startswith("ART-")
         assert str(summary["archive_delivery_id"]).startswith("DELIV-")
+        assert summary["delivery_reference_hidden"] is True
+        assert summary["delivery_list_reference_hidden"] is True
+        assert summary["has_delivery_reference"] is True
         assert summary["archive_delivery_exists"] is True
         assert summary["validation_status"] == "PASS"
         assert str(summary["validation_artifact_id"]).startswith("ART-")
@@ -81,7 +88,7 @@ def main() -> None:
         assert summary["delivery_list_count"] == 1
         assert summary["delivery_get_status"] == "completed"
         assert summary["audited"] is True
-    print("Smoke 19.3 PASS: artifact push, local export delivery, delivery get/list, validation artifact delivery, and audit validated.")
+    print("Smoke 19.3 PASS: artifact push, local export delivery, summary-first delivery get/list, validation artifact delivery, and audit validated.")
 
 
 if __name__ == "__main__":

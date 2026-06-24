@@ -12,5 +12,21 @@
     "path": "/home/gwilson/ageix/.ageix/repository_archives/mcp_19_2_artifact_probe.zip",
     "repository_cleanliness": "dirty",
     "summary": "created repository archive with 1 files"
+  },
+  {
+    "archive_id": "REPOARCH-3C943970EB2C",
+    "artifact_id": "ART-AA0F9FD9EE39",
+    "created_at": "2026-06-24T21:59:30.486368+00:00",
+    "excluded_patterns_applied": 43,
+    "file_count": 235,
+    "filename": "mcp_19_3_repo_delivery_probe.zip",
+    "included_roots": [
+      "services",
+      "ageix_mcp",
+      "tests"
+    ],
+    "path": "/home/gwilson/ageix/.ageix/repository_archives/mcp_19_3_repo_delivery_probe.zip",
+    "repository_cleanliness": "clean",
+    "summary": "created repository archive with 235 files"
   }
 ]

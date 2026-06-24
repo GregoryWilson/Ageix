@@ -23,7 +23,13 @@ def register_capabilities(repo_root: Path):
         return ok(result, "artifact_push")
 
     def delivery_get(arguments: dict[str, Any]) -> dict[str, Any]:
-        return ok(service().get_delivery(str(arguments.get("delivery_id") or "")), "artifact_delivery_get")
+        return ok(
+            service().get_delivery(
+                str(arguments.get("delivery_id") or ""),
+                include_reference=bool(arguments.get("include_reference") or False),
+            ),
+            "artifact_delivery_get",
+        )
 
     def delivery_list(arguments: dict[str, Any]) -> dict[str, Any]:
         result = service().list_deliveries(
