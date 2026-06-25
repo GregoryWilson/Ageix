@@ -43,5 +43,19 @@
     "path": "/home/gwilson/ageix/.ageix/repository_archives/mcp_19_4_requesting_agent_probe.zip",
     "repository_cleanliness": "clean",
     "summary": "created repository archive with 15 files"
+  },
+  {
+    "archive_id": "REPOARCH-8E96CC207048",
+    "artifact_id": "ART-079783011485",
+    "created_at": "2026-06-24T23:32:11.126480+00:00",
+    "excluded_patterns_applied": 43,
+    "file_count": 1075,
+    "filename": "ageix_sprint_19_6_baseline.zip",
+    "included_roots": [
+      "."
+    ],
+    "path": "/home/gwilson/ageix/.ageix/repository_archives/ageix_sprint_19_6_baseline.zip",
+    "repository_cleanliness": "clean",
+    "summary": "created repository archive with 1075 files"
   }
 ]
