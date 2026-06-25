@@ -44,3 +44,32 @@ class PatchWriterWorker:
             worker_context=context,
             metadata=metadata,
         )
+
+    def import_patch_file(
+        self,
+        *,
+        patch_name: str,
+        source_path: str | Path,
+        summary: str = "",
+        project_id: str = "Ageix",
+        agent_id: str = "unknown",
+        client_id: str | None = None,
+        session_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        context = WorkerContext(
+            worker=self.worker_name,
+            project_id=str(project_id or "Ageix"),
+            agent_id=str(agent_id or "unknown"),
+            client_id=client_id,
+            session_id=session_id,
+            metadata={"capability_id": "patch.ingest"},
+        )
+        return self.registry.create_patch_from_file(
+            patch_name=patch_name,
+            source_path=source_path,
+            summary=summary,
+            project_id=str(project_id or "Ageix"),
+            worker_context=context,
+            metadata=metadata,
+        )

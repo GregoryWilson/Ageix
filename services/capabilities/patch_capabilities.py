@@ -31,6 +31,19 @@ def register_capabilities(repo_root: Path):
         )
         return ok(result, "patch_create")
 
+    def patch_ingest(arguments: dict[str, Any]) -> dict[str, Any]:
+        result = worker().import_patch_file(
+            patch_name=str(arguments.get("patch_name") or Path(str(arguments.get("source_path") or "patch.diff")).name),
+            source_path=str(arguments.get("source_path") or ""),
+            summary=str(arguments.get("summary") or ""),
+            project_id=str(arguments.get("project_id") or "Ageix"),
+            agent_id=str(arguments.get("agent_id") or "unknown"),
+            client_id=str(arguments.get("client_id") or ""),
+            session_id=str(arguments.get("session_id") or ""),
+            metadata=dict(arguments.get("metadata") or {}),
+        )
+        return ok(result, "patch_ingest")
+
     def patch_list(arguments: dict[str, Any]) -> dict[str, Any]:
         result = registry().list_patches(
             project_id=arguments.get("project_id") if arguments.get("project_id") != "current" else None,
@@ -53,6 +66,7 @@ def register_capabilities(repo_root: Path):
 
     return [
         (CapabilityDefinition(capability_id="patch.create", category="patch", access_level="governed_write", handler="patch.create", description="Store unified diff text as a governed patch artifact without applying it."), patch_create),
+        (CapabilityDefinition(capability_id="patch.ingest", category="patch", access_level="governed_write", handler="patch.ingest", description="Import a server-local patch file as a governed patch artifact without sending patch text through JSON."), patch_ingest),
         (CapabilityDefinition(capability_id="patch.list", category="patch", access_level="governed_read", handler="patch.list", description="List governed patch packages."), patch_list),
         (CapabilityDefinition(capability_id="patch.get", category="patch", access_level="governed_read", handler="patch.get", description="Retrieve governed patch package metadata and optionally patch content."), patch_get),
         (CapabilityDefinition(capability_id="patch.metadata", category="patch", access_level="governed_read", handler="patch.metadata", description="Retrieve summary-first governed patch metadata."), patch_metadata),

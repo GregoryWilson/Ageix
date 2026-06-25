@@ -102,6 +102,53 @@ class PatchRegistryService:
             "summary": f"Stored governed patch {record.patch_id} with {record.line_count} lines.",
         }
 
+
+    def create_patch_from_file(
+        self,
+        *,
+        patch_name: str,
+        source_path: str | Path,
+        summary: str = "",
+        project_id: str = "Ageix",
+        worker_context: WorkerContext | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        source = Path(source_path)
+        if not source.is_absolute():
+            source = self.repo_root / source
+        source = source.resolve()
+        allowed_roots = [
+            (self.repo_root / ".ageix" / "artifact_deliveries" / "local_export").resolve(),
+            (self.repo_root / ".ageix" / "patch_imports").resolve(),
+        ]
+        if not any(source == root or root in source.parents for root in allowed_roots):
+            raise ValueError("patch_import_source_not_allowed")
+        if not source.is_file():
+            raise ValueError("patch_import_source_not_found")
+        raw = source.read_bytes()
+        if not raw:
+            raise ValueError("patch_import_source_empty")
+        if len(raw) > PATCH_MAX_BYTES:
+            raise ValueError("patch_content_exceeds_1mb_limit")
+        try:
+            content = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValueError("patch_import_source_must_be_utf8") from exc
+        merged_metadata = {
+            **dict(metadata or {}),
+            "patch_import_source_path": source.relative_to(self.repo_root).as_posix(),
+            "patch_import_sha256": hashlib.sha256(raw).hexdigest(),
+            "patch_import_byte_count": len(raw),
+        }
+        return self.create_patch(
+            patch_name=patch_name or source.name,
+            patch_content=content,
+            summary=summary,
+            project_id=project_id,
+            worker_context=worker_context,
+            metadata=merged_metadata,
+        )
+
     def get_patch(self, patch_id: str, *, include_content: bool = False) -> dict[str, Any]:
         record = self._require_patch(patch_id)
         payload = record.to_metadata()

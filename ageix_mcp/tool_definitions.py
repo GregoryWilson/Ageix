@@ -1029,7 +1029,7 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
         name="ageix.patch.create",
         capability_id="patch.create",
         category="patch",
-        description="Store unified diff text as a governed patch artifact without applying it.",
+        description="Store unified diff text as a governed patch artifact without applying it. Prefer ageix.patch.ingest for large patch files.",
         input_schema=_object_schema({
             "patch_name": _string("Patch file name."),
             "patch_content": _string("Unified diff patch content, limited to 1 MB."),
@@ -1037,6 +1037,28 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
             "metadata": _object("Additional patch metadata."),
         }, ["patch_content"]),
         recommended_next_tools=("ageix.patch.metadata", "ageix.artifact.metadata"),
+        related_tools=("ageix.patch.ingest",),
+    ),
+    MCPToolDefinition(
+        name="ageix.patch.ingest",
+        capability_id="patch.ingest",
+        category="patch",
+        description="Import a server-local patch file as a governed patch artifact without transporting large patch text through JSON.",
+        input_schema=_object_schema({
+            "source_path": _string("Repo-relative path to the patch file under .ageix/artifact_deliveries/local_export or .ageix/patch_imports."),
+            "patch_name": _string("Optional patch file name."),
+            "summary": _string("Patch summary."),
+            "metadata": _object("Additional patch metadata."),
+        }, ["source_path"]),
+        recommended_next_tools=("ageix.patch.metadata", "ageix.patch.get"),
+        related_tools=("ageix.patch.create", "ageix.artifact.delivery.get"),
+        documentation={
+            "use_when": ["Import a generated patch file that already exists on the Ageix server, avoiding large JSON patch payloads."],
+            "do_not_use_when": ["Do not use for arbitrary file reads; source_path is restricted to approved Ageix import/export locations."],
+            "consumes": ["patch file"],
+            "produces": ["PATCH-*", "ART-*"],
+            "intent_tags": ["import_patch", "file_transport", "avoid_large_json_payload"],
+        },
     ),
     MCPToolDefinition(
         name="ageix.patch.list",
