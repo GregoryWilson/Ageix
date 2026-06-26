@@ -52,3 +52,28 @@ def test_governance_clamps_are_enforced(tmp_path: Path):
 
     assert svc.governance.allow_auto_commit is False
     assert svc.governance.allow_auto_promotion is False
+
+def test_controls_service_loads_promotion_governance(tmp_path: Path):
+    config_dir = tmp_path / ".ageix" / "config"
+    config_dir.mkdir(parents=True)
+
+    (config_dir / "controls.json").write_text(
+        """
+        {
+            "promotion_governance": {
+                "enabled": true,
+                "human_approval_required": true,
+                "minimum_confidence": 0.85,
+                "allow_promotion_with_blockers": true
+            }
+        }
+        """,
+        encoding="utf-8",
+    )
+
+    svc = ControlsService(tmp_path)
+
+    assert svc.promotion_governance.enabled is True
+    assert svc.promotion_governance.human_approval_required is True
+    assert svc.promotion_governance.minimum_confidence == 0.85
+    assert svc.promotion_governance.allow_promotion_with_blockers is False

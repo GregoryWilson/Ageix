@@ -30,11 +30,63 @@ class ValidationControls:
 
 
 @dataclass(frozen=True)
+class ConsultationControls:
+    enabled: bool = True
+    require_human_approval: bool = True
+    allow_cloud_consultation: bool = True
+    allow_human_guidance: bool = True
+    max_input_tokens: int = 12000
+    max_output_tokens: int = 1500
+    max_followup_rounds: int = 2
+    max_evidence_requests_per_round: int = 3
+    max_evidence_tokens_per_request: int = 2000
+    max_total_evidence_tokens: int = 8000
+    max_total_requests: int = 6
+    minimum_evidence_confidence: float = 0.85
+    max_interactive_turns: int = 5
+    allow_followup_evidence_requests: bool = True
+    enable_prompt_caching: bool = True
+    default_model: str = "anthropic/claude-sonnet-4.6"
+    planner_confidence_threshold: float = 0.70
+    target_resolution_confidence_threshold: float = 0.85
+    proposal_quality_failure_threshold: int = 1
+    context_complexity_threshold: int = 10
+
+
+@dataclass(frozen=True)
 class GovernanceControls:
     require_human_review: bool = True
     allow_auto_promotion: bool = False
     allow_auto_commit: bool = False
     allow_direct_repo_modification: bool = False
+
+
+@dataclass(frozen=True)
+class PromotionConfidenceControls:
+    enabled: bool = True
+    minimum_confidence: float = 0.80
+    ratings: dict[str, float] | None = None
+    weights: dict[str, float] | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "ratings", self.ratings or {"high": 0.90, "medium": 0.75, "low": 0.50})
+        object.__setattr__(self, "weights", self.weights or {
+            "proposal_quality": 0.20,
+            "requirement_traceability": 0.20,
+            "behavioral_verification": 0.20,
+            "validation_evidence": 0.20,
+            "runtime_execution": 0.20,
+        })
+
+
+
+
+@dataclass(frozen=True)
+class PromotionGovernanceControls:
+    enabled: bool = True
+    human_approval_required: bool = True
+    minimum_confidence: float = 0.80
+    allow_promotion_with_blockers: bool = False
 
 
 class ControlsService:
@@ -63,11 +115,166 @@ class ControlsService:
             "require_validation": True,
             "allow_validation_bypass": False,
         },
+        "consultation": {
+            "enabled": True,
+            "require_human_approval": True,
+            "allow_cloud_consultation": True,
+            "allow_human_guidance": True,
+            "max_input_tokens": 12000,
+            "max_output_tokens": 1500,
+            "max_followup_rounds": 2,
+            "max_evidence_requests_per_round": 3,
+            "max_evidence_tokens_per_request": 2000,
+            "max_total_evidence_tokens": 8000,
+            "max_total_requests": 6,
+            "minimum_evidence_confidence": 0.85,
+            "max_interactive_turns": 5,
+            "allow_followup_evidence_requests": True,
+            "enable_prompt_caching": True,
+            "default_model": "anthropic/claude-sonnet-4.6",
+            "planner_confidence_threshold": 0.70,
+            "target_resolution_confidence_threshold": 0.85,
+            "proposal_quality_failure_threshold": 1,
+            "context_complexity_threshold": 10,
+        },
+        "agent_capabilities": {
+            "enabled": True,
+            "min_reason_words": 3,
+            "hard_max_files": 50,
+            "hard_max_lines": 20000,
+            "hard_max_items": 50,
+            "reputation_budgets": {
+                "unknown": {"max_files": 2, "max_lines": 400, "max_items": 2},
+                "trusted": {"max_files": 8, "max_lines": 2000, "max_items": 8},
+                "strategic": {"max_files": 20, "max_lines": 8000, "max_items": 20}
+            }
+        },
         "governance": {
             "require_human_review": True,
             "allow_auto_promotion": False,
             "allow_auto_commit": False,
             "allow_direct_repo_modification": False,
+        },
+        "promotion_confidence": {
+            "enabled": True,
+            "minimum_confidence": 0.80,
+            "ratings": {
+                "high": 0.90,
+                "medium": 0.75,
+                "low": 0.50,
+            },
+            "weights": {
+                "proposal_quality": 0.20,
+                "requirement_traceability": 0.20,
+                "behavioral_verification": 0.20,
+                "validation_evidence": 0.20,
+                "runtime_execution": 0.20,
+            },
+        },
+        "promotion_governance": {
+            "enabled": True,
+            "human_approval_required": True,
+            "minimum_confidence": 0.80,
+            "allow_promotion_with_blockers": False,
+        },
+        "evidence_package": {
+            "evidence_package_retention_days": None,
+            "retrieval_deny_patterns": [],
+        },
+        "dependency_intelligence": {
+            "enabled": True,
+            "max_depth": 2,
+            "max_nodes": 50,
+            "max_imports_per_file": 25,
+            "follow_test_imports": True,
+            "follow_runtime_imports": True,
+            "allow_proposed_local_imports": True,
+            "allow_existing_local_imports": True,
+            "allow_stdlib_imports": True,
+            "allowed_test_dependencies": ["pytest"],
+            "blocked_dependencies": [],
+            "unknown_dependency_policy": "fail",
+        },
+        "target_resolution": {
+            "enabled": True,
+            "minimum_confidence": 0.75,
+            "minimum_confidence_gap": 0.15,
+            "allow_auto_resolution": True,
+            "allow_basename_match": True,
+            "allow_directory_similarity": True,
+            "allow_resolution_creation": False,
+            "planner_revisit_threshold": 0.50,
+            "max_candidate_matches": 10,
+        },
+        "repository_impact": {
+            "enabled": True,
+            "max_depth": 2,
+            "max_nodes": 75,
+            "max_dependents_per_file": 25,
+            "retry_on_limit": True,
+            "retry_max_depth": 4,
+            "retry_max_nodes": 200,
+            "retry_max_dependents_per_file": 75,
+            "retry_policy": "validation_failure_only",
+            "include_tests": True,
+            "include_runtime_files": True,
+            "include_companion_tests": True,
+            "impacted_test_depth": 1,
+            "auto_add_companion_tests": True,
+            "auto_add_impacted_tests": True,
+            "recommend_indirect_dependents": True,
+            "circular_dependency_policy": "warn_stop_path",
+            "unresolved_import_policy": "warn",
+            "unknown_impact_policy": "warn",
+            "limit_policy": "warn",
+            "exclude_paths": [
+                ".git/",
+                ".pytest_cache/",
+                ".mypy_cache/",
+                ".ruff_cache/",
+                "__pycache__/",
+                "venv/",
+                ".venv/",
+                "env/",
+                ".env/",
+                "site-packages/",
+                "node_modules/",
+                "build/",
+                "dist/",
+                "*.egg-info/",
+                "artifacts/",
+                "htmlcov/",
+                ".tox/",
+                ".ageix/staged/",
+                ".ageix/staging/",
+                ".ageix/manifests/",
+                ".ageix/runs/",
+                ".ageix/runtime/",
+                ".ageix/verification/",
+                ".ageix/repair_loops/",
+                ".ageix/logs/"
+            ],
+        },
+        "cloud_context": {
+            "include_impact_summary": True,
+            "include_full_impact_evidence": False,
+            "max_impact_items": 10,
+        },
+        "evidence_context": {
+            "mode": "target_scoped",
+            "include_full_repo_inventory": False,
+            "include_target_files": True,
+            "include_impacted_files": True,
+            "include_impacted_tests": True,
+            "include_dependency_neighbors": True,
+            "max_files": 20,
+            "max_chars": 30000,
+            "overflow_policy": "summarize",
+            "code_context_mode": "sliced",
+            "allow_full_file_fallback": True,
+            "max_slice_lines_per_file": 120,
+            "include_imports": True,
+            "include_adjacent_helpers": True,
         },
     }
 
@@ -79,7 +286,10 @@ class ControlsService:
         self.repair = RepairControls(**self._config["repair"])
         self.cloud = CloudControls(**self._config["cloud"])
         self.validation = ValidationControls(**self._config["validation"])
+        self.consultation = ConsultationControls(**self._config["consultation"])
         self.governance = GovernanceControls(**self._config["governance"])
+        self.promotion_confidence = PromotionConfidenceControls(**self._config["promotion_confidence"])
+        self.promotion_governance = PromotionGovernanceControls(**self._config["promotion_governance"])
 
     def _load_config(self) -> dict[str, Any]:
         config_path = (
@@ -127,12 +337,16 @@ class ControlsService:
     ) -> None:
         governance = config.setdefault("governance", {})
         validation = config.setdefault("validation", {})
+        promotion_governance = config.setdefault("promotion_governance", {})
+        consultation = config.setdefault("consultation", {})
 
         governance["allow_auto_promotion"] = False
         governance["allow_auto_commit"] = False
         governance["allow_direct_repo_modification"] = False
 
         validation["allow_validation_bypass"] = False
+        promotion_governance["allow_promotion_with_blockers"] = False
+        consultation["require_human_approval"] = True
 
     def get_raw_config(self) -> dict[str, Any]:
         return deepcopy(self._config)

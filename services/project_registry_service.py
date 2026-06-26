@@ -78,6 +78,52 @@ class ProjectRegistryService:
             "brain_path": project["brain_path"],
         }
 
+
+    def ensure_official_ageix_project(self) -> dict[str, Any]:
+        """Create or return the official Ageix project as foundational platform state."""
+        project_id = "Ageix"
+        if project_id in self.registry.get("projects", {}):
+            project = self.registry["projects"][project_id]
+            self._write_project_profile(project)
+            return {"seeded": False, "project": project}
+
+        project = self.register_project(
+            project_id=project_id,
+            name="Ageix",
+            project_type="python",
+            root_path=self.ageix_root,
+            project_role="system_of_record",
+            status="active",
+            metadata={
+                "official": True,
+                "seeded_by": "sprint_18_4_architecture_hardening",
+                "purpose": "Official governed Ageix project for architecture, evidence, decision trace, and review history.",
+                "architecture_baseline": "v1",
+            },
+        )
+        self._write_project_profile(project)
+        return {"seeded": True, "project": project}
+
+    def _write_project_profile(self, project: dict[str, Any]) -> None:
+        brain_path = Path(project["brain_path"])
+        brain_path.mkdir(parents=True, exist_ok=True)
+        profile_path = brain_path / "project_profile.json"
+        profile = {
+            "schema_version": 1,
+            "project_id": project["project_id"],
+            "name": project["name"],
+            "project_type": project["project_type"],
+            "root_path": project["root_path"],
+            "brain_path": project["brain_path"],
+            "project_role": project["project_role"],
+            "status": project["status"],
+            "created_at": project["created_at"],
+            "updated_at": project["updated_at"],
+            "metadata": project.get("metadata", {}),
+        }
+        with profile_path.open("w", encoding="utf-8") as f:
+            json.dump(profile, f, indent=2, sort_keys=True)
+
     def _load_registry(self) -> dict[str, Any]:
         if not self.registry_path.exists():
             now = self._now()

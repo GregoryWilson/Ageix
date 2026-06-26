@@ -3,15 +3,37 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from services.repository_evidence_service import RepositoryEvidenceService
+
 
 REPO_ROOT = Path(".").resolve()
 
 IGNORED_PARTS = {
     ".git",
     "__pycache__",
+    ".pytest_cache",
     "venv",
     ".venv",
     "artifacts",
+}
+
+AGEIX_RUNTIME_DIRS = {
+    "logs",
+    "manifests",
+    "staged",
+    "staging",
+    "runs",
+    "verification",
+    "runtime",
+    "repair_loops",
+    "user_feedback",
+}
+
+AGEIX_SOURCE_DIRS = {
+    "config",
+    "projects",
+    "objectives",
+    "architecture",
 }
 
 TEXT_EXTENSIONS = {
@@ -27,7 +49,15 @@ TEXT_EXTENSIONS = {
 
 def _is_ignored(path: Path) -> bool:
     relative = path.relative_to(REPO_ROOT)
-    return any(part in IGNORED_PARTS for part in relative.parts)
+    parts = relative.parts
+    if any(part in IGNORED_PARTS for part in parts):
+        return True
+    if len(parts) >= 2 and parts[0] == ".ageix":
+        if parts[1] in AGEIX_RUNTIME_DIRS:
+            return True
+        if parts[1] not in AGEIX_SOURCE_DIRS:
+            return True
+    return False
 
 
 def _list_files() -> list[str]:
@@ -58,6 +88,9 @@ def _read_file(path_text: str, max_chars: int = 12000) -> dict[str, Any]:
         return {
             "path": path_text,
             "error": "File does not exist.",
+            "target_file_missing": True,
+            "file_missing_create_allowed": False,
+            "repository_evidence_status": "missing_violation",
         }
 
     if path.suffix not in TEXT_EXTENSIONS:
@@ -134,15 +167,34 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
 
     files = _list_files()
 
+    evidence_limit = payload.get("constraints", {}).get("evidence_file_limit", 12)
+    try:
+        evidence_limit = int(evidence_limit)
+    except (TypeError, ValueError):
+        evidence_limit = 12
+
+    selected_files = RepositoryEvidenceService(REPO_ROOT).select_evidence_files(
+        objective=payload.get("objective", instructions),
+        target_files=payload.get("target_files", []),
+        known_files=files,
+        limit=evidence_limit,
+    )
+
     read_targets = []
     target_files = payload.get("target_files", [])
 
     read_targets = sorted(set(read_targets + target_files))
 
-    file_reads = [
-        _read_file(path)
-        for path in read_targets
-    ]
+    requested_operation = payload.get("requested_operation")
+    allow_create_files = requested_operation == "create_file" or payload.get("allow_create_files") is True
+
+    file_reads = []
+    for path in read_targets:
+        read = _read_file(path)
+        if read.get("target_file_missing") is True and allow_create_files:
+            read["file_missing_create_allowed"] = True
+            read["repository_evidence_status"] = "missing_allowed_for_create"
+        file_reads.append(read)
 
     search_terms = []
 
@@ -170,6 +222,8 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
         "summary": "RepositoryAgent inspected repository files and gathered read-only code evidence.",
         "files": files,
         "file_count": len(files),
+        "selected_files": selected_files,
+        "selected_file_count": len(selected_files),
         "read_files": file_reads,
         "evidence": file_reads,
         "searches": searches,

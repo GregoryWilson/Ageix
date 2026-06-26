@@ -1,0 +1,56 @@
+{
+  "approved_at": null,
+  "approved_by": null,
+  "architecture_id": "ARCH-AGEIX-PROPOSALSYSTEM-PROPOSALSUBMISSION",
+  "created_at": "2026-06-23T22:14:35.997721+00:00",
+  "created_by": null,
+  "description": "Proposal Submission component within the Proposal System domain.",
+  "description_state": "draft",
+  "health": {
+    "architecture_id": "ARCH-AGEIX-PROPOSALSYSTEM-PROPOSALSUBMISSION",
+    "context_status": "failed",
+    "coverage_status": "complete_current_state",
+    "decision_status": "none",
+    "description_status": "partial",
+    "evidence_status": "missing",
+    "freshness_status": "fresh",
+    "health_version": 1,
+    "hierarchy_status": "valid",
+    "last_evaluated": "2026-06-23T22:14:35.998013+00:00",
+    "linked_decision_count": 0,
+    "linked_evidence_count": 0,
+    "metadata": {
+      "context_failure_scope": "context_status_only",
+      "deterministic": true,
+      "freshness_days": 30,
+      "no_ai_scoring": true
+    },
+    "metadata_completeness": {
+      "description": true,
+      "name": true,
+      "node_key": true,
+      "parent": true,
+      "path": true
+    },
+    "registration_status": "registered",
+    "review_count": 0,
+    "review_status": "never_reviewed",
+    "status": "partial"
+  },
+  "last_reviewed_at": null,
+  "linked_decision_trace_ids": [],
+  "linked_evidence_package_ids": [],
+  "metadata": {
+    "official": true,
+    "seeded_by": "sprint_18_2_baseline_v1"
+  },
+  "name": "Proposal Submission",
+  "node_key": "ProposalSubmission",
+  "node_type": "component",
+  "parent_id": "ARCH-AGEIX-PROPOSALSYSTEM",
+  "path": "Ageix.ProposalSystem.ProposalSubmission",
+  "project_id": "Ageix",
+  "review_count": 0,
+  "status": "active",
+  "updated_at": "2026-06-23T22:14:35.997830+00:00"
+}

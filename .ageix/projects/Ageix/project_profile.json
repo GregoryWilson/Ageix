@@ -1,0 +1,18 @@
+{
+  "brain_path": "/home/gwilson/ageix/.ageix/projects/Ageix",
+  "created_at": "2026-06-24T02:54:04.136065+00:00",
+  "metadata": {
+    "architecture_baseline": "v1",
+    "official": true,
+    "purpose": "Official governed Ageix project for architecture, evidence, decision trace, and review history.",
+    "seeded_by": "sprint_18_4_architecture_hardening"
+  },
+  "name": "Ageix",
+  "project_id": "Ageix",
+  "project_role": "system_of_record",
+  "project_type": "python",
+  "root_path": "/home/gwilson/ageix",
+  "schema_version": 1,
+  "status": "active",
+  "updated_at": "2026-06-24T02:54:04.136065+00:00"
+}

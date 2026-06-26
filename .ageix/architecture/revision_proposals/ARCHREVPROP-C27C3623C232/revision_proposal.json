@@ -1,0 +1,27 @@
+{
+  "allowed_scope": [
+    "description",
+    "metadata",
+    "relationships",
+    "hierarchy_placement",
+    "evidence_links",
+    "decision_links",
+    "review_metadata"
+  ],
+  "architecture_id": "ARCH-AGEIX-ARCHITECTURE-REVIEWCOLLABORATION",
+  "challenge_id": "ARCHCHAL-CD6FFFC2A280",
+  "created_at": "2026-06-23T22:42:14.483342+00:00",
+  "linked_proposal_id": "PROP-77377D81D246",
+  "metadata": {
+    "direct_registry_mutation": false,
+    "proposal_system_reused": true,
+    "session_id": "smoke-18-3-session"
+  },
+  "objective": "Propose documentation refinement for architecture review collaboration.",
+  "project_id": "Ageix",
+  "proposed_changes": {
+    "description": "Clarify that reviews and challenges do not directly mutate the architecture registry."
+  },
+  "revision_id": "ARCHREVPROP-C27C3623C232",
+  "submitted_by": "lex"
+}

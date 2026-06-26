@@ -44,7 +44,84 @@ artifacts/*.json
 cache/
 
 # Staging and manifests
+.ageix/evidence_packages/
 .ageix/staged/
 .ageix/manifests/
 .ageix/repair_loops/
 .ageix/verification/
+.ageix/verification/**
+.ageix/workspaces/**
+.ageix/manifests/**
+
+# -------------------------------------------------------------------
+# Ageix Runtime
+# -------------------------------------------------------------------
+
+.ageix/instance/
+.ageix/runs/
+.agiex/config/auth.json
+
+# Runtime generated files
+*.pid
+*.lock
+
+# -------------------------------------------------------------------
+# Certificates / Secrets
+# -------------------------------------------------------------------
+
+.ageix/certs/
+
+# Optional future locations
+certs/
+secrets/
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# -------------------------------------------------------------------
+# Logs
+# -------------------------------------------------------------------
+
+logFiles/
+logs/
+*.log
+
+# -------------------------------------------------------------------
+# Release Artifacts
+# -------------------------------------------------------------------
+
+*.patch
+*.zip
+
+# -------------------------------------------------------------------
+# Python
+# -------------------------------------------------------------------
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+
+# Virtual Environments
+venv/
+.venv/
+
+# Coverage
+.coverage
+htmlcov/
+
+# -------------------------------------------------------------------
+# IDE
+# -------------------------------------------------------------------
+
+.vscode/
+.idea/
+# Generated handoff archives
+artifacts/
+
+# Ageix user feedback responses
+.ageix/user_feedback/*
+!.ageix/user_feedback/.gitkeep

@@ -1,0 +1,70 @@
+[
+  {
+    "artifact_id": "ART-AA0F9FD9EE39",
+    "created_at": "2026-06-24T22:00:27.204413+00:00",
+    "created_by": "artifact.push",
+    "delivery_id": "DELIV-7CB3A64ECD19",
+    "delivery_reference": ".ageix/artifact_deliveries/local_export/DELIV-7CB3A64ECD19_ART-AA0F9FD9EE39.zip",
+    "destination": "local_export",
+    "metadata": {
+      "artifact_category": "repository",
+      "artifact_source_id": "REPOARCH-3C943970EB2C",
+      "artifact_type": "repository_archive",
+      "delivery_kind": "file_copy",
+      "filename": "DELIV-7CB3A64ECD19_ART-AA0F9FD9EE39.zip",
+      "size_bytes": 404285,
+      "source_path": ".ageix/repository_archives/mcp_19_3_repo_delivery_probe.zip"
+    },
+    "project_id": "Ageix",
+    "status": "completed",
+    "summary": "Delivered artifact ART-AA0F9FD9EE39 to local_export."
+  },
+  {
+    "artifact_id": "ART-111AA40BC9A4",
+    "created_at": "2026-06-24T22:38:44.443064+00:00",
+    "created_by": "artifact.push",
+    "delivery_id": "DELIV-CF9264BE454C",
+    "delivery_reference": null,
+    "destination": "requesting_agent",
+    "metadata": {
+      "agent_id": "lex",
+      "artifact_category": "repository",
+      "artifact_source_id": "REPOARCH-42617F87B992",
+      "artifact_type": "repository_archive",
+      "client_id": "chatGPT",
+      "consumption_ready": true,
+      "destination_type": "requesting_agent",
+      "filename": "mcp_19_4_requesting_agent_probe.zip",
+      "provider": "chatGPT",
+      "size_bytes": 22866,
+      "transport": "mcp_governed_artifact_reference"
+    },
+    "project_id": "Ageix",
+    "status": "completed",
+    "summary": "Prepared artifact ART-111AA40BC9A4 for authenticated requesting agent."
+  },
+  {
+    "artifact_id": "ART-079783011485",
+    "created_at": "2026-06-24T23:32:17.078280+00:00",
+    "created_by": "artifact.push",
+    "delivery_id": "DELIV-C31127CE51BF",
+    "delivery_reference": null,
+    "destination": "requesting_agent",
+    "metadata": {
+      "agent_id": "lex",
+      "artifact_category": "repository",
+      "artifact_source_id": "REPOARCH-8E96CC207048",
+      "artifact_type": "repository_archive",
+      "client_id": "chatGPT",
+      "consumption_ready": true,
+      "destination_type": "requesting_agent",
+      "filename": "ageix_sprint_19_6_baseline.zip",
+      "provider": "chatGPT",
+      "size_bytes": 1707108,
+      "transport": "mcp_governed_artifact_reference"
+    },
+    "project_id": "Ageix_Test",
+    "status": "completed",
+    "summary": "Prepared artifact ART-079783011485 for authenticated requesting agent."
+  }
+]

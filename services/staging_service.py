@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import shutil
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from models.patch_manifest import PatchFile, PatchManifest
@@ -30,7 +30,7 @@ class StagingService:
         return candidate
 
     def create_patch_id(self) -> str:
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S_%f")
         return f"patch_{timestamp}"
 
     def create_stage(
@@ -45,6 +45,13 @@ class StagingService:
         proposal_quality: dict | None = None,
         requirement_trace: dict | None = None,
         behavior_verification: dict | None = None,
+        validation_summary: dict | None = None,
+        validation_evidence: dict | None = None,
+        runtime_validation_summary: dict | None = None,
+        runtime_execution_evidence: dict | None = None,
+        confidence_summary: dict | None = None,
+        promotion_readiness_summary: dict | None = None,
+        governance_review_packet: dict | None = None,
     ) -> PatchManifest:
         patch_id = self.create_patch_id()
         patch_dir = self.stage_root / patch_id / "files"
@@ -89,6 +96,13 @@ class StagingService:
             proposal_quality=proposal_quality,
             requirement_trace=requirement_trace,
             behavior_verification=behavior_verification,
+            validation_summary=validation_summary,
+            validation_evidence=validation_evidence,
+            runtime_validation_summary=runtime_validation_summary,
+            runtime_execution_evidence=runtime_execution_evidence,
+            confidence_summary=confidence_summary,
+            promotion_readiness_summary=promotion_readiness_summary,
+            governance_review_packet=governance_review_packet,
         )
 
         self.manifest_root.mkdir(parents=True, exist_ok=True)
@@ -111,6 +125,13 @@ class StagingService:
         proposal_quality: dict | None = None,
         requirement_trace: dict | None = None,
         behavior_verification: dict | None = None,
+        validation_summary: dict | None = None,
+        validation_evidence: dict | None = None,
+        runtime_validation_summary: dict | None = None,
+        runtime_execution_evidence: dict | None = None,
+        confidence_summary: dict | None = None,
+        promotion_readiness_summary: dict | None = None,
+        governance_review_packet: dict | None = None,
     ) -> PatchManifest:
         changes = proposal.get("changes", [])
 
@@ -131,6 +152,13 @@ class StagingService:
             proposal_quality=proposal_quality,
             requirement_trace=requirement_trace,
             behavior_verification=behavior_verification,
+            validation_summary=validation_summary,
+            validation_evidence=validation_evidence,
+            runtime_validation_summary=runtime_validation_summary,
+            runtime_execution_evidence=runtime_execution_evidence,
+            confidence_summary=confidence_summary,
+            promotion_readiness_summary=promotion_readiness_summary,
+            governance_review_packet=governance_review_packet,
         )
 
         stage_path = self.get_stage_path(manifest.patch_id)

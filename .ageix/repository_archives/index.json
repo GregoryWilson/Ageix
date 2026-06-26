@@ -1,0 +1,61 @@
+[
+  {
+    "archive_id": "REPOARCH-473B4324C133",
+    "artifact_id": "ART-3E3123A56392",
+    "created_at": "2026-06-24T21:43:37.691864+00:00",
+    "excluded_patterns_applied": 43,
+    "file_count": 1,
+    "filename": "mcp_19_2_artifact_probe.zip",
+    "included_roots": [
+      "services/artifact_registry_service.py"
+    ],
+    "path": "/home/gwilson/ageix/.ageix/repository_archives/mcp_19_2_artifact_probe.zip",
+    "repository_cleanliness": "dirty",
+    "summary": "created repository archive with 1 files"
+  },
+  {
+    "archive_id": "REPOARCH-3C943970EB2C",
+    "artifact_id": "ART-AA0F9FD9EE39",
+    "created_at": "2026-06-24T21:59:30.486368+00:00",
+    "excluded_patterns_applied": 43,
+    "file_count": 235,
+    "filename": "mcp_19_3_repo_delivery_probe.zip",
+    "included_roots": [
+      "services",
+      "ageix_mcp",
+      "tests"
+    ],
+    "path": "/home/gwilson/ageix/.ageix/repository_archives/mcp_19_3_repo_delivery_probe.zip",
+    "repository_cleanliness": "clean",
+    "summary": "created repository archive with 235 files"
+  },
+  {
+    "archive_id": "REPOARCH-42617F87B992",
+    "artifact_id": "ART-111AA40BC9A4",
+    "created_at": "2026-06-24T22:38:20.082810+00:00",
+    "excluded_patterns_applied": 43,
+    "file_count": 15,
+    "filename": "mcp_19_4_requesting_agent_probe.zip",
+    "included_roots": [
+      "services/artifact_delivery_service.py",
+      "services/capabilities"
+    ],
+    "path": "/home/gwilson/ageix/.ageix/repository_archives/mcp_19_4_requesting_agent_probe.zip",
+    "repository_cleanliness": "clean",
+    "summary": "created repository archive with 15 files"
+  },
+  {
+    "archive_id": "REPOARCH-8E96CC207048",
+    "artifact_id": "ART-079783011485",
+    "created_at": "2026-06-24T23:32:11.126480+00:00",
+    "excluded_patterns_applied": 43,
+    "file_count": 1075,
+    "filename": "ageix_sprint_19_6_baseline.zip",
+    "included_roots": [
+      "."
+    ],
+    "path": "/home/gwilson/ageix/.ageix/repository_archives/ageix_sprint_19_6_baseline.zip",
+    "repository_cleanliness": "clean",
+    "summary": "created repository archive with 1075 files"
+  }
+]

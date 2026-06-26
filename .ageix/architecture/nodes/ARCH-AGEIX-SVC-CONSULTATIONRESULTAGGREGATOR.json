@@ -1,0 +1,58 @@
+{
+  "approved_at": "2026-06-24T19:26:39.827102+00:00",
+  "approved_by": "chair",
+  "architecture_id": "ARCH-AGEIX-SVC-CONSULTATIONRESULTAGGREGATOR",
+  "created_at": "2026-06-24T19:26:39.822020+00:00",
+  "created_by": null,
+  "description": "Aggregates advisor responses into structured findings, confidence, concerns, and recommendations. It supports Chair evaluation while keeping consultation output separate from decisions.",
+  "description_state": "approved",
+  "health": {
+    "architecture_id": "ARCH-AGEIX-SVC-CONSULTATIONRESULTAGGREGATOR",
+    "context_status": "available",
+    "coverage_status": "complete_current_state",
+    "decision_status": "none",
+    "description_status": "complete",
+    "evidence_status": "missing",
+    "freshness_status": "fresh",
+    "health_version": 1,
+    "hierarchy_status": "valid",
+    "last_evaluated": "2026-06-24T19:26:39.828778+00:00",
+    "linked_decision_count": 0,
+    "linked_evidence_count": 0,
+    "metadata": {
+      "context_failure_scope": "context_status_only",
+      "deterministic": true,
+      "freshness_days": 30,
+      "no_ai_scoring": true
+    },
+    "metadata_completeness": {
+      "description": true,
+      "name": true,
+      "node_key": true,
+      "parent": true,
+      "path": true
+    },
+    "registration_status": "registered",
+    "review_count": 0,
+    "review_status": "never_reviewed",
+    "status": "partial"
+  },
+  "last_reviewed_at": null,
+  "linked_decision_trace_ids": [],
+  "linked_evidence_package_ids": [],
+  "metadata": {
+    "canonical_ageix_baseline": true,
+    "lowest_architecture_level": true,
+    "official": true,
+    "seeded_by": "sprint_18_10"
+  },
+  "name": "ConsultationResultAggregator",
+  "node_key": "ConsultationResultAggregator",
+  "node_type": "service",
+  "parent_id": "ARCH-AGEIX-GOVERNANCEPLATFORM-CONSULTATIONFRAMEWORK",
+  "path": "Ageix.GovernancePlatform.ConsultationFramework.ConsultationResultAggregator",
+  "project_id": "Ageix",
+  "review_count": 0,
+  "status": "active",
+  "updated_at": "2026-06-24T19:26:39.827453+00:00"
+}

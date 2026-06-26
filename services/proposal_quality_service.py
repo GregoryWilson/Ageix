@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import ast
 import re
+import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +12,12 @@ from models.proposal_quality_models import (
     ProposalQualityResult,
     ProposalQualityViolation,
     RequirementTrace,
+)
+from services.dependency_intelligence_service import DependencyIntelligenceService
+from services.repository_impact_service import RepositoryImpactService
+from models.dependency_intelligence import (
+    DependencyClassification,
+    DependencyValidationOutcome,
 )
 
 _QUOTED_LITERAL_PATTERN = re.compile(r"(['\"])(.+?)\1")
@@ -124,6 +132,40 @@ class ProposalQualityService:
 
             requirement_trace.append(trace)
 
+        research_required = False
+        escalation_recommended = False
+        escalation: dict[str, Any] = {}
+
+        allowed_dependencies = self._load_allowed_dependencies()
+        dependency_result = DependencyIntelligenceService(self.repo_root).analyze(
+            proposal=proposal,
+            repository_state={},
+        )
+        dependency_evidence = dependency_result.evidence
+
+        for dependency_violation in dependency_result.violations:
+            violations.append(
+                ProposalQualityViolation(
+                    code=ProposalQualityFailureCode.UNSUPPORTED_DEPENDENCY_REFERENCE,
+                    message=f"Dependency validation failed: {dependency_violation}.",
+                    actual=dependency_violation,
+                    instruction="Use stdlib, repository, proposed, manifest-approved, or controls-approved test dependencies only.",
+                )
+            )
+
+        impact_result = RepositoryImpactService(self.repo_root).analyze(
+            target_files=target_files,
+            proposal=proposal,
+        )
+        impact_warnings = list(impact_result.violations)
+        proposed_tests = {path for path in changed_path_set if self._is_test_path(path)}
+        missing_impacted_tests = [
+            path for path in impact_result.impacted_tests
+            if path not in proposed_tests and path in target_file_set
+        ]
+        for path in missing_impacted_tests:
+            impact_warnings.append(f"impacted_test_missing: {path}")
+
         for change in changes:
             path = change.get("path")
             content = change.get("content")
@@ -144,9 +186,24 @@ class ProposalQualityService:
                             message=f"Python content does not compile: {ex.msg} at line {ex.lineno}.",
                             file_path=path,
                             actual=str(ex),
-                        instruction="Return syntactically valid Python content for the full file.",
+                            instruction="Return syntactically valid Python content for the full file.",
                         )
                     )
+
+                for evidence in dependency_evidence:
+                    if evidence.source_file != path:
+                        continue
+                    if evidence.classification in {
+                        DependencyClassification.UNKNOWN_EXTERNAL_DEPENDENCY,
+                        DependencyClassification.BLOCKED_DEPENDENCY,
+                    } and self._looks_like_external_api(evidence.dependency, objective, content):
+                        research_required = True
+                        escalation_recommended = True
+                        escalation = {
+                            "recommended": True,
+                            "reason": "External API usage could not be verified from repository evidence.",
+                            "target": "research",
+                        }
 
             if self._is_test_path(path) and not self._has_meaningful_assertion(content):
                 violations.append(
@@ -157,10 +214,37 @@ class ProposalQualityService:
                     )
                 )
 
+        if impact_result.violations and RepositoryImpactService(self.repo_root).should_retry_expanded(impact_result):
+            expanded_impact_result = RepositoryImpactService(self.repo_root).analyze(
+                target_files=target_files,
+                proposal=proposal,
+                expanded=True,
+            )
+            impact_result = expanded_impact_result
+            impact_warnings = sorted(dict.fromkeys(impact_warnings + expanded_impact_result.violations))
+
+        if not escalation and self._objective_mentions_external_api(objective):
+            known_content = combined_content.lower()
+            if not any(name.lower() in known_content for name in allowed_dependencies):
+                research_required = True
+                escalation_recommended = True
+                escalation = {
+                    "recommended": True,
+                    "reason": "External API usage could not be verified from repository evidence.",
+                    "target": "research",
+                }
+
         return ProposalQualityResult(
             status="fail" if violations else "pass",
             violations=violations,
             requirement_trace=requirement_trace,
+            research_required=research_required,
+            escalation_recommended=escalation_recommended,
+            escalation=escalation,
+            dependency_evidence=dependency_evidence,
+            impact_evidence=impact_result.evidence,
+            impact_summary=impact_result.summary,
+            impact_warnings=sorted(dict.fromkeys(impact_warnings)),
         )
 
     def _extract_required_literals(self, sources: list[str]) -> set[str]:
@@ -249,3 +333,133 @@ class ProposalQualityService:
         if match:
             return match.group(2)
         return None
+
+    def _iter_import_roots(self, tree: ast.AST) -> list[str]:
+        roots: list[str] = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    root = alias.name.split(".")[0]
+                    if root not in roots:
+                        roots.append(root)
+            elif isinstance(node, ast.ImportFrom):
+                if node.level:
+                    continue
+                if node.module:
+                    root = node.module.split(".")[0]
+                    if root not in roots:
+                        roots.append(root)
+        return roots
+
+    def _iter_import_roots_from_text(self, content: str) -> list[str]:
+        roots: list[str] = []
+        patterns = [
+            re.compile(r"^\s*import\s+([A-Za-z_][A-Za-z0-9_\.]*)", re.MULTILINE),
+            re.compile(r"^\s*from\s+([A-Za-z_][A-Za-z0-9_\.]*)\s+import\s+", re.MULTILINE),
+        ]
+        for pattern in patterns:
+            for match in pattern.finditer(content):
+                root = match.group(1).split(".")[0]
+                if root not in roots:
+                    roots.append(root)
+        return roots
+
+    def _is_supported_import(self, root: str, allowed_dependencies: set[str]) -> bool:
+        if root in sys.builtin_module_names:
+            return True
+        if root in getattr(sys, "stdlib_module_names", set()):
+            return True
+        if root in allowed_dependencies:
+            return True
+        if self._is_repository_module(root):
+            return True
+        return False
+
+    def _is_repository_module(self, root: str) -> bool:
+        return (self.repo_root / f"{root}.py").exists() or (
+            (self.repo_root / root).is_dir()
+            and (self.repo_root / root / "__init__.py").exists()
+        )
+
+    def _load_allowed_dependencies(self) -> set[str]:
+        dependencies: set[str] = set()
+        dependencies.update(self._read_requirements_txt())
+        dependencies.update(self._read_pyproject_dependencies())
+        dependencies.update(self._read_dependency_allowlist())
+        return dependencies
+
+    def _read_requirements_txt(self) -> set[str]:
+        path = self.repo_root / "requirements.txt"
+        if not path.exists():
+            return set()
+        deps: set[str] = set()
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            cleaned = line.strip()
+            if not cleaned or cleaned.startswith("#") or cleaned.startswith("-"):
+                continue
+            name = re.split(r"[<>=!~;\[]", cleaned, maxsplit=1)[0].strip()
+            if name:
+                deps.add(self._normalize_dependency_name(name))
+        return deps
+
+    def _read_pyproject_dependencies(self) -> set[str]:
+        path = self.repo_root / "pyproject.toml"
+        if not path.exists():
+            return set()
+        try:
+            data = tomllib.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return set()
+
+        raw_deps: list[str] = []
+        project = data.get("project", {})
+        if isinstance(project.get("dependencies"), list):
+            raw_deps.extend(str(item) for item in project["dependencies"])
+        optional = project.get("optional-dependencies", {})
+        if isinstance(optional, dict):
+            for values in optional.values():
+                if isinstance(values, list):
+                    raw_deps.extend(str(item) for item in values)
+
+        poetry_deps = (
+            data.get("tool", {})
+            .get("poetry", {})
+            .get("dependencies", {})
+        )
+        if isinstance(poetry_deps, dict):
+            raw_deps.extend(str(key) for key in poetry_deps if key.lower() != "python")
+
+        deps: set[str] = set()
+        for item in raw_deps:
+            name = re.split(r"[<>=!~;\[]", item.strip(), maxsplit=1)[0].strip()
+            if name:
+                deps.add(self._normalize_dependency_name(name))
+        return deps
+
+    def _read_dependency_allowlist(self) -> set[str]:
+        candidates = [
+            self.repo_root / ".ageix" / "config" / "dependency_allowlist.txt",
+            self.repo_root / ".ageix" / "dependency_allowlist.txt",
+        ]
+        deps: set[str] = set()
+        for path in candidates:
+            if not path.exists():
+                continue
+            for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+                cleaned = line.strip()
+                if cleaned and not cleaned.startswith("#"):
+                    deps.add(self._normalize_dependency_name(cleaned))
+        return deps
+
+    def _normalize_dependency_name(self, name: str) -> str:
+        return name.strip().lower().replace("-", "_")
+
+    def _objective_mentions_external_api(self, objective: str) -> bool:
+        lowered = objective.lower()
+        return any(term in lowered for term in [" api", "library", "sdk", "octoprint", "octopi", "external"])
+
+    def _looks_like_external_api(self, import_name: str, objective: str, content: str) -> bool:
+        lowered = " ".join([objective, content, import_name]).lower()
+        if import_name in {"dependency_injection"}:
+            return False
+        return self._objective_mentions_external_api(lowered)

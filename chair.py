@@ -12,6 +12,12 @@ from services.objective_source_service import ObjectiveSourceService
 from services.proposal_quality_service import ProposalQualityService
 from services.behavioral_smoke_verifier import BehavioralSmokeVerifier
 from services.requirement_trace_service import RequirementTraceService
+from services.test_execution_service import TestExecutionService
+from services.project_profile_service import ProjectProfileService
+from services.agent_session_service import AgentSessionService
+from services.capability_execution_service import CapabilityExecutionService
+from models.capability_request import CapabilityRequest
+from services.patch_proposal_contract_service import PatchProposalContractService
 
 MAX_PROPOSAL_QUALITY_RETRIES = 1
 
@@ -236,6 +242,21 @@ def execute_ready_step(state: dict[str, Any], max_context_expansions: int = 1,
 
     step = ready_steps[0]
     agent_key = normalize_agent_key(step.get("agent", "research"))
+
+    work_packet = state.get("plan", {}).get("work_packet", {})
+    if agent_key == "dev_worker" and work_packet.get("planner_revisit_required") is True:
+        step["status"] = "blocked"
+        state["chair_action"] = "target_resolution_failed"
+        state["status"] = "blocked"
+        state["blocked_reason"] = "target_resolution_failed"
+        state["unresolved_target_files"] = work_packet.get("unresolved_target_files", [])
+        state["context_request"] = {
+            "result_type": "context_request",
+            "reason": "target_resolution_failed",
+            "requested_files": work_packet.get("unresolved_target_files", []),
+            "recommended_planner_revisit": True,
+        }
+        return update_plan_status(state)
 
     step["status"] = "in_progress"
 
@@ -628,7 +649,42 @@ def build_devworker_packet(
         "repo_evidence": repo_evidence,
         "dependency_hints": repository_result.get("dependency_hints", []),
         "constraints": constraints,
+        "repository_discovery": {
+            "missing_allowed_for_create": [
+                item.get("path")
+                for item in repo_evidence
+                if item.get("repository_evidence_status") == "missing_allowed_for_create"
+                or item.get("file_missing_create_allowed") is True
+            ],
+        },
     }
+
+
+def filter_context_requested_files(
+    requested_files: list[dict[str, Any]],
+    repository_evidence: list[dict[str, Any]],
+    constraints: dict[str, Any] | None = None,
+) -> list[str]:
+    constraints = constraints or {}
+    allow_create_files = constraints.get("allow_create_files") is True
+    missing_allowed = {
+        item.get("path")
+        for item in repository_evidence
+        if item.get("repository_evidence_status") == "missing_allowed_for_create"
+        or item.get("file_missing_create_allowed") is True
+    }
+
+    filtered: list[str] = []
+    for item in requested_files or []:
+        path = item.get("path") if isinstance(item, dict) else None
+        if not path:
+            continue
+        if allow_create_files and path in missing_allowed:
+            continue
+        if path not in filtered:
+            filtered.append(path)
+    return filtered
+
 
 def validate_devworker_result(result: dict[str, Any]) -> None:
     if result.get("agent") != "devworker":
@@ -686,9 +742,30 @@ def validate_devworker_deliverable(deliverable: dict[str, Any]) -> None:
     if deliverable["no_write_confirmation"] is not True:
         raise ValueError("DevWorker must confirm no writes.")
     
+def normalize_patch_proposal_deliverable(
+    deliverable: dict[str, Any],
+    *,
+    source_agent: str | None = None,
+    retry_count: int = 0,
+) -> dict[str, Any]:
+    normalized, _evidence = PatchProposalContractService().normalize(
+        deliverable,
+        source_agent=source_agent,
+        retry_count=retry_count,
+    )
+    return normalized
+
+
 def validate_patch_proposal_deliverable(
-    deliverable: dict[str, Any]
+    deliverable: dict[str, Any],
+    approved_scope: list[str] | None = None,
 ) -> None:
+
+    if deliverable.get("result_type") == "context_request":
+        reason = deliverable.get("reason")
+        if reason == "architecture_scope_exceeded" and deliverable.get("recommended_planner_revisit") is True:
+            return
+        raise ValueError("unsupported_context_request")
 
     required = [
         "result_type",
@@ -717,16 +794,31 @@ def validate_patch_proposal_deliverable(
     ]
 
     if missing:
+        classification = PatchProposalContractService().classify_validation_failure(deliverable)
+        if classification:
+            raise ValueError(classification)
         raise ValueError(
             f"Patch proposal missing fields: {missing}"
         )
 
+    classification = PatchProposalContractService().classify_validation_failure(deliverable)
+    if classification == "empty_patch_proposal":
+        raise ValueError("empty_patch_proposal: Patch proposal must include at least one change")
+    if classification == "invalid_patch_operation":
+        raise ValueError("invalid_patch_operation: Unsupported patch proposal operation")
+    if classification:
+        raise ValueError(classification)
+
+    approved = set(approved_scope or [])
     seen_paths: set[str] = set()
 
     for change in deliverable["changes"]:
         path = change.get("path")
         operation = change.get("operation")
         content = change.get("content")
+
+        if not isinstance(content, str):
+            raise ValueError(f"{path} patch content must be a string.")
 
         for marker in forbidden:
             if marker.lower() in content.lower():
@@ -742,6 +834,9 @@ def validate_patch_proposal_deliverable(
         if not isinstance(path, str) or not path.strip():
             raise ValueError("Patch proposal change missing path.")
 
+        if approved and path not in approved:
+            raise ValueError(f"scope_validation_failed: proposal_targets must be within approved_scope: {path}")
+
         if path.startswith("/") or ".." in path.split("/"):
             raise ValueError(f"Unsafe patch proposal path: {path}")
 
@@ -749,9 +844,6 @@ def validate_patch_proposal_deliverable(
             raise ValueError(f"Duplicate change proposed for {path}")
 
         seen_paths.add(path)
-
-        if not isinstance(content, str):
-            raise ValueError(f"{path} patch content must be a string.")
 
         if not content.strip():
             raise ValueError(f"{path} patch content cannot be empty.")
@@ -799,6 +891,11 @@ def validate_patch_proof_of_delivery(
         objective=devworker_packet.get("objective", ""),
         success_criteria=devworker_packet.get("success_criteria", []),
     )
+
+    test_targets = devworker_packet.get("test_targets", [])
+    if test_targets:
+        TestExecutionService(Path(".")).execute(test_targets, deliverable)
+
     return trace_result, behavior_result
 
 
@@ -837,6 +934,54 @@ def build_quality_retry_packet(
     retry_packet["constraints"]["proposal_quality_retry"] = True
     retry_packet["constraints"]["max_proposal_quality_retries"] = MAX_PROPOSAL_QUALITY_RETRIES
     return retry_packet
+
+def expand_devworker_packet_for_companion_tests(
+    *,
+    devworker_packet: dict,
+    quality_result,
+) -> dict:
+    expanded = dict(devworker_packet)
+    target_files = list(expanded.get("target_files", []))
+
+    for violation in getattr(quality_result, "violations", []) or []:
+        code = getattr(violation, "code", None)
+        code_value = getattr(code, "value", code)
+        file_path = getattr(violation, "file_path", None)
+        if code_value == "unauthorized_file_change" and file_path and file_path not in target_files:
+            target_files.append(file_path)
+
+    expanded["target_files"] = target_files
+    expanded["constraints"] = dict(expanded.get("constraints", {}))
+    if target_files != list(devworker_packet.get("target_files", [])):
+        expanded["constraints"]["planner_expanded_companion_test_files"] = True
+    return expanded
+
+
+def build_promotion_retry_packet(
+    *,
+    devworker_packet: dict,
+    promotion_readiness,
+) -> dict:
+    retry_packet = dict(devworker_packet)
+    retry_packet["constraints"] = dict(retry_packet.get("constraints", {}))
+    retry_packet["promotion_readiness_retry"] = True
+    retry_packet["constraints"]["promotion_readiness_retry"] = True
+
+    blockers = getattr(promotion_readiness, "blockers", []) or []
+    feedback_parts = []
+    for blocker in blockers:
+        remediation = getattr(blocker, "remediation", None)
+        message = getattr(blocker, "message", None)
+        if remediation:
+            feedback_parts.append(remediation)
+        elif message:
+            feedback_parts.append(message)
+    if not feedback_parts:
+        feedback_parts.append("Investigate runtime validation failures before promotion.")
+
+    retry_packet["promotion_readiness_feedback"] = "\n".join(feedback_parts)
+    return retry_packet
+
 
 def build_delivery_retry_packet(
     *,
@@ -1156,6 +1301,21 @@ def run_devworker_with_evidence(
 
     return agent_result
 
+def build_assertion_diagnostics(content: str) -> dict[str, int]:
+    import re
+
+    return {
+        "pytest_assert_count": len(re.findall(r"(^|\n)\s*assert\s+", content)),
+        "unittest_assert_count": len(re.findall(r"self\.assert[A-Za-z_]+\s*\(", content)),
+        "pytest_raises_count": len(re.findall(r"pytest\.raises\s*\(", content)),
+    }
+
+
+def has_test_assertion(content: str) -> bool:
+    diagnostics = build_assertion_diagnostics(content)
+    return any(count > 0 for count in diagnostics.values())
+
+
 def validate_no_placeholder_patch_content(path: str, content: str) -> None:
     lowered = content.lower()
 
@@ -1172,8 +1332,11 @@ def validate_no_placeholder_patch_content(path: str, content: str) -> None:
         if marker in lowered:
             raise ValueError(f"{path} contains placeholder/stub content.")
 
-    if path.startswith("tests/") and "assert " not in content:
-        raise ValueError(f"{path} test file contains no assertions.")
+    if path.startswith("tests/") and not has_test_assertion(content):
+        raise ValueError(
+            f"{path} test file contains no assertions. "
+            f"diagnostics={build_assertion_diagnostics(content)}"
+        )
 
 
 def parse_chair_args() -> argparse.Namespace:
@@ -1181,6 +1344,10 @@ def parse_chair_args() -> argparse.Namespace:
     parser.add_argument("--objective", help="Objective text to execute.")
     parser.add_argument("--objective-file", help="Path to a file containing the objective.")
     parser.add_argument("--project-id", default="ageix", help="Project identifier.")
+    parser.add_argument("--mode", choices=["orchestrate", "proposal"], default="orchestrate", help="Chair execution mode.")
+    parser.add_argument("--proposal-type", default="investigation", help="Proposal type for proposal mode.")
+    parser.add_argument("--session-id", default="chair-cli", help="External session ID for proposal mode.")
+    parser.add_argument("--agent-id", default="chair", help="Agent ID for proposal mode.")
     return parser.parse_args()
 
 #-----------------------------------------------------------------------#
@@ -1197,6 +1364,32 @@ if __name__ == "__main__":
     )
 
     sprint_prompt = objective_envelope["description"]
+
+    if args.mode == "proposal":
+        root = Path(".")
+        try:
+            ProjectProfileService(root).get_project(args.project_id)
+        except Exception:
+            ProjectProfileService(root).register_project(args.project_id, args.project_id, "python", root)
+        AgentSessionService(root).create_session(args.session_id, args.agent_id, project_id=args.project_id)
+        response = CapabilityExecutionService(root).execute(CapabilityRequest(
+            capability_id="proposal.submit",
+            session_id=args.session_id,
+            agent_id=args.agent_id,
+            arguments={
+                "project_id": args.project_id,
+                "session_id": args.session_id,
+                "agent_id": args.agent_id,
+                "objective": sprint_prompt,
+                "proposal_type": args.proposal_type,
+            },
+        ))
+        print(json.dumps({
+            "mode": "proposal",
+            "chair_action": "proposal_submitted",
+            "capability_response": response.model_dump(),
+        }, indent=2))
+        raise SystemExit(0)
 
     task = {
         "title": "Ageix Sprint 10.0",

@@ -1,0 +1,34 @@
+[
+  {
+    "artifact_id": "ART-0B60547CEBEB",
+    "byte_count": 22292,
+    "content_sha256": "78229b1ad9763f5f6464b3f91f6c8eff206d6c1266b5b6ea0ff70761470e7d1d",
+    "created_at": "2026-06-24T23:34:54.767290+00:00",
+    "created_by": "patch.create",
+    "file_count_estimate": 1,
+    "line_count": 560,
+    "metadata": {
+      "created_by": "lex",
+      "note": "Generated through MCP. Local git apply --check is required because patch.validate does not exist until this patch is applied.",
+      "sprint": "19.6"
+    },
+    "metadata_path": ".ageix/patches/PATCH-76CD2473B27D/metadata.json",
+    "patch_id": "PATCH-76CD2473B27D",
+    "patch_name": "ageix_sprint_19_6_patch_validation_worker.patch",
+    "patch_path": ".ageix/patches/PATCH-76CD2473B27D/patch.diff",
+    "project_id": "Ageix_Test",
+    "status": "stored",
+    "summary": "Sprint 19.6 PatchValidationWorker implementation scaffold: registry, worker, smoke script, and tests for stored patch validation via git apply --check.",
+    "validation_status": "not_validated",
+    "worker_context": {
+      "agent_id": "lex",
+      "client_id": "chatGPT",
+      "project_id": "Ageix_Test",
+      "request_id": "REQ-5B539D0C1012",
+      "session_id": "sprint-19-6-patch-validation-worker",
+      "started_at": "2026-06-24T23:34:54.767189+00:00",
+      "worker": "PatchWriterWorker",
+      "workflow_id": "WORK-3A41C2B3EDD9"
+    }
+  }
+]

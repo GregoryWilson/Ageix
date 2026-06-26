@@ -1,0 +1,16 @@
+{
+  "affected_architecture_ids": [
+    "ARCH-AGEIX-ARCHITECTURE-REVIEWCOLLABORATION"
+  ],
+  "category": "requires_additional_discovery",
+  "created_at": "2026-06-23T22:42:14.475879+00:00",
+  "created_by": "lex",
+  "finding_id": "ARCHFIND-DB17A31D6D3D",
+  "metadata": {},
+  "other_explanation": "",
+  "project_id": "Ageix",
+  "rationale": "",
+  "review_id": "ARCHREV-2B3747C802D5",
+  "severity": "informational",
+  "summary": "Future discovery should enrich review coverage."
+}

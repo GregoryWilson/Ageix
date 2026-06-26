@@ -1,0 +1,32 @@
+{
+  "allowed_scope": [
+    "description",
+    "metadata",
+    "relationships",
+    "hierarchy_placement",
+    "evidence_links",
+    "decision_links",
+    "review_metadata"
+  ],
+  "architecture_id": "ARCH-AGEIX-ARCHITECTURE",
+  "challenge_id": "ARCHCHAL-E4D13F46BF42",
+  "created_at": "2026-06-24T02:54:04.289708+00:00",
+  "linked_proposal_id": "PROP-A8F75423434D",
+  "metadata": {
+    "direct_registry_mutation": false,
+    "proposal_system_reused": true,
+    "session_id": "smoke-18-4-session",
+    "smoke_test": true,
+    "sprint": "18.4"
+  },
+  "objective": "Record Sprint 18.4 architecture platform hardening validation in architecture metadata.",
+  "project_id": "Ageix",
+  "proposed_changes": {
+    "metadata": {
+      "live_mcp_review_validated": true,
+      "sprint_18_4_hardened": true
+    }
+  },
+  "revision_id": "ARCHREVPROP-8A4F9FDB212D",
+  "submitted_by": "lex"
+}

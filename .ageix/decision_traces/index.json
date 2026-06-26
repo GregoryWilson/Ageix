@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "traces": [
+    {
+      "consultation_ids": [],
+      "created_at": "2026-06-24T14:36:27.945863+00:00",
+      "decision_id": "DEC-3B1A26DB5D0D",
+      "decision_summary": "Smoke approved ADR.",
+      "decision_type": "governance",
+      "evidence_package_ids": [],
+      "outcome": "approved",
+      "outcome_metadata": {},
+      "project_id": "Ageix_Test",
+      "proposal_id": "PROP-AEFD444303ED",
+      "reason": "Smoke evidence sufficient.",
+      "related_entities": {},
+      "repository_snapshot": {},
+      "trace_id": "TRACE-8F166562FBC9",
+      "validation_ids": []
+    }
+  ]
+}

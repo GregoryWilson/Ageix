@@ -1,0 +1,36 @@
+{
+  "adr_id": "ADR-AGEIX-CONSULTATION",
+  "adr_number": "ADR-0002",
+  "alternatives_considered": [],
+  "approved_at": "2026-06-24T19:26:40.639184+00:00",
+  "approved_by": "chair",
+  "architecture_ids": [
+    "ARCH-AGEIX-GOVERNANCEPLATFORM-CONSULTATIONFRAMEWORK",
+    "ARCH-AGEIX-GOVERNANCEPLATFORM"
+  ],
+  "consequences": [
+    "Provides historical rationale for architecture retrieval and future work context."
+  ],
+  "context": "Ageix introduced structured advisory consultations for proposals.",
+  "created_at": "2026-06-24T19:26:40.639193+00:00",
+  "created_by": "architecture_baseline_service",
+  "decision": "Advisors may inform decisions but cannot directly mutate governed state.",
+  "decision_trace_id": "TRACE-BASELINE-ADR-0002",
+  "evidence_package_ids": [],
+  "future_considerations": [
+    "Expand with additional ADRs as full repository documentation matures."
+  ],
+  "metadata": {
+    "canonical_ageix_baseline": true,
+    "seeded_by": "sprint_18_10"
+  },
+  "project_id": "Ageix",
+  "proposal_id": "PROP-BASELINE-ADR-0002",
+  "rationale": "Seeded from known Ageix sprint history to establish the canonical project architecture baseline.",
+  "related_adr_ids": [],
+  "revision_ids": [],
+  "status": "accepted",
+  "supersedes_adr_id": null,
+  "title": "Consultation framework",
+  "tradeoffs": []
+}
