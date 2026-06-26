@@ -59,6 +59,7 @@ cache/
 
 .ageix/instance/
 .ageix/runs/
+.agiex/config/auth.json
 
 # Runtime generated files
 *.pid
