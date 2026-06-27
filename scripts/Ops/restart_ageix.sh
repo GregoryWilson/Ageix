@@ -20,6 +20,11 @@
 #                   (default: /tmp/ageix_uvicorn.pid)
 #   HEALTH_TIMEOUT  seconds to wait for /health to respond after start
 #                   (default: 30)
+#   STOP_DELAY      seconds to sleep before sending the stop signal
+#                   (default: 0). Set this when triggering a restart from
+#                   inside the very server process being restarted (e.g. an
+#                   MCP capability handler), so the HTTP response has time to
+#                   flush back to the caller before the process is killed.
 set -euo pipefail
 
 ACTION="${1:-restart}"
@@ -38,6 +43,7 @@ VENV_PATH="${VENV_PATH:-${REPO_ROOT}/venv/bin/uvicorn}"
 LOG_FILE="${LOG_FILE:-/tmp/ageix_uvicorn.log}"
 PID_FILE="${PID_FILE:-/tmp/ageix_uvicorn.pid}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-30}"
+STOP_DELAY="${STOP_DELAY:-0}"
 PROCESS_PATTERN="web.app:create_app"
 
 find_pids() {
@@ -52,6 +58,8 @@ stop_daemon() {
     rm -f "$PID_FILE"
     return 0
   fi
+
+  sleep "$STOP_DELAY"
 
   echo "Stopping Ageix daemon (pid(s): ${pids})..."
   # shellcheck disable=SC2086
