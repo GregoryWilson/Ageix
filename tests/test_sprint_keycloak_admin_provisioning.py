@@ -29,6 +29,8 @@ class FakeKeycloak:
         self.clients: dict[str, dict[str, Any]] = {}
         self.default_scopes: dict[str, set[str]] = {}
         self.protocol_mappers: dict[str, dict[str, dict[str, Any]]] = {}
+        self.components: dict[str, dict[str, dict[str, Any]]] = {}
+        self.realm_optional_scopes: dict[str, set[str]] = {}
         self._next_id = 1
 
     def _new_id(self, prefix: str) -> str:
@@ -44,7 +46,7 @@ class FakeKeycloak:
             return FakeResponse(404)
         if method == "POST" and path == "":
             realm = kwargs["json"]["realm"]
-            self.realms[realm] = kwargs["json"]
+            self.realms[realm] = {**kwargs["json"], "id": self._new_id("realm")}
             return FakeResponse(201)
         if method == "GET" and path.count("/") == 1:
             realm = path.split("/")[1]
@@ -91,6 +93,34 @@ class FakeKeycloak:
             uuid = path.split("/clients/")[1].split("/default-client-scopes/")[0]
             scope_id = path.rsplit("/", 1)[1]
             self.default_scopes.setdefault(uuid, set()).add(scope_id)
+            return FakeResponse(204)
+
+        if "/default-optional-client-scopes/" in path and method == "PUT":
+            realm = path.split("/")[1]
+            scope_id = path.rsplit("/", 1)[1]
+            self.realm_optional_scopes.setdefault(realm, set()).add(scope_id)
+            return FakeResponse(204)
+
+        if path.endswith("/components") and method == "GET":
+            realm = path.split("/")[1]
+            params = kwargs.get("params", {})
+            items = list(self.components.get(realm, {}).values())
+            if "parent" in params:
+                items = [c for c in items if c.get("parentId") == params["parent"]]
+            if "type" in params:
+                items = [c for c in items if c.get("providerType") == params["type"]]
+            return FakeResponse(200, items)
+        if path.endswith("/components") and method == "POST":
+            realm = path.split("/")[1]
+            component_id = self._new_id("component")
+            self.components.setdefault(realm, {})[component_id] = {**kwargs["json"], "id": component_id}
+            return FakeResponse(201)
+        if "/components/" in path and method == "PUT":
+            realm = path.split("/")[1]
+            component_id = path.rsplit("/", 1)[1]
+            if component_id not in self.components.get(realm, {}):
+                return FakeResponse(404)
+            self.components[realm][component_id].update(kwargs["json"])
             return FakeResponse(204)
 
         if path.endswith("/protocol-mappers/models") and method == "GET":
@@ -246,6 +276,80 @@ def test_keycloak_capabilities_are_discovered_but_not_externally_exposed(tmp_pat
     assert "identity.keycloak.reconcile" in capability_ids
     assert "identity.keycloak.client.provision" in capability_ids
     assert "identity.keycloak.connector.provision" in capability_ids
+    assert "identity.keycloak.connector.enable_self_registration" in capability_ids
+
+
+def test_ensure_trusted_hosts_policy_creates_and_is_idempotent(monkeypatch):
+    fake = FakeKeycloak()
+    admin = _admin(monkeypatch, fake)
+    admin.ensure_realm()
+
+    first = admin.ensure_trusted_hosts_policy(["claude.ai"])
+    second = admin.ensure_trusted_hosts_policy(["claude.ai"])
+
+    assert first["id"] == second["id"]
+    stored = fake.components["ageix"][first["id"]]
+    assert stored["providerId"] == "trusted-hosts"
+    assert stored["config"]["trusted-hosts"] == ["claude.ai"]
+    assert stored["config"]["client-uris-must-match"] == ["true"]
+    assert stored["config"]["host-sending-registration-request-must-match"] == ["false"]
+
+
+def test_ensure_trusted_hosts_policy_updates_existing(monkeypatch):
+    fake = FakeKeycloak()
+    admin = _admin(monkeypatch, fake)
+    admin.ensure_realm()
+
+    admin.ensure_trusted_hosts_policy(["claude.ai"])
+    updated = admin.ensure_trusted_hosts_policy(["claude.ai", "other.example.com"])
+
+    assert updated["config"]["trusted-hosts"] == ["claude.ai", "other.example.com"]
+    assert len(fake.components["ageix"]) == 1
+
+
+def test_ensure_consent_required_and_max_clients_policies_are_idempotent(monkeypatch):
+    fake = FakeKeycloak()
+    admin = _admin(monkeypatch, fake)
+    admin.ensure_realm()
+
+    admin.ensure_consent_required_policy()
+    admin.ensure_consent_required_policy()
+    admin.ensure_max_clients_policy(1)
+    admin.ensure_max_clients_policy(1)
+
+    components = fake.components["ageix"]
+    assert sum(1 for c in components.values() if c["providerId"] == "consent-required") == 1
+    assert sum(1 for c in components.values() if c["providerId"] == "max-clients") == 1
+    assert next(c for c in components.values() if c["providerId"] == "max-clients")["config"]["max-clients"] == ["1"]
+
+
+def test_enable_connector_self_registration_configures_policies_and_optional_scopes(tmp_path: Path, monkeypatch):
+    fake = FakeKeycloak()
+    admin = _admin(monkeypatch, fake)
+
+    auth_config_path = tmp_path / ".ageix" / "config" / "auth.json"
+    auth_config_path.parent.mkdir(parents=True)
+    auth_config_path.write_text(json.dumps({
+        "jwt": {
+            "default_allowed_capabilities": ["*"],
+            "default_allowed_projects": ["Ageix_Test"],
+        },
+    }), encoding="utf-8")
+
+    service = KeycloakProvisioningService(tmp_path, admin=admin)
+    result = service.enable_connector_self_registration(["claude.ai"], max_clients=1)
+
+    assert result["policies"]["trusted_hosts_policy"]["config"]["trusted-hosts"] == ["claude.ai"]
+    assert result["policies"]["consent_required_policy"]["providerId"] == "consent-required"
+    assert result["policies"]["max_clients_policy"]["config"]["max-clients"] == ["1"]
+    assert any(name.startswith("ageix.capability:") for name in result["optional_scope_names"])
+    assert any(name.startswith("ageix.project:Ageix_Test") for name in result["optional_scope_names"])
+
+    realm_id = fake.realms["ageix"]["id"]
+    granted_scope_ids = fake.realm_optional_scopes["ageix"]
+    expected_scope_ids = {fake.scopes["ageix"][name]["id"] for name in result["optional_scope_names"]}
+    assert granted_scope_ids == expected_scope_ids
+    assert all(c["parentId"] == realm_id for c in fake.components["ageix"].values())
 
 
 def test_ensure_public_pkce_client_creates_and_is_idempotent(monkeypatch):

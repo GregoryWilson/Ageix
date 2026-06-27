@@ -11,6 +11,9 @@ class KeycloakAdminError(RuntimeError):
     """Raised when a Keycloak Admin REST API call fails."""
 
 
+_CLIENT_REGISTRATION_POLICY_TYPE = "org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy"
+
+
 class KeycloakAdminService:
     """Idempotent wrapper around the Keycloak Admin REST API.
 
@@ -202,6 +205,101 @@ class KeycloakAdminService:
             )
             if response.status_code not in (204, 409):
                 raise KeycloakAdminError(f"keycloak_default_scope_assign_failed:{name}:{response.status_code}")
+
+    def set_realm_optional_client_scopes(self, scope_names: list[str]) -> None:
+        """Attach scopes as realm-wide *optional* client scopes -- unlike
+        set_default_client_scopes (per-client), this makes the scope available
+        to any client (including one self-registered via Dynamic Client
+        Registration, which has no admin-known client_uuid to target ahead of
+        time) provided the client explicitly requests it via ?scope=..."""
+        for name in scope_names:
+            scope = self.ensure_client_scope(name)
+            response = self._request(
+                "PUT",
+                f"/{self.realm}/default-optional-client-scopes/{scope['id']}",
+            )
+            if response.status_code not in (204, 409):
+                raise KeycloakAdminError(f"keycloak_realm_optional_scope_assign_failed:{name}:{response.status_code}")
+
+    def find_client_registration_policy(self, provider_id: str, *, sub_type: str = "anonymous") -> dict[str, Any] | None:
+        realm = self.ensure_realm()
+        response = self._request(
+            "GET",
+            f"/{self.realm}/components",
+            params={"parent": realm["id"], "type": _CLIENT_REGISTRATION_POLICY_TYPE},
+        )
+        if response.status_code != 200:
+            raise KeycloakAdminError(f"keycloak_client_registration_policy_list_failed:{response.status_code}")
+        for component in response.json():
+            if component.get("providerId") == provider_id and component.get("subType") == sub_type:
+                return component
+        return None
+
+    def _ensure_client_registration_policy(self, provider_id: str, *, name: str, config: dict[str, list[str]]) -> dict[str, Any]:
+        realm = self.ensure_realm()
+        existing = self.find_client_registration_policy(provider_id)
+        if existing is not None:
+            if existing.get("config") == config:
+                return existing
+            response = self._request(
+                "PUT",
+                f"/{self.realm}/components/{existing['id']}",
+                json={**existing, "config": config},
+            )
+            if response.status_code not in (204, 409):
+                raise KeycloakAdminError(f"keycloak_client_registration_policy_update_failed:{provider_id}:{response.status_code}")
+        else:
+            created = self._request(
+                "POST",
+                f"/{self.realm}/components",
+                json={
+                    "name": name,
+                    "providerId": provider_id,
+                    "providerType": _CLIENT_REGISTRATION_POLICY_TYPE,
+                    "parentId": realm["id"],
+                    "subType": "anonymous",
+                    "config": config,
+                },
+            )
+            if created.status_code not in (201, 409):
+                raise KeycloakAdminError(f"keycloak_client_registration_policy_create_failed:{provider_id}:{created.status_code}")
+        refreshed = self.find_client_registration_policy(provider_id)
+        if refreshed is None:
+            raise KeycloakAdminError(f"keycloak_client_registration_policy_fetch_failed:{provider_id}")
+        return refreshed
+
+    def ensure_trusted_hosts_policy(self, trusted_hosts: list[str]) -> dict[str, Any]:
+        """Restrict anonymous Dynamic Client Registration so a self-registered
+        client's URIs (redirect_uris etc.) must resolve to one of trusted_hosts
+        -- the registering caller's own network origin is deliberately NOT
+        checked, since that's unpredictable for a SaaS connector backend."""
+        config = {
+            "trusted-hosts": list(trusted_hosts),
+            "client-uris-must-match": ["true"],
+            "host-sending-registration-request-must-match": ["false"],
+        }
+        return self._ensure_client_registration_policy("trusted-hosts", name="Trusted Hosts", config=config)
+
+    def ensure_consent_required_policy(self) -> dict[str, Any]:
+        """Force every anonymously self-registered client to require consent,
+        so a human always sees and approves the exact scopes being granted."""
+        return self._ensure_client_registration_policy("consent-required", name="Consent Required", config={})
+
+    def ensure_max_clients_policy(self, max_clients: int) -> dict[str, Any]:
+        """Cap how many clients can be created via anonymous self-registration."""
+        config = {"max-clients": [str(max_clients)]}
+        return self._ensure_client_registration_policy("max-clients", name="Max Clients Limit", config=config)
+
+    def ensure_anonymous_dcr_policies(self, *, trusted_hosts: list[str], max_clients: int = 1) -> dict[str, Any]:
+        """Idempotently configure realm-level guardrails for RFC 7591 anonymous
+        Dynamic Client Registration: only self-registered clients whose URIs
+        match trusted_hosts are accepted, at most max_clients may be created
+        this way, and consent is always required."""
+        return {
+            "trusted_hosts_policy": self.ensure_trusted_hosts_policy(trusted_hosts),
+            "consent_required_policy": self.ensure_consent_required_policy(),
+            "max_clients_policy": self.ensure_max_clients_policy(max_clients),
+        }
 
     def find_protocol_mapper(self, client_uuid: str, name: str) -> dict[str, Any] | None:
         response = self._request("GET", f"/{self.realm}/clients/{client_uuid}/protocol-mappers/models")

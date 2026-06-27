@@ -41,6 +41,18 @@ def register_capabilities(repo_root: Path):
             "metadata": {"source": "keycloak_provisioning"},
         }
 
+    def keycloak_enable_connector_self_registration(arguments: dict[str, Any]) -> dict[str, Any]:
+        trusted_hosts = [str(host) for host in (arguments.get("trusted_hosts") or [])]
+        max_clients = int(arguments.get("max_clients") or 1)
+        if not trusted_hosts:
+            return {"success": False, "result": {}, "error": "trusted_hosts_required"}
+        result = KeycloakProvisioningService(repo_root).enable_connector_self_registration(trusted_hosts, max_clients=max_clients)
+        return {
+            "success": True,
+            "result": result,
+            "metadata": {"source": "keycloak_provisioning"},
+        }
+
     return [
         (
             CapabilityDefinition(
@@ -74,5 +86,16 @@ def register_capabilities(repo_root: Path):
                 exposed_to_external_agents=False,
             ),
             keycloak_provision_connector,
+        ),
+        (
+            CapabilityDefinition(
+                capability_id="identity.keycloak.connector.enable_self_registration",
+                category="identity",
+                access_level="governed_write",
+                handler="identity.keycloak.connector.enable_self_registration",
+                description="Enable RFC 7591 anonymous Dynamic Client Registration for this realm, gated to a set of trusted redirect-URI hosts, so a human-delegated connector (e.g. Claude.ai) can self-register a public PKCE client.",
+                exposed_to_external_agents=False,
+            ),
+            keycloak_enable_connector_self_registration,
         ),
     ]

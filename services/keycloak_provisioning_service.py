@@ -117,6 +117,23 @@ class KeycloakProvisioningService:
             agent_id=None,
         )
 
+    def enable_connector_self_registration(self, trusted_hosts: list[str], *, max_clients: int = 1) -> dict[str, Any]:
+        """Idempotently enable RFC 7591 anonymous Dynamic Client Registration for
+        this realm, gated to redirect URIs on trusted_hosts and capped at
+        max_clients self-registered clients, with consent always required --
+        lets a human-delegated connector (e.g. Claude.ai) bootstrap its own
+        public PKCE client without an admin pre-provisioning step per connector."""
+        capability_scopes, project_scopes = self._scopes_for("connector-self-registration")
+        scope_names = [f"{CAPABILITY_SCOPE_PREFIX}{cap}" for cap in capability_scopes] + [
+            f"{PROJECT_SCOPE_PREFIX}{proj}" for proj in project_scopes
+        ]
+
+        self.admin.ensure_realm()
+        policies = self.admin.ensure_anonymous_dcr_policies(trusted_hosts=trusted_hosts, max_clients=max_clients)
+        self.admin.set_realm_optional_client_scopes(scope_names)
+
+        return {"policies": policies, "optional_scope_names": scope_names}
+
     def reconcile_all(self) -> list[ProvisioningResult]:
         clients = self.client_registry.list_clients(include_placeholders=False, include_disabled=False)
         return [self.provision_client(str(client["client_id"])) for client in clients]

@@ -89,6 +89,7 @@ def test_oauth_discovery_endpoints_for_chatgpt_paths(tmp_path: Path):
         assert body["authorization_endpoint"] == f"{ISSUER}/protocol/openid-connect/auth"
         assert body["token_endpoint"] == f"{ISSUER}/protocol/openid-connect/token"
         assert body["jwks_uri"] == f"{ISSUER}/protocol/openid-connect/certs"
+        assert body["registration_endpoint"] == f"{ISSUER}/clients-registrations/openid-connect"
         assert "S256" in body["code_challenge_methods_supported"]
 
 
