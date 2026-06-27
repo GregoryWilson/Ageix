@@ -42,7 +42,7 @@ def smoke_1_client_registry() -> None:
     _assert(clients["chatgpt"]["display_name"] == "Lex", "ChatGPT client should be named Lex")
     _assert(clients["chatgpt"]["enabled"] is True, "Lex client should be enabled")
     _assert(clients["chatgpt"]["primary"] is True, "Lex should be primary")
-    _assert(clients["claude"]["placeholder"] is True and clients["claude"]["enabled"] is False, "Claude should be a disabled placeholder")
+    _assert(clients["claude"]["placeholder"] is False and clients["claude"]["enabled"] is True, "Claude should be an enabled, non-placeholder client")
     pprint(clients)
     print("Smoke 15.4.1 PASS")
 

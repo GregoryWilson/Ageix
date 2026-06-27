@@ -86,7 +86,7 @@ def test_disabled_placeholder_clients_denied(tmp_path: Path):
     _seed_project(tmp_path)
     response = MCPFacadeService(tmp_path).execute_tool(
         "ageix.workflow.current",
-        _ctx("claude-placeholder", client_id="claude", provider="anthropic", agent_id="claude", display_name="Claude"),
+        _ctx("gemini-placeholder", client_id="gemini", provider="google", agent_id="gemini", display_name="Gemini"),
         {},
     )
 

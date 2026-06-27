@@ -47,7 +47,7 @@ def main() -> None:
         ),
         "placeholder_client_deny": facade.execute_tool(
             "ageix.workflow.current",
-            ctx(f"{SESSION_PREFIX}-placeholder", client_id="claude", provider="anthropic", agent_id="claude", display_name="Claude"),
+            ctx(f"{SESSION_PREFIX}-placeholder", client_id="gemini", provider="google", agent_id="gemini", display_name="Gemini"),
             {},
         ),
         "provider_mismatch_deny": facade.execute_tool(

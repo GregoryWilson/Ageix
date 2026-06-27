@@ -15,6 +15,7 @@ class MCPClientDefinition:
     primary: bool = False
     placeholder: bool = False
     outbound_network: OutboundNetworkPolicy = field(default_factory=OutboundNetworkPolicy)
+    agent_id: str | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -25,6 +26,7 @@ class MCPClientDefinition:
             "primary": self.primary,
             "placeholder": self.placeholder,
             "outbound_network": self.outbound_network.model_dump(),
+            "agent_id": self.agent_id,
         }
 
 
@@ -36,10 +38,11 @@ DEFAULT_CLIENTS: tuple[MCPClientDefinition, ...] = (
         enabled=True,
         primary=True,
         placeholder=False,
+        agent_id="lex",
     ),
     # Backward-compatible local/test profile retained for pre-OAuth Ageix contexts.
-    MCPClientDefinition("chatgpt", "Lex", "openai", enabled=True, placeholder=False),
-    MCPClientDefinition("claude", "Claude", "anthropic", enabled=False, placeholder=True),
+    MCPClientDefinition("chatgpt", "Lex", "openai", enabled=True, placeholder=False, agent_id="lex"),
+    MCPClientDefinition("claude", "Claude", "anthropic", enabled=True, placeholder=False, agent_id="claude"),
     MCPClientDefinition("gemini", "Gemini", "google", enabled=False, placeholder=True),
     MCPClientDefinition("openwebui", "OpenWebUI", "openwebui", enabled=False, placeholder=True),
     MCPClientDefinition("custom", "Custom MCP Client", "custom", enabled=False, placeholder=True),

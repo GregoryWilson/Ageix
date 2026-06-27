@@ -33,12 +33,14 @@ class OAuthDiscoveryService:
         token_endpoint = self.jwt_config.get("token_endpoint") or self._kc("/protocol/openid-connect/token")
         jwks_uri = self.jwt_config.get("jwks_uri") or self._kc("/protocol/openid-connect/certs")
         userinfo_endpoint = self.jwt_config.get("userinfo_endpoint") or self._kc("/protocol/openid-connect/userinfo")
+        registration_endpoint = self.jwt_config.get("registration_endpoint") or self._kc("/clients-registrations/openid-connect")
         return {
             "issuer": issuer,
             "authorization_endpoint": auth_endpoint,
             "token_endpoint": token_endpoint,
             "jwks_uri": jwks_uri,
             "userinfo_endpoint": userinfo_endpoint,
+            "registration_endpoint": registration_endpoint,
             "response_types_supported": ["code"],
             "grant_types_supported": ["authorization_code", "refresh_token"],
             "token_endpoint_auth_methods_supported": ["client_secret_basic", "client_secret_post", "none"],
