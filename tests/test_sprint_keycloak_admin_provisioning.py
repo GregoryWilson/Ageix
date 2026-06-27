@@ -69,9 +69,19 @@ class FakeKeycloak:
             realm = path.split("/")[1]
             client_id = kwargs["json"]["clientId"]
             uuid = self._new_id("client")
-            self.clients.setdefault(realm, {})[client_id] = {"id": uuid, "clientId": client_id}
+            self.clients.setdefault(realm, {})[client_id] = {**kwargs["json"], "id": uuid}
             self.default_scopes[uuid] = set()
             return FakeResponse(201)
+
+        if "/clients/" in path and "/" not in path.split("/clients/")[1] and method == "PUT":
+            realm = path.split("/")[1]
+            uuid = path.split("/clients/")[1]
+            payload = kwargs["json"]
+            for client_id, client in self.clients.get(realm, {}).items():
+                if client["id"] == uuid:
+                    client.update(payload)
+                    return FakeResponse(204)
+            return FakeResponse(404)
 
         if "/client-secret" in path and method == "GET":
             uuid = path.split("/clients/")[1].split("/client-secret")[0]
@@ -235,3 +245,60 @@ def test_keycloak_capabilities_are_discovered_but_not_externally_exposed(tmp_pat
     capability_ids = {cap.capability_id for cap in CapabilityRegistryService(tmp_path).list_capabilities()}
     assert "identity.keycloak.reconcile" in capability_ids
     assert "identity.keycloak.client.provision" in capability_ids
+    assert "identity.keycloak.connector.provision" in capability_ids
+
+
+def test_ensure_public_pkce_client_creates_and_is_idempotent(monkeypatch):
+    fake = FakeKeycloak()
+    admin = _admin(monkeypatch, fake)
+    admin.ensure_realm()
+
+    first = admin.ensure_public_pkce_client("ageix-connector-claude-ai", redirect_uris=["https://claude.ai/callback"])
+    second = admin.ensure_public_pkce_client("ageix-connector-claude-ai", redirect_uris=["https://claude.ai/callback"])
+
+    assert first["id"] == second["id"]
+    stored = fake.clients["ageix"]["ageix-connector-claude-ai"]
+    assert stored["publicClient"] is True
+    assert stored["serviceAccountsEnabled"] is False
+    assert stored["standardFlowEnabled"] is True
+    assert stored["redirectUris"] == ["https://claude.ai/callback"]
+    assert stored["attributes"]["pkce.code.challenge.method"] == "S256"
+
+
+def test_ensure_public_pkce_client_updates_redirect_uris(monkeypatch):
+    fake = FakeKeycloak()
+    admin = _admin(monkeypatch, fake)
+    admin.ensure_realm()
+
+    admin.ensure_public_pkce_client("ageix-connector-claude-ai", redirect_uris=["https://claude.ai/callback-old"])
+    updated = admin.ensure_public_pkce_client("ageix-connector-claude-ai", redirect_uris=["https://claude.ai/callback-new"])
+
+    assert updated["redirectUris"] == ["https://claude.ai/callback-new"]
+    assert fake.clients["ageix"]["ageix-connector-claude-ai"]["redirectUris"] == ["https://claude.ai/callback-new"]
+
+
+def test_provision_connector_client_has_no_secret_and_correct_scopes(tmp_path: Path, monkeypatch):
+    fake = FakeKeycloak()
+    admin = _admin(monkeypatch, fake)
+
+    auth_config_path = tmp_path / ".ageix" / "config" / "auth.json"
+    auth_config_path.parent.mkdir(parents=True)
+    auth_config_path.write_text(json.dumps({
+        "jwt": {
+            "default_allowed_capabilities": ["*"],
+            "default_allowed_projects": ["Ageix_Test"],
+        },
+    }), encoding="utf-8")
+
+    service = KeycloakProvisioningService(tmp_path, admin=admin)
+    result = service.provision_connector_client("claude-ai", ["https://claude.ai/callback"])
+
+    assert result.skipped is False
+    assert result.secret_path is None
+    assert result.keycloak_client_id == "ageix-connector-claude-ai"
+    assert any(name.startswith("ageix.capability:") for name in result.scope_names)
+    assert any(name.startswith("ageix.project:Ageix_Test") for name in result.scope_names)
+
+    client_uuid = fake.clients["ageix"]["ageix-connector-claude-ai"]["id"]
+    assert fake.clients["ageix"]["ageix-connector-claude-ai"]["publicClient"] is True
+    assert len(fake.default_scopes[client_uuid]) == len(result.scope_names)

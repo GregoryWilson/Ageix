@@ -27,6 +27,20 @@ def register_capabilities(repo_root: Path):
             "metadata": {"source": "keycloak_provisioning"},
         }
 
+    def keycloak_provision_connector(arguments: dict[str, Any]) -> dict[str, Any]:
+        connector_id = str(arguments.get("connector_id") or "")
+        redirect_uris = [str(uri) for uri in (arguments.get("redirect_uris") or [])]
+        if not connector_id:
+            return {"success": False, "result": {}, "error": "connector_id_required"}
+        if not redirect_uris:
+            return {"success": False, "result": {}, "error": "redirect_uris_required"}
+        result = KeycloakProvisioningService(repo_root).provision_connector_client(connector_id, redirect_uris)
+        return {
+            "success": not result.skipped,
+            "result": result.to_dict(),
+            "metadata": {"source": "keycloak_provisioning"},
+        }
+
     return [
         (
             CapabilityDefinition(
@@ -49,5 +63,16 @@ def register_capabilities(repo_root: Path):
                 exposed_to_external_agents=False,
             ),
             keycloak_provision_client,
+        ),
+        (
+            CapabilityDefinition(
+                capability_id="identity.keycloak.connector.provision",
+                category="identity",
+                access_level="governed_write",
+                handler="identity.keycloak.connector.provision",
+                description="Provision (or re-provision) a public, PKCE-required Keycloak client for a human-delegated OAuth connector (e.g. Claude.ai).",
+                exposed_to_external_agents=False,
+            ),
+            keycloak_provision_connector,
         ),
     ]

@@ -92,6 +92,31 @@ class KeycloakProvisioningService:
             agent_id=definition.agent_id,
         )
 
+    def provision_connector_client(self, connector_id: str, redirect_uris: list[str]) -> ProvisioningResult:
+        """Provision a public, PKCE-required Keycloak client for a human-delegated
+        authorization_code connector (e.g. Claude.ai's "Add custom connector"),
+        distinct from the confidential service-account clients used by AI agents."""
+        capability_scopes, project_scopes = self._scopes_for(connector_id)
+        keycloak_client_id = f"ageix-connector-{connector_id.lower()}"
+
+        self.admin.ensure_realm()
+        client = self.admin.ensure_public_pkce_client(keycloak_client_id, redirect_uris=redirect_uris)
+        scope_names = [f"{CAPABILITY_SCOPE_PREFIX}{cap}" for cap in capability_scopes] + [
+            f"{PROJECT_SCOPE_PREFIX}{proj}" for proj in project_scopes
+        ]
+        self.admin.set_default_client_scopes(client["id"], scope_names)
+
+        return ProvisioningResult(
+            client_id=connector_id,
+            skipped=False,
+            reason="provisioned",
+            keycloak_client_id=keycloak_client_id,
+            keycloak_client_uuid=client["id"],
+            scope_names=scope_names,
+            secret_path=None,
+            agent_id=None,
+        )
+
     def reconcile_all(self) -> list[ProvisioningResult]:
         clients = self.client_registry.list_clients(include_placeholders=False, include_disabled=False)
         return [self.provision_client(str(client["client_id"])) for client in clients]

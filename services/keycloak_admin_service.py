@@ -145,6 +145,48 @@ class KeycloakAdminService:
             raise KeycloakAdminError(f"keycloak_client_fetch_failed:{client_id}")
         return refreshed
 
+    def ensure_public_pkce_client(self, client_id: str, *, redirect_uris: list[str]) -> dict[str, Any]:
+        """Idempotently create or update a public, PKCE-required client for a
+        human-delegated authorization_code flow (e.g. a Claude.ai connector) --
+        distinct from the confidential service-account clients AI agents use."""
+        existing = self.find_client(client_id)
+        if existing is not None:
+            if set(existing.get("redirectUris") or []) == set(redirect_uris):
+                return existing
+            response = self._request(
+                "PUT",
+                f"/{self.realm}/clients/{existing['id']}",
+                json={**existing, "redirectUris": redirect_uris},
+            )
+            if response.status_code not in (204, 409):
+                raise KeycloakAdminError(f"keycloak_client_update_failed:{client_id}:{response.status_code}")
+            refreshed = self.find_client(client_id)
+            if refreshed is None:
+                raise KeycloakAdminError(f"keycloak_client_fetch_failed:{client_id}")
+            return refreshed
+
+        created = self._request(
+            "POST",
+            f"/{self.realm}/clients",
+            json={
+                "clientId": client_id,
+                "protocol": "openid-connect",
+                "publicClient": True,
+                "serviceAccountsEnabled": False,
+                "standardFlowEnabled": True,
+                "implicitFlowEnabled": False,
+                "directAccessGrantsEnabled": False,
+                "redirectUris": redirect_uris,
+                "attributes": {"pkce.code.challenge.method": "S256"},
+            },
+        )
+        if created.status_code not in (201, 409):
+            raise KeycloakAdminError(f"keycloak_client_create_failed:{client_id}:{created.status_code}")
+        refreshed = self.find_client(client_id)
+        if refreshed is None:
+            raise KeycloakAdminError(f"keycloak_client_fetch_failed:{client_id}")
+        return refreshed
+
     def get_client_secret(self, client_uuid: str) -> str:
         response = self._request("GET", f"/{self.realm}/clients/{client_uuid}/client-secret")
         if response.status_code != 200:
