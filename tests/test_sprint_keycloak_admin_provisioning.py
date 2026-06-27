@@ -28,6 +28,7 @@ class FakeKeycloak:
         self.scopes: dict[str, dict[str, Any]] = {}
         self.clients: dict[str, dict[str, Any]] = {}
         self.default_scopes: dict[str, set[str]] = {}
+        self.protocol_mappers: dict[str, dict[str, dict[str, Any]]] = {}
         self._next_id = 1
 
     def _new_id(self, prefix: str) -> str:
@@ -82,6 +83,25 @@ class FakeKeycloak:
             self.default_scopes.setdefault(uuid, set()).add(scope_id)
             return FakeResponse(204)
 
+        if path.endswith("/protocol-mappers/models") and method == "GET":
+            uuid = path.split("/clients/")[1].split("/protocol-mappers/models")[0]
+            return FakeResponse(200, list(self.protocol_mappers.get(uuid, {}).values()))
+        if path.endswith("/protocol-mappers/models") and method == "POST":
+            uuid = path.split("/clients/")[1].split("/protocol-mappers/models")[0]
+            name = kwargs["json"]["name"]
+            mapper_id = self._new_id("mapper")
+            self.protocol_mappers.setdefault(uuid, {})[name] = {"id": mapper_id, **kwargs["json"]}
+            return FakeResponse(201)
+        if "/protocol-mappers/models/" in path and method == "PUT":
+            uuid = path.split("/clients/")[1].split("/protocol-mappers/models/")[0]
+            mapper_id = path.rsplit("/", 1)[1]
+            payload = kwargs["json"]
+            for mapper in self.protocol_mappers.get(uuid, {}).values():
+                if mapper["id"] == mapper_id:
+                    mapper.update(payload)
+                    return FakeResponse(204)
+            return FakeResponse(404)
+
         raise AssertionError(f"unhandled fake keycloak call: {method} {path}")
 
 
@@ -134,6 +154,36 @@ def test_provision_client_persists_secret_outside_git_tracked_config(tmp_path: P
     persisted = json.loads(secret_path.read_text(encoding="utf-8"))
     assert persisted["client_secret"].startswith("secret-for-")
     assert result.secret_path == str(secret_path)
+
+
+def test_provision_client_attaches_distinct_agent_id_claim_per_client(tmp_path: Path, monkeypatch):
+    fake = FakeKeycloak()
+    admin = _admin(monkeypatch, fake)
+
+    auth_config_path = tmp_path / ".ageix" / "config" / "auth.json"
+    auth_config_path.parent.mkdir(parents=True)
+    auth_config_path.write_text(json.dumps({
+        "jwt": {
+            "default_allowed_capabilities": ["*"],
+            "default_allowed_projects": ["Ageix_Test"],
+        },
+    }), encoding="utf-8")
+
+    service = KeycloakProvisioningService(tmp_path, admin=admin)
+    chatgpt_result = service.provision_client("chatgpt")
+    claude_result = service.provision_client("claude")
+
+    assert chatgpt_result.agent_id == "lex"
+    assert claude_result.agent_id == "claude"
+
+    chatgpt_uuid = fake.clients["ageix"]["ageix-mcp-chatgpt"]["id"]
+    claude_uuid = fake.clients["ageix"]["ageix-mcp-claude"]["id"]
+    assert fake.protocol_mappers[chatgpt_uuid]["hardcoded-agent_id"]["config"]["claim.value"] == "lex"
+    assert fake.protocol_mappers[claude_uuid]["hardcoded-agent_id"]["config"]["claim.value"] == "claude"
+
+    second = service.provision_client("claude")
+    assert len(fake.protocol_mappers[claude_uuid]) == 1
+    assert second.agent_id == "claude"
 
 
 def test_provision_client_skips_placeholder_clients(tmp_path: Path, monkeypatch):

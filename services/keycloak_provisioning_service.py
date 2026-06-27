@@ -23,6 +23,7 @@ class ProvisioningResult:
     keycloak_client_uuid: str | None = None
     scope_names: list[str] = field(default_factory=list)
     secret_path: str | None = None
+    agent_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -33,6 +34,7 @@ class ProvisioningResult:
             "keycloak_client_uuid": self.keycloak_client_uuid,
             "scope_names": self.scope_names,
             "secret_path": self.secret_path,
+            "agent_id": self.agent_id,
         }
 
 
@@ -75,6 +77,8 @@ class KeycloakProvisioningService:
             f"{PROJECT_SCOPE_PREFIX}{proj}" for proj in project_scopes
         ]
         self.admin.set_default_client_scopes(client["id"], scope_names)
+        if definition.agent_id:
+            self.admin.ensure_hardcoded_claim_mapper(client["id"], claim_name="agent_id", claim_value=definition.agent_id)
         secret_path = self._persist_secret(definition.client_id, keycloak_client_id, client["id"], secret)
 
         return ProvisioningResult(
@@ -85,6 +89,7 @@ class KeycloakProvisioningService:
             keycloak_client_uuid=client["id"],
             scope_names=scope_names,
             secret_path=str(secret_path),
+            agent_id=definition.agent_id,
         )
 
     def reconcile_all(self) -> list[ProvisioningResult]:

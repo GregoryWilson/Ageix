@@ -160,3 +160,49 @@ class KeycloakAdminService:
             )
             if response.status_code not in (204, 409):
                 raise KeycloakAdminError(f"keycloak_default_scope_assign_failed:{name}:{response.status_code}")
+
+    def find_protocol_mapper(self, client_uuid: str, name: str) -> dict[str, Any] | None:
+        response = self._request("GET", f"/{self.realm}/clients/{client_uuid}/protocol-mappers/models")
+        if response.status_code != 200:
+            raise KeycloakAdminError(f"keycloak_protocol_mapper_list_failed:{response.status_code}")
+        for mapper in response.json():
+            if mapper.get("name") == name:
+                return mapper
+        return None
+
+    def ensure_hardcoded_claim_mapper(self, client_uuid: str, *, claim_name: str, claim_value: str) -> dict[str, Any]:
+        """Idempotently attach a hardcoded-claim protocol mapper so the client's
+        access tokens self-report a stable identity claim (e.g. agent_id) rather
+        than relying on a single global default shared by every client."""
+        name = f"hardcoded-{claim_name}"
+        config = {
+            "claim.name": claim_name,
+            "claim.value": claim_value,
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+        }
+        existing = self.find_protocol_mapper(client_uuid, name)
+        if existing is not None:
+            if existing.get("config", {}).get("claim.value") == claim_value:
+                return existing
+            response = self._request(
+                "PUT",
+                f"/{self.realm}/clients/{client_uuid}/protocol-mappers/models/{existing['id']}",
+                json={**existing, "config": config},
+            )
+            if response.status_code not in (204, 409):
+                raise KeycloakAdminError(f"keycloak_protocol_mapper_update_failed:{claim_name}:{response.status_code}")
+        else:
+            created = self._request(
+                "POST",
+                f"/{self.realm}/clients/{client_uuid}/protocol-mappers/models",
+                json={"name": name, "protocol": "openid-connect", "protocolMapper": "oidc-hardcoded-claim-mapper", "config": config},
+            )
+            if created.status_code not in (201, 409):
+                raise KeycloakAdminError(f"keycloak_protocol_mapper_create_failed:{claim_name}:{created.status_code}")
+        refreshed = self.find_protocol_mapper(client_uuid, name)
+        if refreshed is None:
+            raise KeycloakAdminError(f"keycloak_protocol_mapper_fetch_failed:{claim_name}")
+        return refreshed
