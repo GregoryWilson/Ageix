@@ -34,7 +34,7 @@ class KeycloakAdminService:
         self.realm = realm or os.environ.get("KEYCLOAK_REALM") or "ageix"
         self.admin_realm = admin_realm or os.environ.get("KEYCLOAK_ADMIN_REALM") or "master"
         self.admin_client_id = admin_client_id or os.environ.get("KEYCLOAK_ADMIN_CLIENT_ID") or "admin-cli"
-        self.admin_username = admin_username or os.environ.get("KEYCLOAK_ADMIN_USERNAME")
+        self.admin_username = admin_username or os.environ.get("KEYCLOAK_ADMIN_USERNAME") or os.environ.get("KEYCLOAK_ADMIN")
         self.admin_password = admin_password or os.environ.get("KEYCLOAK_ADMIN_PASSWORD")
         self.timeout = timeout
         self._token: str | None = None
