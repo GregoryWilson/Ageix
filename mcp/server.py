@@ -292,6 +292,26 @@ async def ageix_chair_advance(task_id: str) -> dict[str, Any]:
     return await _post(f"/v1/ageix/tasks/{task_id}/chair/advance", {})
 
 
+@mcp.tool()
+async def ageix_restart_daemon(
+    session_id: str = "mcp-restart",
+    project_id: str = "Ageix",
+    stop_delay_seconds: int = 2,
+) -> dict[str, Any]:
+    """Restart the Ageix server daemon on demand via the ops.restart_daemon capability.
+
+    The current process exits and a new one takes its place; this call
+    returns once the restart is initiated, before the old process actually
+    exits, so the connection may drop briefly. Note this restarts the main
+    Ageix web server only -- it does not restart this MCP server process.
+    """
+    return await _post("/capabilities/execute", {
+        "context": {"session_id": session_id, "project_id": project_id},
+        "capability_id": "ops.restart_daemon",
+        "arguments": {"stop_delay_seconds": stop_delay_seconds},
+    })
+
+
 # ---------------------------------------------------------------------------
 # Entrypoint
 # ---------------------------------------------------------------------------
