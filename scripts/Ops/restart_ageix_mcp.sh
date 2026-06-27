@@ -37,11 +37,21 @@ esac
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 MCP_TRANSPORT="${MCP_TRANSPORT:-sse}"
 MCP_PORT="${MCP_PORT:-8001}"
-PYTHON_BIN="${PYTHON_BIN:-${REPO_ROOT}/venv/bin/python3}"
+if [[ -n "${PYTHON_BIN:-}" ]]; then
+  : # explicit override wins
+elif [[ -x "${REPO_ROOT}/venv/bin/python3" ]]; then
+  PYTHON_BIN="${REPO_ROOT}/venv/bin/python3"
+else
+  PYTHON_BIN="${REPO_ROOT}/venv/bin/python"
+fi
 LOG_FILE="${LOG_FILE:-/tmp/ageix_mcp.log}"
 PID_FILE="${PID_FILE:-/tmp/ageix_mcp.pid}"
 STARTUP_TIMEOUT="${STARTUP_TIMEOUT:-5}"
-PROCESS_PATTERN="mcp/server.py"
+# Matches only the SSE instance (what claude.ai/this remote session connect
+# to). mcp/server.py can also be spawned locally with --transport stdio (or
+# no flag) by a Claude Code CLI session running directly on this box -- that
+# process must never be touched by this script.
+PROCESS_PATTERN="mcp/server.py.*--transport sse"
 
 find_pids() {
   pgrep -f "$PROCESS_PATTERN" || true
