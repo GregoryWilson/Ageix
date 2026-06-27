@@ -142,7 +142,7 @@ def test_provision_client_skips_placeholder_clients(tmp_path: Path, monkeypatch)
     (tmp_path / ".ageix" / "config").mkdir(parents=True)
 
     service = KeycloakProvisioningService(tmp_path, admin=admin)
-    result = service.provision_client("claude")
+    result = service.provision_client("gemini")
 
     assert result.skipped is True
     assert result.reason == "mcp_client_disabled_or_placeholder"

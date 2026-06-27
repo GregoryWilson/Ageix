@@ -39,7 +39,7 @@ DEFAULT_CLIENTS: tuple[MCPClientDefinition, ...] = (
     ),
     # Backward-compatible local/test profile retained for pre-OAuth Ageix contexts.
     MCPClientDefinition("chatgpt", "Lex", "openai", enabled=True, placeholder=False),
-    MCPClientDefinition("claude", "Claude", "anthropic", enabled=False, placeholder=True),
+    MCPClientDefinition("claude", "Claude", "anthropic", enabled=True, placeholder=False),
     MCPClientDefinition("gemini", "Gemini", "google", enabled=False, placeholder=True),
     MCPClientDefinition("openwebui", "OpenWebUI", "openwebui", enabled=False, placeholder=True),
     MCPClientDefinition("custom", "Custom MCP Client", "custom", enabled=False, placeholder=True),

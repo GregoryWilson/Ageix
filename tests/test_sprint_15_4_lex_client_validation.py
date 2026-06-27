@@ -29,7 +29,8 @@ def test_client_registry():
     assert clients[CLIENT_ID]["enabled"] is True
     assert clients[CLIENT_ID]["primary"] is True
     assert clients[CLIENT_ID]["placeholder"] is False
-    assert clients["claude"]["placeholder"] is True
+    assert clients["claude"]["enabled"] is True
+    assert clients["claude"]["placeholder"] is False
     assert clients["gemini"]["enabled"] is False
     assert clients["openwebui"]["placeholder"] is True
 
