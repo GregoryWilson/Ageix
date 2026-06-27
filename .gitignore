@@ -64,6 +64,7 @@ cache/
 # Runtime generated files
 *.pid
 *.lock
+ageix_local_inventory*.txt
 
 # -------------------------------------------------------------------
 # Certificates / Secrets

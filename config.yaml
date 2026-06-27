@@ -1,6 +1,6 @@
 providers:
   ollama:
-    base_url: "http://192.168.68.56:11434"
+    base_url: "http://192.168.68.52:11434"
 
   openrouter:
     base_url: "https://openrouter.ai/api/v1"
