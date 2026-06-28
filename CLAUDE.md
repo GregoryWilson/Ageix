@@ -36,12 +36,18 @@ services/chair_*.py         Chair governance/decision services
 services/architecture_*.py  Architecture registry/baseline/revision services (ARCH-* nodes under .ageix/architecture/)
 services/proposal_*.py      Proposal orchestration, refinement, quality, promotion-readiness
 services/consultation_*.py  Consultation session + evidence review services
+services/repo_write_governance_service.py        Sprint-scoped standing grants + single-use one-off
+                                                  approvals gating mutating git capabilities
+services/repository_git_mutation_service.py      Structured, allowlisted git mutations (fetch, pull,
+                                                  checkout, branch, tag, commit, push, push-to-main)
+services/capabilities/repository_git_capabilities.py   Registers the 17 repo.* git management
+                                                         capabilities (governed_read/governed_write)
 services/*  (many more)      One service per governed capability domain — grep services/ for the full list
 
 ageix_mcp/
   server.py                  Builds the governed FastMCP transport (build_fastmcp_server) — auth derived
                               per-request from the Authorization header, delegates to MCPService
-  tool_definitions.py         107 MCPToolDefinition entries across 18 categories (architecture, evidence,
+  tool_definitions.py         124 MCPToolDefinition entries across 18 categories (architecture, evidence,
                               validation, patch, repository, proposal, consultation, audit, identity,
                               capability, system, agent, artifact, artifact_delivery, decision_trace,
                               governance, workflow, project)
@@ -113,8 +119,8 @@ Config lives at `.ageix/config/auth.json`: `auth_enabled`, `mode`, OAuth issuer
 - REST-governed discovery/execution also exists at `GET /mcp/tools` and
   `POST /mcp/tools/call` (used by `scripts/Smoke/smoke_16_4_mcp_transport_bridge.py`)
   for clients that prefer plain HTTP over the FastMCP stdio/SSE transport.
-- 107 tools across categories: architecture (37), evidence (13), validation (9),
-  patch (8), repository (8), proposal (4), consultation (3), artifact (3),
+- 124 tools across categories: architecture (37), evidence (13), validation (9),
+  patch (8), repository (25), proposal (4), consultation (3), artifact (3),
   artifact_delivery (3), decision_trace (6), agent (2), capability (2), governance (1),
   identity (1), system (1), workflow (1), project (3), audit (1).
 - Every governed call is recorded via `CapabilityAuditService` — audit continuity is
@@ -131,6 +137,43 @@ Note: importing the real `mcp` PyPI package while `PYTHONPATH=.` is set can get
 shadowed by the local `mcp/` directory (the legacy prototype) — see the workaround
 comment at the top of `mcp/server.py` if you hit `ModuleNotFoundError: No module
 named 'mcp.types'`.
+
+### Repository git management (`repo.*` capabilities)
+
+Claude Code (and other governed agents) can read and mutate the local git
+checkout through 17 `repo.*` capabilities/tools, gated by
+`RepoWriteGovernanceService` (`services/repo_write_governance_service.py`):
+
+- **Ungated, read-only/non-destructive:** `repo.fetch`, `repo.tag.list`.
+- **Gated mutations** — require either an active sprint grant or a one-off
+  human approval: `repo.pull`, `repo.checkout`, `repo.branch.create`,
+  `repo.branch.delete`, `repo.tag.create`, `repo.tag.delete`, `repo.commit`,
+  `repo.push` (refuses the default branch).
+- **`repo.push.main`** — pushing the default branch is its own capability and
+  is **never** satisfiable by a sprint grant; it always requires a fresh,
+  single-use human approval (`repo.write.approve` with
+  `approved_by="human"`), enforced in two independent places (rejected at
+  grant-creation time and never consulted by `authorize_mutation` for this
+  capability_id).
+- **Grant/approval management (human-only):** `repo.write.grant.create`,
+  `repo.write.grant.revoke`, `repo.write.grant.list`, `repo.write.approve`,
+  `repo.write.approval.list`. `create_grant`/`create_approval` raise
+  `PermissionError` unless the caller-supplied identity literally equals the
+  string `"human"`.
+- Underlying git mutations run through `RepositoryGitMutationService`
+  (`services/repository_git_mutation_service.py`): structured method calls
+  only (no raw command strings), regex-validated ref names, repo-relative
+  path validation for commit staging, and a hardcoded allowlist of git
+  subcommands. No force-push or force-branch-delete is exposed in this
+  version. This is a separate, additive governance primitive — it does not
+  modify or relax the existing `GovernancePolicyService`/`ControlsService`
+  locks, which gate a different consumer (the autonomous repair loop).
+- A local sandbox for testing mutations before they touch the real working
+  copy is deferred to a future phase.
+
+Run `pytest tests/test_sprint_20_0_repository_git_governance.py` or
+`PYTHONPATH=. python scripts/Smoke/smoke_20_0_repository_git_governance.py`
+to exercise the grant/approval flows end to end.
 
 ## Running Locally
 
