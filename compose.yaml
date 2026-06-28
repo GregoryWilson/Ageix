@@ -21,6 +21,13 @@ services:
       - --http-enabled=true
       - --hostname=${KEYCLOAK_HOSTNAME}
       - --proxy-headers=xforwarded
+      # refresh_token is not in Keycloak's tokenParamNames set, so it's capped by the
+      # "standard" OIDC param limit (4000 chars), not the 20000-char token-param limit.
+      # The claude.ai connector's wildcard capability grant produces a much longer
+      # refresh_token (~6700 chars), which Keycloak was silently truncating. Raise the
+      # standard-param ceiling so it's accepted as-is (stopgap; see CLAUDE.md re: scoping
+      # default_allowed_capabilities down instead of "*").
+      - --spi-login-protocol--openid-connect--req-params-default-max-size=20000
     environment:
       KC_DB: postgres
       KC_DB_URL_HOST: keycloak-db
