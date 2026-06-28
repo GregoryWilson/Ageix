@@ -103,7 +103,7 @@ WorkOrder(
 
 ## Active Development Focus
 
-**Next major feature: MCP Server (`mcp/server.py`)**
+**Next major feature: MCP Server (`legacy_mcp/server.py`)**
 
 Goal: expose Ageix's task/conversation/collaboration APIs as MCP tools so that both
 Claude Code (terminal) and claude.ai (browser) can connect to the same running Ageix

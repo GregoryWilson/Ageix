@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Stops any running Ageix MCP server (mcp/server.py) and starts a fresh one
+# Stops any running Ageix MCP server (legacy_mcp/server.py) and starts a fresh one
 # in the background -- mirrors restart_ageix.sh, but for the separate MCP
 # process that Claude.ai/Claude Code connect to. Restarting the main web
 # daemon (restart_ageix.sh, or the ops.restart_daemon capability) does NOT
-# restart this process; new tools added to mcp/server.py only become visible
+# restart this process; new tools added to legacy_mcp/server.py only become visible
 # to MCP clients after this script (or an equivalent manual restart) runs.
 #
 # Usage: scripts/Ops/restart_ageix_mcp.sh [start|stop|restart]
@@ -14,8 +14,8 @@
 #                   clients use; stdio is for a locally-spawned Claude Code
 #                   session and doesn't make sense to background)
 #   MCP_PORT        bind port for sse transport (default: 8001, matching
-#                   mcp/server.py's FastMCP(..., port=8001))
-#   PYTHON_BIN      python interpreter to run mcp/server.py with
+#                   legacy_mcp/server.py's FastMCP(..., port=8001))
+#   PYTHON_BIN      python interpreter to run legacy_mcp/server.py with
 #                   (default: <repo_root>/venv/bin/python3)
 #   LOG_FILE        where stdout/stderr are appended
 #                   (default: /tmp/ageix_mcp.log)
@@ -48,10 +48,10 @@ LOG_FILE="${LOG_FILE:-/tmp/ageix_mcp.log}"
 PID_FILE="${PID_FILE:-/tmp/ageix_mcp.pid}"
 STARTUP_TIMEOUT="${STARTUP_TIMEOUT:-5}"
 # Matches only the SSE instance (what claude.ai/this remote session connect
-# to). mcp/server.py can also be spawned locally with --transport stdio (or
+# to). legacy_mcp/server.py can also be spawned locally with --transport stdio (or
 # no flag) by a Claude Code CLI session running directly on this box -- that
 # process must never be touched by this script.
-PROCESS_PATTERN="mcp/server.py.*--transport sse"
+PROCESS_PATTERN="legacy_mcp/server.py.*--transport sse"
 
 find_pids() {
   pgrep -f "$PROCESS_PATTERN" || true
@@ -98,7 +98,7 @@ start_daemon() {
   local transport_args=("--transport" "$MCP_TRANSPORT")
   echo "Starting Ageix MCP server (transport: ${MCP_TRANSPORT}), logging to ${LOG_FILE}..."
   AGEIX_BASE_URL="${AGEIX_BASE_URL:-http://127.0.0.1:8002}" PYTHONPATH="$REPO_ROOT" nohup "$PYTHON_BIN" \
-    "${REPO_ROOT}/mcp/server.py" "${transport_args[@]}" >>"$LOG_FILE" 2>&1 &
+    "${REPO_ROOT}/legacy_mcp/server.py" "${transport_args[@]}" >>"$LOG_FILE" 2>&1 &
   local pid=$!
   disown
   echo "$pid" > "$PID_FILE"

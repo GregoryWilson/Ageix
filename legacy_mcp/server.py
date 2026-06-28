@@ -4,8 +4,8 @@ Exposes Ageix task/conversation/collaboration APIs as MCP tools.
 Wraps the Ageix HTTP API via httpx — no direct imports from app.py.
 
 Usage:
-    python mcp/server.py                   # stdio (Claude Code)
-    python mcp/server.py --transport sse   # SSE on port 8001 (claude.ai)
+    python legacy_mcp/server.py                   # stdio (Claude Code)
+    python legacy_mcp/server.py --transport sse   # SSE on port 8001 (claude.ai)
 
 Environment:
     AGEIX_BASE_URL  Base URL of the running Ageix instance (default: http://localhost:8000)
