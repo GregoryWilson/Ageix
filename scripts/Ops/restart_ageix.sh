@@ -7,6 +7,10 @@
 # Usage: scripts/Ops/restart_ageix.sh [start|stop|restart]
 #   (default: restart)
 #
+# If a .env file exists at the repo root, it is sourced and exported before
+# the daemon starts, so vars like AGEIX_CHAIR_ADMIN_TOKEN reach the new
+# process regardless of which shell triggered the restart.
+#
 # Env vars:
 #   AGEIX_HOST      bind host (default: 127.0.0.1)
 #   AGEIX_PORT      bind port (default: 8002 -- matches the AGEIX_BASE_URL
@@ -27,6 +31,15 @@
 #                   flush back to the caller before the process is killed.
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+if [[ -f "${REPO_ROOT}/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "${REPO_ROOT}/.env"
+  set +a
+fi
+
 ACTION="${1:-restart}"
 case "$ACTION" in
   start|stop|restart) ;;
@@ -36,7 +49,6 @@ case "$ACTION" in
     ;;
 esac
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 AGEIX_HOST="${AGEIX_HOST:-127.0.0.1}"
 AGEIX_PORT="${AGEIX_PORT:-8002}"
 VENV_PATH="${VENV_PATH:-${REPO_ROOT}/venv/bin/uvicorn}"
