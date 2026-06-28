@@ -30,33 +30,15 @@ if [[ -z "$MCP_CLIENT_ID" ]]; then
   exit 2
 fi
 
-for var in AGEIX_CHAIR_ADMIN_CLIENT_ID AGEIX_CHAIR_ADMIN_SECRET AGEIX_KEYCLOAK_URL AGEIX_REALM; do
-  if [[ -z "${!var:-}" ]]; then
-    echo "ERROR: $var is not set in the environment." >&2
-    exit 2
-  fi
-done
+# shellcheck disable=SC1091
+source "$(dirname "${BASH_SOURCE[0]}")/lib/fetch_chair_admin_token.sh"
 
 AGEIX_BASE_URL="${AGEIX_BASE_URL:-http://127.0.0.1:8002}"
 PROJECT_ID="${PROJECT_ID:-Ageix}"
 SESSION_ID="${2:-kc-provision-${MCP_CLIENT_ID}-$(date +%s)}"
 
 echo "Fetching admin token from Keycloak..." >&2
-AGEIX_CHAIR_ADMIN_TOKEN="$(
-  curl -sS -X POST \
-    "${AGEIX_KEYCLOAK_URL}/realms/${AGEIX_REALM}/protocol/openid-connect/token" \
-    -d "grant_type=client_credentials" \
-    -d "client_id=${AGEIX_CHAIR_ADMIN_CLIENT_ID}" \
-    -d "client_secret=${AGEIX_CHAIR_ADMIN_SECRET}" \
-  | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-token = data.get('access_token')
-if not token:
-    sys.exit(f'Token error: {data}')
-print(token)
-"
-)"
+fetch_chair_admin_token
 
 echo "Token acquired. Provisioning MCP client '${MCP_CLIENT_ID}'..." >&2
 
