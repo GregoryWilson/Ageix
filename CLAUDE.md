@@ -145,10 +145,11 @@ test (spins up `web.app:create_app` via `TestClient`, no daemon needed):
 PYTHONPATH=. python scripts/Smoke/smoke_16_4_mcp_transport_bridge.py
 ```
 
-Note: importing the real `mcp` PyPI package while `PYTHONPATH=.` is set can get
-shadowed by the local `mcp/` directory (the legacy prototype) — see the workaround
-comment at the top of `mcp/server.py` if you hit `ModuleNotFoundError: No module
-named 'mcp.types'`.
+Note: the local `mcp/` directory used to collide with the real `mcp` PyPI
+package (causing `ModuleNotFoundError: No module named 'mcp.types'` and FastMCP
+transport construction failures) whenever the repo root landed on `sys.path` ahead
+of site-packages, which `uvicorn web.app:app` does by default. Fixed by renaming
+the legacy prototype to `legacy_mcp/` — no workaround needed anymore.
 
 ### Repository git management (`repo.*` capabilities)
 
