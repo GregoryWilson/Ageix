@@ -132,4 +132,5 @@ class CapabilityExecutionService:
             client_id=str(arguments.get("client_id")) if arguments.get("client_id") else None,
             project_id=str(arguments.get("project_id")) if arguments.get("project_id") else None,
             participant_id=str(arguments.get("participant_id")) if arguments.get("participant_id") else None,
+            metadata={"client_user_agent": str(arguments.get("client_user_agent"))} if arguments.get("client_user_agent") else {},
         ))

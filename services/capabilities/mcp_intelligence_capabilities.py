@@ -40,6 +40,7 @@ def register_capabilities(repo_root: Path):
                 participant_id=arguments.get("participant_id"),
                 provider=str(arguments.get("provider")) if arguments.get("provider") else None,
                 display_name=str(arguments.get("display_name")) if arguments.get("display_name") else None,
+                client_user_agent=str(arguments.get("client_user_agent")) if arguments.get("client_user_agent") else None,
             )
         except Exception as exc:
             return {"success": False, "result": {}, "error": str(exc)}

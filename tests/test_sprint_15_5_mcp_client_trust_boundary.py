@@ -25,6 +25,7 @@ def _ctx(
     agent_id: str = "lex",
     display_name: str | None = "Lex",
     claimed_primary: bool | None = None,
+    client_user_agent: str | None = None,
 ) -> AgeixRequestContext:
     return AgeixRequestContext(
         client_id=client_id,
@@ -35,6 +36,7 @@ def _ctx(
         participant_id="greg",
         session_id=session_id,
         project_id=PROJECT_ID,
+        client_user_agent=client_user_agent,
     )
 
 
@@ -316,3 +318,49 @@ def test_mcp_client_hardening_assessment():
     assert assessment["audit_hardened"] is True
     assert assessment["hardened"] is True
     assert assessment["missing_checks"] == []
+
+
+def test_client_user_agent_surfaced_in_identity_current_result(tmp_path: Path):
+    _seed_project(tmp_path)
+    response = MCPFacadeService(tmp_path).execute_tool(
+        "ageix.identity.current",
+        _ctx("user-agent-identity", client_user_agent="Claude-Code/1.0"),
+        {},
+    )
+
+    assert response.success is True
+    assert response.result["client_user_agent"] == "Claude-Code/1.0"
+
+
+def test_client_user_agent_surfaced_in_audit_metadata(tmp_path: Path):
+    _seed_project(tmp_path)
+    MCPFacadeService(tmp_path).execute_tool(
+        "ageix.workflow.current",
+        _ctx("user-agent-audit", client_user_agent="claude-ai/1.0"),
+        {},
+    )
+
+    records = [
+        record for record in CapabilityAuditService(tmp_path).list_records()
+        if record["session_id"] == "user-agent-audit"
+    ]
+    assert records
+    assert records[-1]["metadata"]["client_user_agent"] == "claude-ai/1.0"
+
+
+def test_client_user_agent_does_not_affect_session_identity_drift(tmp_path: Path):
+    _seed_project(tmp_path)
+    service = MCPFacadeService(tmp_path)
+    first = service.execute_tool(
+        "ageix.workflow.current",
+        _ctx("user-agent-drift", client_user_agent="claude-ai/1.0"),
+        {},
+    )
+    second = service.execute_tool(
+        "ageix.workflow.current",
+        _ctx("user-agent-drift", client_user_agent="Claude-Code/2.0"),
+        {},
+    )
+
+    assert first.success is True
+    assert second.success is True

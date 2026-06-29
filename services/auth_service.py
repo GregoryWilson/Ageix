@@ -56,7 +56,14 @@ class AuthService:
             raise AuthForbiddenError("invalid_bearer_token")
         raise AuthForbiddenError(f"unsupported_auth_mode:{mode}")
 
-    def build_resolved_context(self, identity: AuthIdentity, *, session_id: str, project_id: str) -> AgeixRequestContext:
+    def build_resolved_context(
+        self,
+        identity: AuthIdentity,
+        *,
+        session_id: str,
+        project_id: str,
+        client_user_agent: str | None = None,
+    ) -> AgeixRequestContext:
         """Create Ageix-owned execution context from credential identity plus request context."""
         participant_id = identity.participant_id if identity.auth_enabled else None
         definition = MCPClientRegistry().get(identity.client_id)
@@ -69,6 +76,7 @@ class AuthService:
             provider=definition.provider if definition else ("openai" if identity.client_id.lower() == "chatgpt" else identity.client_id),
             display_name=definition.display_name if definition else ("Lex" if identity.agent_id == "lex" else identity.agent_id),
             authentication_method=identity.authentication_method,
+            client_user_agent=client_user_agent,
         )
         self.validate_context(identity, context)
         return context

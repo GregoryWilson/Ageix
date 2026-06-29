@@ -41,6 +41,7 @@ class IdentityResolutionService:
             "participant_id": context.participant_id,
             "project_id": context.project_id,
             "provider": provider,
+            "client_user_agent": context.client_user_agent,
             "agent_type": "external_agent",
             "display_name": context.agent_id,
             "authenticated": authenticated,

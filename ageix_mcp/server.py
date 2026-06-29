@@ -62,9 +62,12 @@ def _register_tool(mcp: Any, service: MCPService, tool_name: str, repo_root: Pat
 
         auth = AuthService(repo_root)
         token = _bearer_token_from_request(request)
+        user_agent = request.headers.get("user-agent") if request is not None else None
         try:
             identity = auth.authenticate_bearer_token(token)
-            context = auth.build_resolved_context(identity, session_id=session_id, project_id=project_id)
+            context = auth.build_resolved_context(
+                identity, session_id=session_id, project_id=project_id, client_user_agent=user_agent,
+            )
         except AuthRequiredError as exc:
             return AgeixEnvelope.denied(str(exc), tool_name=tool_name).model_dump()
         except AuthForbiddenError as exc:
