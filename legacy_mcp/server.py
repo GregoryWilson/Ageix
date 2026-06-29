@@ -1,11 +1,18 @@
-"""Ageix MCP server.
+"""Ageix legacy MCP server (superseded by ageix_mcp/server.py + web/mcp_transport.py).
 
 Exposes Ageix task/conversation/collaboration APIs as MCP tools.
 Wraps the Ageix HTTP API via httpx — no direct imports from app.py.
 
+claude.ai and Claude Code now share the governed /mcp transport (port 8002,
+ageix_mcp-based) instead of this script. Retained for reference/rollback only.
+Originally lived at mcp/server.py; renamed to legacy_mcp/server.py because a
+top-level mcp/ package shadows the real installed mcp SDK package for any
+process that puts the repo root on sys.path (e.g. `python -m uvicorn ...`
+run from the repo root), breaking fastmcp's `import mcp.types`.
+
 Usage:
-    python mcp/server.py                   # stdio (Claude Code)
-    python mcp/server.py --transport sse   # SSE on port 8001 (claude.ai)
+    python legacy_mcp/server.py                   # stdio (Claude Code)
+    python legacy_mcp/server.py --transport sse   # SSE on port 8001 (claude.ai)
 
 Environment:
     AGEIX_BASE_URL  Base URL of the running Ageix instance (default: http://localhost:8000)
