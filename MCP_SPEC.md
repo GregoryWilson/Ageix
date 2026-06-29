@@ -17,7 +17,7 @@ becomes the shared brain — persistent state that bridges the two Claude interf
 
 ## File to Create
 
-`mcp/server.py`
+`legacy_mcp/server.py`
 
 Also create:
 - `mcp/__init__.py` (empty)
@@ -33,7 +33,7 @@ directly, so it stays decoupled and works even if FastAPI is on a remote host.
 
 ```bash
 # Run alongside uvicorn:
-python mcp/server.py
+python legacy_mcp/server.py
 ```
 
 The MCP server communicates over stdio (standard for Claude Code integration).
@@ -230,7 +230,7 @@ unblocked task and assigns it.
 
 ## Claude Code Configuration
 
-After implementing `mcp/server.py`, add to Claude Code's MCP config
+After implementing `legacy_mcp/server.py`, add to Claude Code's MCP config
 (typically `~/.claude/claude_code_config.json` or via `claude mcp add`):
 
 ```json
@@ -238,7 +238,7 @@ After implementing `mcp/server.py`, add to Claude Code's MCP config
   "mcpServers": {
     "ageix": {
       "command": "python",
-      "args": ["/path/to/Ageix/mcp/server.py"],
+      "args": ["/path/to/Ageix/legacy_mcp/server.py"],
       "env": {
         "AGEIX_BASE_URL": "http://localhost:8000"
       }
@@ -251,7 +251,7 @@ After implementing `mcp/server.py`, add to Claude Code's MCP config
 
 ## claude.ai Configuration (SSE mode)
 
-When `mcp/server.py` is running in SSE mode (`python mcp/server.py --transport sse`),
+When `legacy_mcp/server.py` is running in SSE mode (`python legacy_mcp/server.py --transport sse`),
 add it to claude.ai's MCP settings pointing at:
 
 ```

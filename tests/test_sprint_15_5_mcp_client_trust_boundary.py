@@ -82,6 +82,58 @@ def test_unknown_clients_denied_before_execution(tmp_path: Path):
     assert "mcp_client_unknown" in _reasons(tmp_path, "unknown-client")
 
 
+def test_claude_ai_connector_client_id_resolves_to_trusted_claude(tmp_path: Path):
+    # Regression: the human-delegated connector is provisioned in Keycloak as
+    # "ageix-connector-claude-ai" (KeycloakProvisioningService.provision_connector_client),
+    # and that literal string arrives as the JWT azp claim / context.client_id. It must
+    # resolve back to the registered "claude" client rather than being denied as unknown.
+    _seed_project(tmp_path)
+    response = MCPFacadeService(tmp_path).execute_tool(
+        "ageix.workflow.current",
+        _ctx(
+            "claude-ai-connector",
+            client_id="ageix-connector-claude-ai",
+            provider="anthropic",
+            agent_id="claude",
+            display_name="Claude",
+        ),
+        {},
+    )
+
+    assert response.success is True
+
+
+def test_client_registry_resolves_connector_alias():
+    from ageix_mcp.clients.client_registry import MCPClientRegistry
+
+    registry = MCPClientRegistry()
+    resolved = registry.get("ageix-connector-claude-ai")
+
+    assert resolved is not None
+    assert resolved.client_id == "claude"
+    assert registry.get("ageix-connector-bogus") is None
+
+
+def test_unprovisioned_connector_client_id_still_denied(tmp_path: Path):
+    # The connector prefix alone must not grant trust -- only connector_ids with a
+    # known alias to a registered client should resolve.
+    _seed_project(tmp_path)
+    response = MCPFacadeService(tmp_path).execute_tool(
+        "ageix.workflow.current",
+        _ctx(
+            "bogus-connector",
+            client_id="ageix-connector-bogus",
+            provider="bogus",
+            agent_id="bogus",
+            display_name="Bogus",
+        ),
+        {},
+    )
+
+    assert response.success is False
+    assert response.errors == ["mcp_client_unknown"]
+
+
 def test_disabled_placeholder_clients_denied(tmp_path: Path):
     _seed_project(tmp_path)
     response = MCPFacadeService(tmp_path).execute_tool(

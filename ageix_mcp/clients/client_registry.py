@@ -30,6 +30,18 @@ class MCPClientDefinition:
         }
 
 
+CONNECTOR_CLIENT_PREFIX = "ageix-connector-"
+
+# Human-delegated OAuth connectors (e.g. claude.ai's "Add custom connector") are
+# provisioned with Keycloak client_id f"{CONNECTOR_CLIENT_PREFIX}{connector_id}"
+# (see KeycloakProvisioningService.provision_connector_client). That literal
+# client_id is what arrives as the JWT azp claim, so it must resolve back to the
+# underlying registered client below even when connector_id doesn't match the
+# registry key verbatim (e.g. "claude-ai" -> "claude").
+CONNECTOR_ID_ALIASES: dict[str, str] = {
+    "claude-ai": "claude",
+}
+
 DEFAULT_CLIENTS: tuple[MCPClientDefinition, ...] = (
     MCPClientDefinition(
         client_id="chatGPT",
@@ -43,11 +55,6 @@ DEFAULT_CLIENTS: tuple[MCPClientDefinition, ...] = (
     # Backward-compatible local/test profile retained for pre-OAuth Ageix contexts.
     MCPClientDefinition("chatgpt", "Lex", "openai", enabled=True, placeholder=False, agent_id="lex"),
     MCPClientDefinition("claude", "Claude", "anthropic", enabled=True, placeholder=False, agent_id="claude"),
-    # Real Keycloak client_id for the human-delegated claude.ai/Claude Code OAuth
-    # connector (see KeycloakProvisioningService.provision_connector_client). JWTs
-    # minted for that connector carry this exact azp claim, distinct from the
-    # confidential service-account "claude" profile above.
-    MCPClientDefinition("ageix-connector-claude-ai", "Claude", "anthropic", enabled=True, placeholder=False, agent_id="claude"),
     MCPClientDefinition("gemini", "Gemini", "google", enabled=False, placeholder=True),
     MCPClientDefinition("openwebui", "OpenWebUI", "openwebui", enabled=False, placeholder=True),
     MCPClientDefinition("custom", "Custom MCP Client", "custom", enabled=False, placeholder=True),
@@ -83,6 +90,12 @@ class MCPClientRegistry:
         for candidate in self._clients.values():
             if candidate.client_id.lower() == normalized:
                 return candidate
+        if normalized.startswith(CONNECTOR_CLIENT_PREFIX):
+            connector_id = normalized[len(CONNECTOR_CLIENT_PREFIX):]
+            aliased = CONNECTOR_ID_ALIASES.get(connector_id, connector_id)
+            for candidate in self._clients.values():
+                if candidate.client_id.lower() == aliased:
+                    return candidate
         return None
 
     def require(self, client_id: str) -> MCPClientDefinition:

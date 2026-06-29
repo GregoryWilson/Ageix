@@ -97,7 +97,8 @@ this separate process, and this process doesn't expose `ageix_mcp/`'s catalog at
 all. If you're asked to "test the Ageix MCP capabilities," that still means
 `ageix_mcp/`, not `legacy_mcp/server.py`. External MCP connectors (Claude Code on
 the web, claude.ai) have since been repointed at the real `/mcp` transport with
-OAuth — `legacy_mcp/server.py` is retained for now pending its decommission
+OAuth — confirmed working end-to-end (auth + governed capability execution).
+`legacy_mcp/server.py` is retained for now pending its decommission
 (`scripts/Ops/restart_ageix_mcp.sh stop`) but should no longer be the active path
 for new clients.
 
@@ -147,8 +148,13 @@ test (spins up `web.app:create_app` via `TestClient`, no daemon needed):
 PYTHONPATH=. python scripts/Smoke/smoke_16_4_mcp_transport_bridge.py
 ```
 
-Note: the legacy prototype's MCP entrypoint lives at `legacy_mcp/server.py` (renamed
-from `mcp/` so it stops shadowing the real `mcp` PyPI package under `PYTHONPATH=.`).
+Note: the local `mcp/` directory used to collide with the real `mcp` PyPI
+package (causing `ModuleNotFoundError: No module named 'mcp.types'` and FastMCP
+transport construction failures) whenever the repo root landed on `sys.path` ahead
+of site-packages, which `uvicorn web.app:app` does by default. Fixed by renaming
+the legacy prototype to `legacy_mcp/`; `legacy_mcp/server.py` still defensively
+strips the project root from `sys.path` before importing FastMCP — see the comment
+at the top of that file.
 
 ### Repository git management (`repo.*` capabilities)
 
