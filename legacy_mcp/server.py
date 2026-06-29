@@ -18,9 +18,10 @@ import os
 import sys
 from typing import Any
 
-# The local mcp/ directory has the same name as the installed mcp package.
-# If the project root is in sys.path (PYTHONPATH, -m, etc.), it will shadow
-# the installed package. Remove it before importing FastMCP.
+# This package used to be named mcp/, which shadowed the installed mcp PyPI
+# package whenever the project root was on sys.path (PYTHONPATH, -m, etc.).
+# Renamed to legacy_mcp/ to fix that, but keep stripping the project root here
+# defensively before importing FastMCP.
 _this_dir = os.path.dirname(os.path.abspath(__file__))
 _project_root = os.path.dirname(_this_dir)
 sys.path = [p for p in sys.path if os.path.abspath(p) != _project_root]

@@ -7,11 +7,24 @@
 # Usage: scripts/Ops/restart_ageix.sh [start|stop|restart]
 #   (default: restart)
 #
+# If a .env file exists at the repo root, it is sourced and exported before
+# the daemon starts, so vars like AGEIX_CHAIR_ADMIN_TOKEN reach the new
+# process regardless of which shell triggered the restart.
+#
 # Env vars:
 #   AGEIX_HOST      bind host (default: 127.0.0.1)
 #   AGEIX_PORT      bind port (default: 8002 -- matches the AGEIX_BASE_URL
 #                   default already used by every other scripts/Ops/*.sh
 #                   script; the runbook's old "8000" was stale)
+#   FORWARDED_ALLOW_IPS   trusted reverse-proxy source IP(s) for uvicorn's
+#                   --forwarded-allow-ips (default: 127.0.0.1). Needed so
+#                   request.base_url (used by the OAuth discovery routes and
+#                   the /mcp transport) reflects the public scheme/host from
+#                   X-Forwarded-Proto/X-Forwarded-Host set by nginx, instead
+#                   of the internal http://127.0.0.1:8002. Set to "*" only if
+#                   the proxy's source IP is unpredictable and you trust all
+#                   inbound connections to this port (it isn't published
+#                   beyond localhost otherwise).
 #   VENV_PATH       path to the venv's uvicorn binary
 #                   (default: <repo_root>/venv/bin/uvicorn)
 #   LOG_FILE        where daemon stdout/stderr are appended
@@ -27,6 +40,15 @@
 #                   flush back to the caller before the process is killed.
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+if [[ -f "${REPO_ROOT}/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "${REPO_ROOT}/.env"
+  set +a
+fi
+
 ACTION="${1:-restart}"
 case "$ACTION" in
   start|stop|restart) ;;
@@ -36,7 +58,6 @@ case "$ACTION" in
     ;;
 esac
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 AGEIX_HOST="${AGEIX_HOST:-127.0.0.1}"
 AGEIX_PORT="${AGEIX_PORT:-8002}"
 VENV_PATH="${VENV_PATH:-${REPO_ROOT}/venv/bin/uvicorn}"
@@ -44,6 +65,7 @@ LOG_FILE="${LOG_FILE:-/tmp/ageix_uvicorn.log}"
 PID_FILE="${PID_FILE:-/tmp/ageix_uvicorn.pid}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-30}"
 STOP_DELAY="${STOP_DELAY:-0}"
+FORWARDED_ALLOW_IPS="${FORWARDED_ALLOW_IPS:-127.0.0.1}"
 PROCESS_PATTERN="web.app:create_app"
 
 find_pids() {
@@ -92,7 +114,8 @@ start_daemon() {
 
   echo "Starting Ageix daemon on ${AGEIX_HOST}:${AGEIX_PORT}, logging to ${LOG_FILE}..."
   PYTHONPATH="$REPO_ROOT" nohup "$VENV_PATH" web.app:create_app --factory \
-    --host "$AGEIX_HOST" --port "$AGEIX_PORT" >>"$LOG_FILE" 2>&1 &
+    --host "$AGEIX_HOST" --port "$AGEIX_PORT" \
+    --proxy-headers --forwarded-allow-ips="$FORWARDED_ALLOW_IPS" >>"$LOG_FILE" 2>&1 &
   local pid=$!
   disown
   echo "$pid" > "$PID_FILE"

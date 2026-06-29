@@ -1,12 +1,22 @@
 #!/usr/bin/env bash
 # Calls identity.keycloak.connector.provision to create or update a public,
 # PKCE-required Keycloak client for a human-delegated OAuth connector (e.g.
-# Claude.ai's "Add custom connector" feature) -- uses the chair-admin token
-# already present in the environment, no token paste.
+# Claude.ai's "Add custom connector" feature) -- mints a fresh chair-admin
+# token from Keycloak via the durable client credentials, no token paste.
 #
 # Usage: scripts/Ops/provision_connector_client.sh <connector_id> <redirect_uri> [<redirect_uri> ...]
 #   e.g. scripts/Ops/provision_connector_client.sh claude-ai https://claude.ai/api/mcp/auth_callback
 set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if [[ -f "${REPO_ROOT}/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "${REPO_ROOT}/.env"
+  set +a
+fi
+# shellcheck disable=SC1091
+source "$(dirname "${BASH_SOURCE[0]}")/lib/fetch_chair_admin_token.sh"
 
 CONNECTOR_ID="${1:-}"
 if [[ -z "$CONNECTOR_ID" || $# -lt 2 ]]; then
@@ -16,10 +26,8 @@ fi
 shift
 REDIRECT_URIS=("$@")
 
-if [[ -z "${AGEIX_CHAIR_ADMIN_TOKEN:-}" ]]; then
-  echo "ERROR: AGEIX_CHAIR_ADMIN_TOKEN is not set in the environment." >&2
-  exit 2
-fi
+echo "Fetching admin token from Keycloak..." >&2
+fetch_chair_admin_token
 
 AGEIX_BASE_URL="${AGEIX_BASE_URL:-http://127.0.0.1:8002}"
 PROJECT_ID="${PROJECT_ID:-Ageix}"
