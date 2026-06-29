@@ -114,14 +114,14 @@ def test_mcp_transport_discovery(tmp_path: Path, monkeypatch):
     response = _client(tmp_path, monkeypatch).get("/mcp/", headers=_headers())
 
     tools = set(response.json()["tools"])
-    assert "ageix.identity.current" in tools
-    assert "ageix.validation.scenarios.list" not in tools
+    assert "ageix_identity_current" in tools
+    assert "ageix_validation_scenarios_list" not in tools
 
 
 def test_mcp_transport_execution(tmp_path: Path, monkeypatch):
     _seed(tmp_path)
     response = _client(tmp_path, monkeypatch).post("/mcp/call", headers=_headers(), json={
-        "tool_name": "ageix.identity.current",
+        "tool_name": "ageix_identity_current",
         "session_id": "transport-exec",
         "project_id": "Ageix_Test",
         "arguments": {},
@@ -136,7 +136,7 @@ def test_mcp_transport_execution(tmp_path: Path, monkeypatch):
 def test_mcp_transport_requires_project(tmp_path: Path, monkeypatch):
     _seed(tmp_path)
     response = _client(tmp_path, monkeypatch).post("/mcp/call", headers=_headers(), json={
-        "tool_name": "ageix.identity.current",
+        "tool_name": "ageix_identity_current",
         "session_id": "transport-project",
         "project_id": "current",
         "arguments": {},
@@ -149,7 +149,7 @@ def test_mcp_transport_requires_project(tmp_path: Path, monkeypatch):
 def test_mcp_transport_preserves_governance(tmp_path: Path, monkeypatch):
     _seed(tmp_path, allowed_capabilities=["identity.current"])
     response = _client(tmp_path, monkeypatch).post("/mcp/call", headers=_headers(), json={
-        "tool_name": "ageix.proposals.submit",
+        "tool_name": "ageix_proposals_submit",
         "session_id": "transport-governance",
         "project_id": "Ageix_Test",
         "arguments": {"objective": "should not be allowed"},
@@ -163,7 +163,7 @@ def test_mcp_transport_preserves_governance(tmp_path: Path, monkeypatch):
 def test_mcp_transport_identity_propagation(tmp_path: Path, monkeypatch):
     _seed(tmp_path)
     response = _client(tmp_path, monkeypatch).post("/mcp/call", headers=_headers(), json={
-        "tool_name": "ageix.identity.current",
+        "tool_name": "ageix_identity_current",
         "session_id": "identity-propagation",
         "project_id": "Ageix_Test",
         "arguments": {"agent_id": "admin"},
@@ -177,7 +177,7 @@ def test_mcp_transport_identity_propagation(tmp_path: Path, monkeypatch):
 def test_mcp_transport_audit_record(tmp_path: Path, monkeypatch):
     _seed(tmp_path)
     _client(tmp_path, monkeypatch).post("/mcp/call", headers=_headers(), json={
-        "tool_name": "ageix.identity.current",
+        "tool_name": "ageix_identity_current",
         "session_id": "transport-audit",
         "project_id": "Ageix_Test",
         "arguments": {},

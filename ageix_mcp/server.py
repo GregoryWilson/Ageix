@@ -85,9 +85,13 @@ def _register_tool(mcp: Any, service: MCPService, tool_name: str, repo_root: Pat
 
         return service.execute_tool(tool_name, context, arguments or {}).model_dump()
 
-    invoke.__name__ = tool_name.replace(".", "_")
+    wire_name = tool_name.replace(".", "_")
+    invoke.__name__ = wire_name
     invoke.__doc__ = f"Governed Ageix MCP tool adapter for {tool_name}."
-    mcp.tool(name=tool_name)(invoke)
+    # MCP clients (e.g. claude.ai's frontend) validate tool names against
+    # ^[a-zA-Z0-9_-]{1,64}$ -- dots are rejected. Advertise the sanitized name on
+    # the wire; tool_name (with dots) keeps driving capability mapping/audit/governance.
+    mcp.tool(name=wire_name)(invoke)
 
 
 def _bearer_token_from_request(request: Any) -> str | None:
