@@ -37,7 +37,7 @@ class MCPTransportAuthMiddleware:
 def build_mcp_transport_app(repo_root: str | Path = ".") -> ASGIApp:
     """Return an authenticated FastMCP ASGI transport app mounted at /mcp."""
     mcp = build_fastmcp_server(repo_root)
-    mcp_app = mcp.http_app(path="/")
+    mcp_app = mcp.http_app(path="/", transport="streamable-http")
     return MCPTransportAuthMiddleware(mcp_app, repo_root)
 
 
@@ -50,7 +50,7 @@ def build_mcp_transport_lifespan(repo_root: str | Path = ".") -> tuple[ASGIApp |
     """
     try:
         mcp = build_fastmcp_server(repo_root)
-        mcp_app = mcp.http_app(path="/")
+        mcp_app = mcp.http_app(path="/", transport="streamable-http")
         return MCPTransportAuthMiddleware(mcp_app, repo_root), getattr(mcp_app, "lifespan", None), None
     except RuntimeError as exc:
         return None, None, str(exc)

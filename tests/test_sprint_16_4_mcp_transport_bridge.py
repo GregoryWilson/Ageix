@@ -31,7 +31,7 @@ class FakeFastMCP:
             return fn
         return decorate
 
-    def http_app(self, path: str = "/"):
+    def http_app(self, path: str = "/", transport: str = "streamable-http"):
         async def root(request: Request):
             return JSONResponse({"transport": "fastmcp", "path": path, "tools": sorted(self.registered)})
 
