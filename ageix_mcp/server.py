@@ -62,8 +62,6 @@ def _register_tool(mcp: Any, service: MCPService, tool_name: str, repo_root: Pat
 
         call_arguments = dict(arguments or {})
         agent_role = call_arguments.pop("agent_role", None)
-        if not agent_role:
-            return AgeixEnvelope.denied("agent_role_required", tool_name=tool_name).model_dump()
 
         auth = AuthService(repo_root)
         token = _bearer_token_from_request(request)
