@@ -11,6 +11,17 @@ from services.mcp_context import AgeixEnvelope
 from services.mcp_service import MCPService
 
 
+# Headers that could carry credentials/secrets are never surfaced, even for
+# descriptive identity diagnostics.
+_SENSITIVE_HEADERS = {"authorization", "cookie", "set-cookie", "proxy-authorization"}
+
+
+def _safe_request_headers(request: Any) -> dict[str, str] | None:
+    if request is None:
+        return None
+    return {key.lower(): value for key, value in request.headers.items() if key.lower() not in _SENSITIVE_HEADERS}
+
+
 IDENTITY_ARGUMENT_FIELDS = {
     "client_id",
     "agent_id",
@@ -63,10 +74,15 @@ def _register_tool(mcp: Any, service: MCPService, tool_name: str, repo_root: Pat
         auth = AuthService(repo_root)
         token = _bearer_token_from_request(request)
         user_agent = request.headers.get("user-agent") if request is not None else None
+        headers = _safe_request_headers(request)
         try:
             identity = auth.authenticate_bearer_token(token)
             context = auth.build_resolved_context(
-                identity, session_id=session_id, project_id=project_id, client_user_agent=user_agent,
+                identity,
+                session_id=session_id,
+                project_id=project_id,
+                client_user_agent=user_agent,
+                client_headers=headers,
             )
         except AuthRequiredError as exc:
             return AgeixEnvelope.denied(str(exc), tool_name=tool_name).model_dump()

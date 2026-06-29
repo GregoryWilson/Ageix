@@ -184,6 +184,8 @@ class MCPFacadeService:
             merged_arguments["display_name"] = context.display_name
         if context.client_user_agent:
             merged_arguments["client_user_agent"] = context.client_user_agent
+        if context.client_headers:
+            merged_arguments["client_headers"] = context.client_headers
         response = self.execution.execute(CapabilityRequest(
             capability_id=capability_id,
             session_id=context.session_id,
@@ -229,7 +231,10 @@ class MCPFacadeService:
             client_id=context.client_id,
             project_id=context.project_id,
             participant_id=context.participant_id,
-            metadata={"client_user_agent": context.client_user_agent} if context.client_user_agent else {},
+            metadata={
+                **({"client_user_agent": context.client_user_agent} if context.client_user_agent else {}),
+                **({"client_headers": context.client_headers} if context.client_headers else {}),
+            },
         ))
         return AgeixEnvelope.denied(
             validation.reason,

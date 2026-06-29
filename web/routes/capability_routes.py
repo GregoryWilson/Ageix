@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from models.auth_identity import AuthIdentity
@@ -11,7 +11,7 @@ from models.capability_request import CapabilityRequest
 from services.capability_execution_service import CapabilityExecutionService
 from services.capability_registry_service import CapabilityRegistryService
 from services.mcp_context import AgeixEnvelope, AgeixExternalRequestContext
-from web.auth import get_auth_identity, resolve_request_context
+from web.auth import get_auth_identity, resolve_request_context, safe_request_headers
 from web.dependencies import get_repo_root
 
 router = APIRouter()
@@ -40,8 +40,19 @@ def list_capabilities(identity: AuthIdentity = Depends(get_auth_identity), repo_
 
 
 @router.post("/capabilities/execute")
-def execute_capability(payload: CapabilityExecutePayload, identity: AuthIdentity = Depends(get_auth_identity), repo_root: Path = Depends(get_repo_root)) -> dict[str, Any]:
-    context = resolve_request_context(identity, payload.context, repo_root)
+def execute_capability(
+    payload: CapabilityExecutePayload,
+    request: Request,
+    identity: AuthIdentity = Depends(get_auth_identity),
+    repo_root: Path = Depends(get_repo_root),
+) -> dict[str, Any]:
+    context = resolve_request_context(
+        identity,
+        payload.context,
+        repo_root,
+        client_user_agent=request.headers.get("user-agent"),
+        client_headers=safe_request_headers(request),
+    )
     if not identity.capability_allowed(payload.capability_id):
         return AgeixEnvelope.denied("capability_not_authorized_for_token", capability_id=payload.capability_id).model_dump()
     response = CapabilityExecutionService(repo_root).execute(CapabilityRequest(
@@ -62,6 +73,7 @@ def execute_capability(payload: CapabilityExecutePayload, identity: AuthIdentity
                 "authority_granted": False,
             },
             **({"participant_id": context.participant_id} if context.participant_id else {}),
+            **({"client_user_agent": context.client_user_agent} if context.client_user_agent else {}),
             "authentication_method": identity.authentication_method,
         },
     ))

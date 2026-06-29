@@ -43,6 +43,7 @@ class AgeixRequestContext(BaseModel):
     claimed_primary: bool | None = None
     authentication_method: str | None = None
     client_user_agent: str | None = None
+    client_headers: dict[str, str] | None = None
 
     @model_validator(mode="after")
     def reject_ambiguous_project(self) -> "AgeixRequestContext":

@@ -3,13 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from models.auth_identity import AuthIdentity
 from services.mcp_context import AgeixEnvelope, AgeixExternalRequestContext
 from services.mcp_service import MCPService
-from web.auth import get_auth_identity, resolve_request_context
+from web.auth import get_auth_identity, resolve_request_context, safe_request_headers
 from web.dependencies import get_repo_root
 
 router = APIRouter(prefix="/mcp")
@@ -49,9 +49,20 @@ def tools(
 
 
 @router.post("/tools/call")
-def call_tool(payload: MCPToolPayload, identity: AuthIdentity = Depends(get_auth_identity), repo_root: Path = Depends(get_repo_root)) -> dict[str, Any]:
+def call_tool(
+    payload: MCPToolPayload,
+    request: Request,
+    identity: AuthIdentity = Depends(get_auth_identity),
+    repo_root: Path = Depends(get_repo_root),
+) -> dict[str, Any]:
     service = MCPService(repo_root)
-    context = resolve_request_context(identity, payload.context, repo_root)
+    context = resolve_request_context(
+        identity,
+        payload.context,
+        repo_root,
+        client_user_agent=request.headers.get("user-agent"),
+        client_headers=safe_request_headers(request),
+    )
     capability_id = service.tool_registry.map_capability(payload.tool_name) or payload.tool_name
     requested_capability_id = str((payload.arguments or {}).get("capability_id") or "")
     if not identity.capability_allowed(capability_id):

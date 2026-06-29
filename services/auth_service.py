@@ -63,6 +63,7 @@ class AuthService:
         session_id: str,
         project_id: str,
         client_user_agent: str | None = None,
+        client_headers: dict[str, str] | None = None,
     ) -> AgeixRequestContext:
         """Create Ageix-owned execution context from credential identity plus request context."""
         participant_id = identity.participant_id if identity.auth_enabled else None
@@ -77,6 +78,7 @@ class AuthService:
             display_name=definition.display_name if definition else ("Lex" if identity.agent_id == "lex" else identity.agent_id),
             authentication_method=identity.authentication_method,
             client_user_agent=client_user_agent,
+            client_headers=client_headers,
         )
         self.validate_context(identity, context)
         return context
