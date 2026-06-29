@@ -25,7 +25,14 @@ class CapabilityExecutionService:
 
     def execute(self, request: CapabilityRequest) -> CapabilityResponse:
         definition = self.registry.lookup(request.capability_id)
-        auth = self.authorization.authorize(request.agent_id, definition, request.capability_id)
+        request_arguments = request.arguments if isinstance(request.arguments, dict) else {}
+        auth = self.authorization.authorize(
+            request.agent_id,
+            definition,
+            request.capability_id,
+            agent_role=request_arguments.get("agent_role"),
+            arguments=request_arguments,
+        )
         if not auth.allowed:
             response = CapabilityResponse(
                 success=False,
@@ -132,4 +139,6 @@ class CapabilityExecutionService:
             client_id=str(arguments.get("client_id")) if arguments.get("client_id") else None,
             project_id=str(arguments.get("project_id")) if arguments.get("project_id") else None,
             participant_id=str(arguments.get("participant_id")) if arguments.get("participant_id") else None,
+            agent_role=str(arguments.get("agent_role")) if arguments.get("agent_role") else None,
+            model_id=str(arguments.get("model_id")) if arguments.get("model_id") else None,
         ))

@@ -1583,5 +1583,105 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
         }),
     ),
 
+    MCPToolDefinition(
+        name="ageix.conversation.open",
+        capability_id="conversation.open",
+        category="conversation",
+        description="Open a governed shared conversation with a declared set of participants, per ADR-0016.",
+        input_schema=_object_schema({
+            "participants": _array("Participants to register: list of {client_id, agent_role, session_id}."),
+            "project_id": _string("Optional project ID to scope the conversation to."),
+            "metadata": _object("Optional free-form conversation metadata."),
+        }, ["participants"]),
+        recommended_next_tools=("ageix.conversation.turn.append", "ageix.conversation.get"),
+    ),
+    MCPToolDefinition(
+        name="ageix.conversation.transition",
+        capability_id="conversation.transition",
+        category="conversation",
+        description="Transition a shared conversation's lifecycle state, per ADR-0016's state machine.",
+        input_schema=_object_schema({
+            "conversation_id": _string("Conversation ID to transition."),
+            "new_state": _string(
+                "Target conversation state.",
+                enum=["OPEN", "ACTIVE", "WAITING_FOR_GREG", "WAITING_FOR_AGENT", "CONVERGED", "ESCALATED", "CLOSED", "ARCHIVED"],
+            ),
+        }, ["conversation_id", "new_state"]),
+    ),
+    MCPToolDefinition(
+        name="ageix.conversation.get",
+        capability_id="conversation.get",
+        category="conversation",
+        description="Retrieve a shared conversation's state, participants, rules of engagement, and recent turns.",
+        input_schema=_object_schema({
+            "conversation_id": _string("Conversation ID to retrieve."),
+            "recent_turn_limit": _integer("Maximum number of most-recent turns to include."),
+        }, ["conversation_id"]),
+        recommended_next_tools=("ageix.conversation.turn.list", "ageix.conversation.participant.list"),
+    ),
+    MCPToolDefinition(
+        name="ageix.conversation.turn.append",
+        capability_id="conversation.turn.append",
+        category="conversation",
+        description="Append an immutable turn to a shared conversation as the authenticated caller, per ADR-0016.",
+        input_schema=_object_schema({
+            "conversation_id": _string("Conversation ID to append the turn to."),
+            "turn_type": _string(
+                "Turn classification.",
+                enum=["STATEMENT", "QUESTION", "ANSWER", "DIRECTIVE", "SPECULATION", "OBSERVATION", "NO_COMMENT", "ABSTAIN", "ESCALATE"],
+            ),
+            "content": _string("Turn content."),
+            "confidence": {"type": "number", "description": "Confidence from 0.0 to 10.0."},
+            "directed_at": _string("Optional agent_role this turn directs a question to."),
+            "model_id": _string("Underlying model identifier that produced this turn."),
+        }, ["conversation_id", "turn_type", "content", "confidence"]),
+        recommended_next_tools=("ageix.conversation.turn.list",),
+    ),
+    MCPToolDefinition(
+        name="ageix.conversation.turn.list",
+        capability_id="conversation.turn.list",
+        category="conversation",
+        description="List the append-only turn history of a shared conversation.",
+        input_schema=_object_schema({
+            "conversation_id": _string("Conversation ID to list turns for."),
+            "limit": _integer("Maximum number of turns to return."),
+            "offset": _integer("Zero-based turn offset."),
+            "most_recent": _boolean("Return the most recent `limit` turns instead of the earliest."),
+        }, ["conversation_id"]),
+    ),
+    MCPToolDefinition(
+        name="ageix.conversation.participant.list",
+        capability_id="conversation.participant.list",
+        category="conversation",
+        description="List registered participants of a shared conversation.",
+        input_schema=_object_schema({"conversation_id": _string("Conversation ID to list participants for.")}, ["conversation_id"]),
+    ),
+    MCPToolDefinition(
+        name="ageix.conversation.participant.obligations",
+        capability_id="conversation.participant.obligations",
+        category="conversation",
+        description="List pending directed-question obligations by agent role for a shared conversation.",
+        input_schema=_object_schema({"conversation_id": _string("Conversation ID to check obligations for.")}, ["conversation_id"]),
+    ),
+    MCPToolDefinition(
+        name="ageix.conversation.handoff.create",
+        capability_id="conversation.handoff.create",
+        category="conversation",
+        description="Serialize a governed HANDOFF_PACKAGE artifact summarizing a shared conversation, per ADR-0016.",
+        input_schema=_object_schema({
+            "conversation_id": _string("Conversation ID to summarize for handoff."),
+            "requested_action": _string("Action requested of the handoff recipient."),
+            "conversation_summary": _string("Optional human-readable conversation summary."),
+            "outstanding_questions": _array("Optional list of outstanding question records."),
+        }, ["conversation_id", "requested_action"]),
+        recommended_next_tools=("ageix.conversation.handoff.get",),
+    ),
+    MCPToolDefinition(
+        name="ageix.conversation.handoff.get",
+        capability_id="conversation.handoff.get",
+        category="conversation",
+        description="Retrieve one governed HANDOFF_PACKAGE artifact by ID.",
+        input_schema=_object_schema({"handoff_id": _string("Handoff ID to retrieve.")}, ["handoff_id"]),
+    ),
 
 )

@@ -18,8 +18,16 @@ from services.agent_session_service import AgentSessionService
 from services.capability_execution_service import CapabilityExecutionService
 from models.capability_request import CapabilityRequest
 from services.patch_proposal_contract_service import PatchProposalContractService
+from models.agent_role import AgentRole
+from models.conversation_policy import CONFIDENCE_THRESHOLDS
+from models.conversation_turn import TurnType
+from services.conversation_event_service import ConversationEventService
+from services.turn_service import TurnService
 
 MAX_PROPOSAL_QUALITY_RETRIES = 1
+DEADLOCK_ESCALATION_THRESHOLD = 0.6
+CHAIR_CLIENT_ID = "ageix-chair"
+CHAIR_SESSION_ID = "ageix-chair-session"
 
 def build_chair_message(status: dict) -> str:
     title = status["title"]
@@ -69,6 +77,77 @@ def build_agent_turn_summary(turns: list[dict]) -> str:
         )
 
     return " ".join(parts)
+
+
+def provision_chair_session_identity(repo_root: str | Path = ".") -> dict[str, str]:
+    """Provisions the ageix.chair session identity used when Chair participates in shared conversations.
+
+    Distinct from Chair's CLI orchestration mode, which has no conversation identity.
+    """
+    session_service = AgentSessionService(repo_root)
+    if session_service.get_session(CHAIR_SESSION_ID) is None:
+        session_service.create_session(
+            CHAIR_SESSION_ID,
+            agent_id="chair",
+            metadata={"agent_role": AgentRole.AGEIX_CHAIR.value},
+        )
+    return {
+        "client_id": CHAIR_CLIENT_ID,
+        "agent_role": AgentRole.AGEIX_CHAIR.value,
+        "session_id": CHAIR_SESSION_ID,
+    }
+
+
+def conversation_context_evaluation(turns: list[dict]) -> dict[str, Any]:
+    """Evaluates shared conversation turns via qwen3, per ADR-0016.
+
+    Returns a running conversation_summary, a deadlock_confidence score
+    (0.0-1.0), and a disagreement_summary when deadlock_confidence is high.
+    """
+    return dispatch_agent("conversation_evaluator", {"turns": turns})
+
+
+def escalate_if_deadlocked(conversation_id: str, turns: list[dict], repo_root: str | Path = ".") -> dict[str, Any] | None:
+    """Posts an ESCALATE turn directed at Greg when Chair's deadlock assessment exceeds threshold."""
+    evaluation = conversation_context_evaluation(turns)
+    if evaluation.get("deadlock_confidence", 0.0) <= DEADLOCK_ESCALATION_THRESHOLD:
+        return None
+
+    identity = provision_chair_session_identity(repo_root)
+    turn = TurnService(repo_root).append_turn(
+        conversation_id,
+        speaker_client_id=identity["client_id"],
+        speaker_agent_role=identity["agent_role"],
+        speaker_session_id=identity["session_id"],
+        model_id="qwen3:8b",
+        turn_type=TurnType.ESCALATE,
+        directed_at="greg",
+        confidence=evaluation.get("confidence") or CONFIDENCE_THRESHOLDS["governance"],
+        content=evaluation.get("disagreement_summary") or "Deadlock detected; escalating to Greg.",
+    )
+    return turn.model_dump()
+
+
+def record_chair_governance_action(
+    conversation_id: str,
+    *,
+    governance_action_id: str,
+    event_type: str = "governance_action",
+    description: str = "",
+    metadata: dict[str, Any] | None = None,
+    repo_root: str | Path = ".",
+) -> dict[str, Any]:
+    """Records a Chair governance action (approval, commission) as a conversation event, never a turn."""
+    identity = provision_chair_session_identity(repo_root)
+    event = ConversationEventService(repo_root).record_event(
+        conversation_id,
+        event_type=event_type,
+        governance_action_id=governance_action_id,
+        actor_agent_role=identity["agent_role"],
+        description=description,
+        metadata=metadata,
+    )
+    return event.model_dump()
 
 
 def build_plan_for_task(

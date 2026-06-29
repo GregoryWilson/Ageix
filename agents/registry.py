@@ -69,6 +69,20 @@ AGENT_REGISTRY: dict[str, dict[str, Any]] = {
             "directory_inspection",
         ],
     },
+    "conversation_evaluator": {
+        "name": "Conversation Evaluator Agent",
+        "description": "Evaluates shared conversation turns for summary and deadlock confidence.",
+        "handler": "agents.conversation_evaluator_agent.run",
+        "default_model_profile": "reasoning_balanced",
+        "allowed_model_profiles": [
+            "local_fast",
+            "reasoning_balanced",
+        ],
+        "capabilities": [
+            "conversation_summarization",
+            "deadlock_assessment",
+        ],
+    },
 }
 
 

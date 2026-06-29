@@ -43,6 +43,11 @@ DEFAULT_CLIENTS: tuple[MCPClientDefinition, ...] = (
     # Backward-compatible local/test profile retained for pre-OAuth Ageix contexts.
     MCPClientDefinition("chatgpt", "Lex", "openai", enabled=True, placeholder=False, agent_id="lex"),
     MCPClientDefinition("claude", "Claude", "anthropic", enabled=True, placeholder=False, agent_id="claude"),
+    # Real Keycloak client_id for the human-delegated claude.ai/Claude Code OAuth
+    # connector (see KeycloakProvisioningService.provision_connector_client). JWTs
+    # minted for that connector carry this exact azp claim, distinct from the
+    # confidential service-account "claude" profile above.
+    MCPClientDefinition("ageix-connector-claude-ai", "Claude", "anthropic", enabled=True, placeholder=False, agent_id="claude"),
     MCPClientDefinition("gemini", "Gemini", "google", enabled=False, placeholder=True),
     MCPClientDefinition("openwebui", "OpenWebUI", "openwebui", enabled=False, placeholder=True),
     MCPClientDefinition("custom", "Custom MCP Client", "custom", enabled=False, placeholder=True),

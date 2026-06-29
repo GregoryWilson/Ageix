@@ -31,7 +31,7 @@ class FakeFastMCP:
             return fn
         return decorate
 
-    def http_app(self, path: str = "/"):
+    def http_app(self, path: str = "/", transport: str = "streamable-http"):
         async def root(request: Request):
             return JSONResponse({"transport": "fastmcp", "path": path, "tools": sorted(self.registered)})
 
@@ -124,7 +124,7 @@ def test_mcp_transport_execution(tmp_path: Path, monkeypatch):
         "tool_name": "ageix.identity.current",
         "session_id": "transport-exec",
         "project_id": "Ageix_Test",
-        "arguments": {},
+        "arguments": {"agent_role": "lex"},
     })
 
     body = response.json()
@@ -139,7 +139,7 @@ def test_mcp_transport_requires_project(tmp_path: Path, monkeypatch):
         "tool_name": "ageix.identity.current",
         "session_id": "transport-project",
         "project_id": "current",
-        "arguments": {},
+        "arguments": {"agent_role": "lex"},
     })
 
     assert response.json()["success"] is False
@@ -152,7 +152,7 @@ def test_mcp_transport_preserves_governance(tmp_path: Path, monkeypatch):
         "tool_name": "ageix.proposals.submit",
         "session_id": "transport-governance",
         "project_id": "Ageix_Test",
-        "arguments": {"objective": "should not be allowed"},
+        "arguments": {"objective": "should not be allowed", "agent_role": "lex"},
     })
 
     body = response.json()
@@ -180,7 +180,7 @@ def test_mcp_transport_audit_record(tmp_path: Path, monkeypatch):
         "tool_name": "ageix.identity.current",
         "session_id": "transport-audit",
         "project_id": "Ageix_Test",
-        "arguments": {},
+        "arguments": {"agent_role": "lex"},
     })
 
     records = CapabilityAuditService(tmp_path).list_records()

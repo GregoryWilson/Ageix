@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from models.agent_role import AgentRole
+
 
 class AgeixExternalRequestContext(BaseModel):
     """External request context accepted from web clients.
@@ -42,6 +44,7 @@ class AgeixRequestContext(BaseModel):
     display_name: str | None = None
     claimed_primary: bool | None = None
     authentication_method: str | None = None
+    agent_role: AgentRole = AgentRole.UNKNOWN
 
     @model_validator(mode="after")
     def reject_ambiguous_project(self) -> "AgeixRequestContext":
