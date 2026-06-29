@@ -81,23 +81,25 @@ collaboration_turn.py  collaboration_router.py  evaluator_agent.py  artifact_sto
 health.py  logger.py  providers/  config.yaml  safety/  agents/
 ```
 
-### `mcp/server.py` — NOT dead code, but a separate legacy bridge still live in production
+### `legacy_mcp/server.py` — NOT dead code, but a separate legacy bridge still live in production
 
 Despite being the *first* MCP attempt (13 tools wrapping a mostly-dead `/v1/ageix/*`
-REST API, with no Authorization header sent on any HTTP call), `mcp/server.py` is
+REST API, with no Authorization header sent on any HTTP call), `legacy_mcp/server.py`
+(formerly `mcp/server.py`, renamed to stop shadowing the real `mcp` PyPI package) is
 **still actively deployed** — `scripts/Ops/restart_ageix_mcp.sh` runs it as a
 standalone FastMCP process on port 8001 (`--transport sse`), reverse-proxied by
-nginx at `ageix.wilsongpt.com`, and this is what Claude.ai / remote MCP connectors
-currently connect to. It is architecturally separate from `web/app.py` (port 8002)
-and from `ageix_mcp/`, the real governed platform mounted at `/mcp` on that same
-process. Because it sends no auth header, calls into the now-auth-required
+nginx at `ageix.wilsongpt.com`. It is architecturally separate from `web/app.py`
+(port 8002) and from `ageix_mcp/`, the real governed platform mounted at `/mcp` on
+that same process. Because it sends no auth header, calls into the now-auth-required
 boundary 401. New tools added to `ageix_mcp/` are invisible to clients using this
 bridge no matter how the catalog grows — restarting `web/app.py` does not restart
 this separate process, and this process doesn't expose `ageix_mcp/`'s catalog at
 all. If you're asked to "test the Ageix MCP capabilities," that still means
-`ageix_mcp/`, not `mcp/server.py` — but be aware `mcp/server.py` is what's actually
-reachable at the public domain today, pending migration to point clients at the
-real `/mcp` transport with OAuth instead.
+`ageix_mcp/`, not `legacy_mcp/server.py`. External MCP connectors (Claude Code on
+the web, claude.ai) have since been repointed at the real `/mcp` transport with
+OAuth — `legacy_mcp/server.py` is retained for now pending its decommission
+(`scripts/Ops/restart_ageix_mcp.sh stop`) but should no longer be the active path
+for new clients.
 
 ## Auth
 
@@ -145,10 +147,8 @@ test (spins up `web.app:create_app` via `TestClient`, no daemon needed):
 PYTHONPATH=. python scripts/Smoke/smoke_16_4_mcp_transport_bridge.py
 ```
 
-Note: importing the real `mcp` PyPI package while `PYTHONPATH=.` is set can get
-shadowed by the local `mcp/` directory (the legacy prototype) — see the workaround
-comment at the top of `mcp/server.py` if you hit `ModuleNotFoundError: No module
-named 'mcp.types'`.
+Note: the legacy prototype's MCP entrypoint lives at `legacy_mcp/server.py` (renamed
+from `mcp/` so it stops shadowing the real `mcp` PyPI package under `PYTHONPATH=.`).
 
 ### Repository git management (`repo.*` capabilities)
 
