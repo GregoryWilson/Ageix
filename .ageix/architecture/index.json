@@ -32,7 +32,7 @@
       "path": "Ageix",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.645308+00:00"
+      "updated_at": "2026-06-29T15:03:18.867424+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-ARCHITECTURE",
@@ -153,7 +153,7 @@
       "path": "Ageix.ArchitecturePlatform",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.586818+00:00"
+      "updated_at": "2026-06-29T15:03:21.439104+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-ARCHITECTUREPLATFORM-ARCHITECTUREADRS",
@@ -170,7 +170,7 @@
       "path": "Ageix.ArchitecturePlatform.ArchitectureADRs",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.096934+00:00"
+      "updated_at": "2026-06-29T15:03:20.438338+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-ARCHITECTUREDECISIONRECORDSERVICE",
@@ -185,7 +185,7 @@
       "path": "Ageix.ArchitecturePlatform.ArchitectureADRs.ArchitectureDecisionRecordService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.091685+00:00"
+      "updated_at": "2026-06-29T15:03:20.412379+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-ARCHITECTUREPLATFORM-ARCHITECTURECONTEXT",
@@ -202,7 +202,7 @@
       "path": "Ageix.ArchitecturePlatform.ArchitectureContext",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.066309+00:00"
+      "updated_at": "2026-06-29T15:03:20.368284+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-ARCHITECTURECONTEXTSERVICE",
@@ -217,7 +217,7 @@
       "path": "Ageix.ArchitecturePlatform.ArchitectureContext.ArchitectureContextService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.061325+00:00"
+      "updated_at": "2026-06-29T15:03:20.353274+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-ARCHITECTUREPLATFORM-ARCHITECTUREGUIDANCE",
@@ -234,7 +234,7 @@
       "path": "Ageix.ArchitecturePlatform.ArchitectureGuidance",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.112848+00:00"
+      "updated_at": "2026-06-29T15:03:20.467599+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-ARCHITECTUREGUIDANCESERVICE",
@@ -249,7 +249,7 @@
       "path": "Ageix.ArchitecturePlatform.ArchitectureGuidance.ArchitectureGuidanceService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.107736+00:00"
+      "updated_at": "2026-06-29T15:03:20.453124+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-ARCHITECTUREPLATFORM-ARCHITECTUREHIERARCHY",
@@ -266,7 +266,7 @@
       "path": "Ageix.ArchitecturePlatform.ArchitectureHierarchy",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.035261+00:00"
+      "updated_at": "2026-06-29T15:03:20.308894+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-ARCHITECTUREHIERARCHYSERVICE",
@@ -281,7 +281,7 @@
       "path": "Ageix.ArchitecturePlatform.ArchitectureHierarchy.ArchitectureHierarchyService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.030026+00:00"
+      "updated_at": "2026-06-29T15:03:20.293891+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-ARCHITECTUREPLATFORM-ARCHITECTUREREGISTRY",
@@ -298,7 +298,7 @@
       "path": "Ageix.ArchitecturePlatform.ArchitectureRegistry",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.020454+00:00"
+      "updated_at": "2026-06-29T15:03:20.279062+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-ARCHITECTUREREGISTRYSERVICE",
@@ -313,7 +313,7 @@
       "path": "Ageix.ArchitecturePlatform.ArchitectureRegistry.ArchitectureRegistryService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.015460+00:00"
+      "updated_at": "2026-06-29T15:03:20.264187+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-ARCHITECTUREPLATFORM-ARCHITECTURERELATIONSHIPS",
@@ -330,7 +330,7 @@
       "path": "Ageix.ArchitecturePlatform.ArchitectureRelationships",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.051215+00:00"
+      "updated_at": "2026-06-29T15:03:20.338442+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-ARCHITECTURERELATIONSHIPRESOLVER",
@@ -345,7 +345,7 @@
       "path": "Ageix.ArchitecturePlatform.ArchitectureRelationships.ArchitectureRelationshipResolver",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.046040+00:00"
+      "updated_at": "2026-06-29T15:03:20.323692+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-ARCHITECTUREPLATFORM-ARCHITECTUREREVIEWS",
@@ -362,7 +362,7 @@
       "path": "Ageix.ArchitecturePlatform.ArchitectureReviews",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.081585+00:00"
+      "updated_at": "2026-06-29T15:03:20.397470+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-ARCHITECTUREREVIEWSERVICE",
@@ -377,7 +377,7 @@
       "path": "Ageix.ArchitecturePlatform.ArchitectureReviews.ArchitectureReviewService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.076508+00:00"
+      "updated_at": "2026-06-29T15:03:20.382934+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-ARCHITECTUREPLATFORM-GUIDANCECONTEXT",
@@ -394,7 +394,7 @@
       "path": "Ageix.ArchitecturePlatform.GuidanceContext",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.613698+00:00"
+      "updated_at": "2026-06-29T15:03:21.500186+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-ARCHITECTUREGUIDANCECONTEXTSERVICE",
@@ -409,7 +409,7 @@
       "path": "Ageix.ArchitecturePlatform.GuidanceContext.ArchitectureGuidanceContextService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.123441+00:00"
+      "updated_at": "2026-06-29T15:03:20.482311+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-ARCHITECTUREPLATFORM-WORKCONTEXT",
@@ -426,7 +426,7 @@
       "path": "Ageix.ArchitecturePlatform.WorkContext",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.607804+00:00"
+      "updated_at": "2026-06-29T15:03:21.484947+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-ARCHITECTUREWORKCONTEXTSERVICE",
@@ -441,7 +441,7 @@
       "path": "Ageix.ArchitecturePlatform.WorkContext.ArchitectureWorkContextService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.142759+00:00"
+      "updated_at": "2026-06-29T15:03:20.513162+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-AUTHENTICATION",
@@ -766,7 +766,7 @@
       "path": "Ageix.EvidencePlatform",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.580920+00:00"
+      "updated_at": "2026-06-29T15:03:21.423977+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-EVIDENCEPLATFORM-EVIDENCEBROKER",
@@ -784,7 +784,7 @@
       "path": "Ageix.EvidencePlatform.EvidenceBroker",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.631152+00:00"
+      "updated_at": "2026-06-29T15:03:21.545579+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-EVIDENCEBROKERSERVICE",
@@ -799,7 +799,7 @@
       "path": "Ageix.EvidencePlatform.EvidenceBroker.EvidenceBrokerService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.929754+00:00"
+      "updated_at": "2026-06-29T15:03:20.097741+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-EVIDENCEPLANNINGSERVICE",
@@ -814,7 +814,7 @@
       "path": "Ageix.EvidencePlatform.EvidenceBroker.EvidencePlanningService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.939431+00:00"
+      "updated_at": "2026-06-29T15:03:20.112368+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-EVIDENCEPLATFORM-EVIDENCEPACKAGES",
@@ -831,7 +831,7 @@
       "path": "Ageix.EvidencePlatform.EvidencePackages",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.959996+00:00"
+      "updated_at": "2026-06-29T15:03:20.156305+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-EVIDENCEPACKAGESERVICE",
@@ -846,7 +846,7 @@
       "path": "Ageix.EvidencePlatform.EvidencePackages.EvidencePackageService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.954703+00:00"
+      "updated_at": "2026-06-29T15:03:20.141692+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-EVIDENCEPLATFORM-FRESHNESSEVALUATION",
@@ -863,7 +863,7 @@
       "path": "Ageix.EvidencePlatform.FreshnessEvaluation",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.975337+00:00"
+      "updated_at": "2026-06-29T15:03:20.186624+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-EVIDENCEFRESHNESSSERVICE",
@@ -878,7 +878,7 @@
       "path": "Ageix.EvidencePlatform.FreshnessEvaluation.EvidenceFreshnessService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.970084+00:00"
+      "updated_at": "2026-06-29T15:03:20.171210+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-EVIDENCEPLATFORM-MCPEVIDENCEACCESS",
@@ -895,7 +895,7 @@
       "path": "Ageix.EvidencePlatform.MCPEvidenceAccess",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.005253+00:00"
+      "updated_at": "2026-06-29T15:03:20.248615+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-MCPEVIDENCEACCESSSERVICE",
@@ -910,7 +910,7 @@
       "path": "Ageix.EvidencePlatform.MCPEvidenceAccess.MCPEvidenceAccessService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.999845+00:00"
+      "updated_at": "2026-06-29T15:03:20.232414+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-EVIDENCEPLATFORM-REUSELINEAGE",
@@ -927,7 +927,7 @@
       "path": "Ageix.EvidencePlatform.ReuseLineage",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.990210+00:00"
+      "updated_at": "2026-06-29T15:03:20.216737+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-EVIDENCEREUSESERVICE",
@@ -942,7 +942,7 @@
       "path": "Ageix.EvidencePlatform.ReuseLineage.EvidenceReuseService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.985171+00:00"
+      "updated_at": "2026-06-29T15:03:20.201826+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-GOVERNANCE",
@@ -1058,7 +1058,7 @@
       "path": "Ageix.GovernancePlatform",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.379033+00:00"
+      "updated_at": "2026-06-29T15:03:18.889238+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-GOVERNANCEPLATFORM-CONSULTATIONFRAMEWORK",
@@ -1076,7 +1076,7 @@
       "path": "Ageix.GovernancePlatform.ConsultationFramework",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.832117+00:00"
+      "updated_at": "2026-06-29T15:03:19.891982+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-CONSULTATIONRESULTAGGREGATOR",
@@ -1091,7 +1091,7 @@
       "path": "Ageix.GovernancePlatform.ConsultationFramework.ConsultationResultAggregator",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.827453+00:00"
+      "updated_at": "2026-06-29T15:03:19.877061+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-CONSULTATIONSESSIONSERVICE",
@@ -1106,7 +1106,7 @@
       "path": "Ageix.GovernancePlatform.ConsultationFramework.ConsultationSessionService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.817563+00:00"
+      "updated_at": "2026-06-29T15:03:19.862149+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-GOVERNANCEPLATFORM-DECISIONTRACE",
@@ -1123,7 +1123,7 @@
       "path": "Ageix.GovernancePlatform.DecisionTrace",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.847514+00:00"
+      "updated_at": "2026-06-29T15:03:19.922417+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-DECISIONTRACESERVICE",
@@ -1138,7 +1138,7 @@
       "path": "Ageix.GovernancePlatform.DecisionTrace.DecisionTraceService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.841658+00:00"
+      "updated_at": "2026-06-29T15:03:19.907211+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-GOVERNANCEPLATFORM-GOVERNANCEPOLICY",
@@ -1155,7 +1155,7 @@
       "path": "Ageix.GovernancePlatform.GovernancePolicy",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.862226+00:00"
+      "updated_at": "2026-06-29T15:03:19.953295+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-CAPABILITYEXECUTIONSERVICE",
@@ -1170,7 +1170,7 @@
       "path": "Ageix.GovernancePlatform.GovernancePolicy.CapabilityExecutionService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.857555+00:00"
+      "updated_at": "2026-06-29T15:03:19.938026+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-GOVERNANCEPLATFORM-PROPOSALSYSTEM",
@@ -1188,7 +1188,7 @@
       "path": "Ageix.GovernancePlatform.ProposalSystem",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.808868+00:00"
+      "updated_at": "2026-06-29T15:03:19.846746+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-PROPOSALSERVICE",
@@ -1203,7 +1203,7 @@
       "path": "Ageix.GovernancePlatform.ProposalSystem.ProposalService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.795816+00:00"
+      "updated_at": "2026-06-29T15:03:19.817263+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-PROPOSALSTATUSSERVICE",
@@ -1218,7 +1218,7 @@
       "path": "Ageix.GovernancePlatform.ProposalSystem.ProposalStatusService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.804401+00:00"
+      "updated_at": "2026-06-29T15:03:19.832136+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-INFRASTRUCTUREPLATFORM",
@@ -1238,7 +1238,7 @@
       "path": "Ageix.InfrastructurePlatform",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.434043+00:00"
+      "updated_at": "2026-06-29T15:03:19.035629+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-INFRASTRUCTUREPLATFORM-CONFIGURATION",
@@ -1255,7 +1255,7 @@
       "path": "Ageix.InfrastructurePlatform.Configuration",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.533911+00:00"
+      "updated_at": "2026-06-29T15:03:21.336062+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-CONFIGURATIONSERVICE",
@@ -1270,7 +1270,7 @@
       "path": "Ageix.InfrastructurePlatform.Configuration.ConfigurationService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.527304+00:00"
+      "updated_at": "2026-06-29T15:03:21.321519+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-INFRASTRUCTUREPLATFORM-DEPLOYMENT",
@@ -1287,7 +1287,7 @@
       "path": "Ageix.InfrastructurePlatform.Deployment",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.568953+00:00"
+      "updated_at": "2026-06-29T15:03:21.393971+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-DEPLOYMENTSERVICE",
@@ -1302,7 +1302,7 @@
       "path": "Ageix.InfrastructurePlatform.Deployment.DeploymentService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.563233+00:00"
+      "updated_at": "2026-06-29T15:03:21.379403+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-INFRASTRUCTUREPLATFORM-RUNTIME",
@@ -1319,7 +1319,7 @@
       "path": "Ageix.InfrastructurePlatform.Runtime",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.551413+00:00"
+      "updated_at": "2026-06-29T15:03:21.365010+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-RUNTIMESERVICE",
@@ -1334,7 +1334,7 @@
       "path": "Ageix.InfrastructurePlatform.Runtime.RuntimeService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.545688+00:00"
+      "updated_at": "2026-06-29T15:03:21.350413+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-INFRASTRUCTUREPLATFORM-STORAGE",
@@ -1351,7 +1351,7 @@
       "path": "Ageix.InfrastructurePlatform.Storage",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.515859+00:00"
+      "updated_at": "2026-06-29T15:03:21.307138+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-ARTIFACTSTORAGESERVICE",
@@ -1366,7 +1366,7 @@
       "path": "Ageix.InfrastructurePlatform.Storage.ArtifactStorageService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.510087+00:00"
+      "updated_at": "2026-06-29T15:03:21.292593+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-MCPPLATFORM",
@@ -1391,7 +1391,7 @@
       "path": "Ageix.MCPPlatform",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.574825+00:00"
+      "updated_at": "2026-06-29T15:03:21.408915+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-MCPPLATFORM-CAPABILITYFACADE",
@@ -1423,7 +1423,7 @@
       "path": "Ageix.MCPPlatform.CapabilityRegistry",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.163889+00:00"
+      "updated_at": "2026-06-29T15:03:20.558447+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-CAPABILITYREGISTRYSERVICE",
@@ -1438,7 +1438,7 @@
       "path": "Ageix.MCPPlatform.CapabilityRegistry.CapabilityRegistryService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.158636+00:00"
+      "updated_at": "2026-06-29T15:03:20.542881+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-MCPPLATFORM-DISCOVERY",
@@ -1455,7 +1455,7 @@
       "path": "Ageix.MCPPlatform.Discovery",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.619495+00:00"
+      "updated_at": "2026-06-29T15:03:21.515404+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-MCPDISCOVERYSERVICE",
@@ -1470,7 +1470,7 @@
       "path": "Ageix.MCPPlatform.Discovery.MCPDiscoveryService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.174272+00:00"
+      "updated_at": "2026-06-29T15:03:20.573858+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-MCPPLATFORM-EXTERNALAGENTACCESS",
@@ -1487,7 +1487,7 @@
       "path": "Ageix.MCPPlatform.ExternalAgentAccess",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.232447+00:00"
+      "updated_at": "2026-06-29T15:03:20.692720+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-EXTERNALAGENTACCESSSERVICE",
@@ -1502,7 +1502,7 @@
       "path": "Ageix.MCPPlatform.ExternalAgentAccess.ExternalAgentAccessService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.226710+00:00"
+      "updated_at": "2026-06-29T15:03:20.669412+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-MCPPLATFORM-FACADEEXECUTION",
@@ -1519,7 +1519,7 @@
       "path": "Ageix.MCPPlatform.FacadeExecution",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.196075+00:00"
+      "updated_at": "2026-06-29T15:03:20.619701+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-MCPFACADESERVICE",
@@ -1534,7 +1534,7 @@
       "path": "Ageix.MCPPlatform.FacadeExecution.MCPFacadeService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.189779+00:00"
+      "updated_at": "2026-06-29T15:03:20.604190+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-MCPPLATFORM-MCPDISCOVERY",
@@ -1596,7 +1596,7 @@
       "path": "Ageix.MCPPlatform.TransportBridge",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.216529+00:00"
+      "updated_at": "2026-06-29T15:03:20.649468+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-MCPTRANSPORTBRIDGE",
@@ -1611,7 +1611,7 @@
       "path": "Ageix.MCPPlatform.TransportBridge.MCPTransportBridge",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.210187+00:00"
+      "updated_at": "2026-06-29T15:03:20.634737+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-PROPOSALSYSTEM",
@@ -1712,7 +1712,7 @@
       "path": "Ageix.SecurityPlatform",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.598928+00:00"
+      "updated_at": "2026-06-29T15:03:21.469692+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SECURITYPLATFORM-AUTHORIZATION",
@@ -1729,7 +1729,7 @@
       "path": "Ageix.SecurityPlatform.Authorization",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.264334+00:00"
+      "updated_at": "2026-06-29T15:03:20.754958+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-AUTHORIZATIONSERVICE",
@@ -1744,7 +1744,7 @@
       "path": "Ageix.SecurityPlatform.Authorization.AuthorizationService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.258770+00:00"
+      "updated_at": "2026-06-29T15:03:20.739405+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SECURITYPLATFORM-CAPABILITYSECURITY",
@@ -1761,7 +1761,7 @@
       "path": "Ageix.SecurityPlatform.CapabilitySecurity",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.311850+00:00"
+      "updated_at": "2026-06-29T15:03:20.851672+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-CAPABILITYSECURITYSERVICE",
@@ -1776,7 +1776,7 @@
       "path": "Ageix.SecurityPlatform.CapabilitySecurity.CapabilitySecurityService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.306482+00:00"
+      "updated_at": "2026-06-29T15:03:20.836678+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SECURITYPLATFORM-CLIENTADMISSION",
@@ -1793,7 +1793,7 @@
       "path": "Ageix.SecurityPlatform.ClientAdmission",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.295988+00:00"
+      "updated_at": "2026-06-29T15:03:20.821635+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-CLIENTADMISSIONSERVICE",
@@ -1808,7 +1808,7 @@
       "path": "Ageix.SecurityPlatform.ClientAdmission.ClientAdmissionService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.290414+00:00"
+      "updated_at": "2026-06-29T15:03:20.806346+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SECURITYPLATFORM-OAUTHJWTIDENTITY",
@@ -1825,7 +1825,7 @@
       "path": "Ageix.SecurityPlatform.OAuthJWTIdentity",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.625304+00:00"
+      "updated_at": "2026-06-29T15:03:21.530463+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-JWTAUTHSERVICE",
@@ -1840,7 +1840,7 @@
       "path": "Ageix.SecurityPlatform.OAuthJWTIdentity.JWTAuthService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.243109+00:00"
+      "updated_at": "2026-06-29T15:03:20.709117+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SECURITYPLATFORM-TRUSTBOUNDARIES",
@@ -1857,7 +1857,7 @@
       "path": "Ageix.SecurityPlatform.TrustBoundaries",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.279981+00:00"
+      "updated_at": "2026-06-29T15:03:20.790776+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-TRUSTBOUNDARYSERVICE",
@@ -1872,7 +1872,7 @@
       "path": "Ageix.SecurityPlatform.TrustBoundaries.TrustBoundaryService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.274600+00:00"
+      "updated_at": "2026-06-29T15:03:20.771076+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SESSIONPLATFORM",
@@ -1880,6 +1880,7 @@
         "ARCH-AGEIX-SESSIONPLATFORM-IDENTITY",
         "ARCH-AGEIX-SESSIONPLATFORM-PERSISTENCE",
         "ARCH-AGEIX-SESSIONPLATFORM-SESSIONSTATE",
+        "ARCH-AGEIX-SESSIONPLATFORM-SHAREDCONVERSATION",
         "ARCH-AGEIX-SESSIONPLATFORM-WORKFLOWCONTEXT"
       ],
       "description_state": "approved",
@@ -1892,7 +1893,7 @@
       "path": "Ageix.SessionPlatform",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.414963+00:00"
+      "updated_at": "2026-06-29T15:03:18.989268+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SESSIONPLATFORM-IDENTITY",
@@ -1909,7 +1910,7 @@
       "path": "Ageix.SessionPlatform.Identity",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.328744+00:00"
+      "updated_at": "2026-06-29T15:03:20.881467+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-IDENTITYCONTEXTSERVICE",
@@ -1924,7 +1925,7 @@
       "path": "Ageix.SessionPlatform.Identity.IdentityContextService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.322900+00:00"
+      "updated_at": "2026-06-29T15:03:20.866470+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SESSIONPLATFORM-PERSISTENCE",
@@ -1941,7 +1942,7 @@
       "path": "Ageix.SessionPlatform.Persistence",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.381817+00:00"
+      "updated_at": "2026-06-29T15:03:20.970432+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-PERSISTENCESERVICE",
@@ -1956,7 +1957,7 @@
       "path": "Ageix.SessionPlatform.Persistence.PersistenceService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.376151+00:00"
+      "updated_at": "2026-06-29T15:03:20.955842+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SESSIONPLATFORM-SESSIONSTATE",
@@ -1973,7 +1974,7 @@
       "path": "Ageix.SessionPlatform.SessionState",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.345323+00:00"
+      "updated_at": "2026-06-29T15:03:20.911462+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-SESSIONSTATESERVICE",
@@ -1988,7 +1989,87 @@
       "path": "Ageix.SessionPlatform.SessionState.SessionStateService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.339634+00:00"
+      "updated_at": "2026-06-29T15:03:20.896360+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-SESSIONPLATFORM-SHAREDCONVERSATION",
+      "child_ids": [
+        "ARCH-AGEIX-SVC-CONVERSATIONSERVICE",
+        "ARCH-AGEIX-SVC-HANDOFFSERVICE",
+        "ARCH-AGEIX-SVC-PARTICIPANTSERVICE",
+        "ARCH-AGEIX-SVC-TURNSERVICE"
+      ],
+      "description_state": "approved",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "Shared Conversation",
+      "node_key": "SharedConversation",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-SESSIONPLATFORM",
+      "path": "Ageix.SessionPlatform.SharedConversation",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-29T15:03:21.043139+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-SVC-CONVERSATIONSERVICE",
+      "child_ids": [],
+      "description_state": "approved",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "ConversationService",
+      "node_key": "ConversationService",
+      "node_type": "service",
+      "parent_id": "ARCH-AGEIX-SESSIONPLATFORM-SHAREDCONVERSATION",
+      "path": "Ageix.SessionPlatform.SharedConversation.ConversationService",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-29T15:03:20.985074+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-SVC-HANDOFFSERVICE",
+      "child_ids": [],
+      "description_state": "approved",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "HandoffService",
+      "node_key": "HandoffService",
+      "node_type": "service",
+      "parent_id": "ARCH-AGEIX-SESSIONPLATFORM-SHAREDCONVERSATION",
+      "path": "Ageix.SessionPlatform.SharedConversation.HandoffService",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-29T15:03:21.028837+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-SVC-PARTICIPANTSERVICE",
+      "child_ids": [],
+      "description_state": "approved",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "ParticipantService",
+      "node_key": "ParticipantService",
+      "node_type": "service",
+      "parent_id": "ARCH-AGEIX-SESSIONPLATFORM-SHAREDCONVERSATION",
+      "path": "Ageix.SessionPlatform.SharedConversation.ParticipantService",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-29T15:03:21.014622+00:00"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-SVC-TURNSERVICE",
+      "child_ids": [],
+      "description_state": "approved",
+      "linked_decision_count": 0,
+      "linked_evidence_count": 0,
+      "name": "TurnService",
+      "node_key": "TurnService",
+      "node_type": "service",
+      "parent_id": "ARCH-AGEIX-SESSIONPLATFORM-SHAREDCONVERSATION",
+      "path": "Ageix.SessionPlatform.SharedConversation.TurnService",
+      "project_id": "Ageix",
+      "status": "active",
+      "updated_at": "2026-06-29T15:03:21.000148+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SESSIONPLATFORM-WORKFLOWCONTEXT",
@@ -2005,7 +2086,7 @@
       "path": "Ageix.SessionPlatform.WorkflowContext",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.364742+00:00"
+      "updated_at": "2026-06-29T15:03:20.941119+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-WORKFLOWCONTEXTSERVICE",
@@ -2020,7 +2101,7 @@
       "path": "Ageix.SessionPlatform.WorkflowContext.WorkflowContextService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.356440+00:00"
+      "updated_at": "2026-06-29T15:03:20.926120+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-VALIDATION",
@@ -2104,7 +2185,7 @@
       "path": "Ageix.ValidationPlatform",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.421693+00:00"
+      "updated_at": "2026-06-29T15:03:19.003869+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-VALIDATIONPLATFORM-READINESSVALIDATION",
@@ -2121,7 +2202,7 @@
       "path": "Ageix.ValidationPlatform.ReadinessValidation",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.443336+00:00"
+      "updated_at": "2026-06-29T15:03:21.190729+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-READINESSVALIDATIONSERVICE",
@@ -2136,7 +2217,7 @@
       "path": "Ageix.ValidationPlatform.ReadinessValidation.ReadinessValidationService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.437554+00:00"
+      "updated_at": "2026-06-29T15:03:21.175530+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-VALIDATIONPLATFORM-SMOKEEVIDENCE",
@@ -2153,7 +2234,7 @@
       "path": "Ageix.ValidationPlatform.SmokeEvidence",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.426432+00:00"
+      "updated_at": "2026-06-29T15:03:21.160407+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-SMOKEEVIDENCESERVICE",
@@ -2168,7 +2249,7 @@
       "path": "Ageix.ValidationPlatform.SmokeEvidence.SmokeEvidenceService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.420703+00:00"
+      "updated_at": "2026-06-29T15:03:21.133763+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-VALIDATIONPLATFORM-VALIDATIONAGENT",
@@ -2185,7 +2266,7 @@
       "path": "Ageix.ValidationPlatform.ValidationAgent",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.393020+00:00"
+      "updated_at": "2026-06-29T15:03:21.088629+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-VALIDATIONAGENTSERVICE",
@@ -2200,7 +2281,7 @@
       "path": "Ageix.ValidationPlatform.ValidationAgent.ValidationAgentService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.387534+00:00"
+      "updated_at": "2026-06-29T15:03:21.063876+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-VALIDATIONPLATFORM-VALIDATIONPROFILES",
@@ -2217,7 +2298,7 @@
       "path": "Ageix.ValidationPlatform.ValidationProfiles",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.409559+00:00"
+      "updated_at": "2026-06-29T15:03:21.118643+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-VALIDATIONPROFILESERVICE",
@@ -2232,7 +2313,7 @@
       "path": "Ageix.ValidationPlatform.ValidationProfiles.ValidationProfileService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.403898+00:00"
+      "updated_at": "2026-06-29T15:03:21.104051+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-WEBPLATFORM",
@@ -2251,7 +2332,7 @@
       "path": "Ageix.WebPlatform",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.427762+00:00"
+      "updated_at": "2026-06-29T15:03:19.018364+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-WEBPLATFORM-APILAYER",
@@ -2268,7 +2349,7 @@
       "path": "Ageix.WebPlatform.APILayer",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.460983+00:00"
+      "updated_at": "2026-06-29T15:03:21.219604+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-FASTAPIAPP",
@@ -2283,7 +2364,7 @@
       "path": "Ageix.WebPlatform.APILayer.FastAPIApp",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.454540+00:00"
+      "updated_at": "2026-06-29T15:03:21.205300+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-WEBPLATFORM-REQUESTCONTEXT",
@@ -2300,7 +2381,7 @@
       "path": "Ageix.WebPlatform.RequestContext",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.498657+00:00"
+      "updated_at": "2026-06-29T15:03:21.277941+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-REQUESTCONTEXTSERVICE",
@@ -2315,7 +2396,7 @@
       "path": "Ageix.WebPlatform.RequestContext.RequestContextService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.492860+00:00"
+      "updated_at": "2026-06-29T15:03:21.263238+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-WEBPLATFORM-ROUTES",
@@ -2332,7 +2413,7 @@
       "path": "Ageix.WebPlatform.Routes",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.480937+00:00"
+      "updated_at": "2026-06-29T15:03:21.248597+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-ROUTEMODULES",
@@ -2347,7 +2428,7 @@
       "path": "Ageix.WebPlatform.Routes.RouteModules",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.474784+00:00"
+      "updated_at": "2026-06-29T15:03:21.234020+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-WORKERPLATFORM",
@@ -2368,7 +2449,7 @@
       "path": "Ageix.WorkerPlatform",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:40.593050+00:00"
+      "updated_at": "2026-06-29T15:03:21.453968+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-WORKERPLATFORM-CHAIR",
@@ -2385,7 +2466,7 @@
       "path": "Ageix.WorkerPlatform.Chair",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.876024+00:00"
+      "updated_at": "2026-06-29T15:03:19.984404+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-CHAIRDECISIONSERVICE",
@@ -2400,7 +2481,7 @@
       "path": "Ageix.WorkerPlatform.Chair.ChairDecisionService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.871403+00:00"
+      "updated_at": "2026-06-29T15:03:19.968360+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-WORKERPLATFORM-FUTUREWORKERS",
@@ -2415,7 +2496,7 @@
       "path": "Ageix.WorkerPlatform.FutureWorkers",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.491082+00:00"
+      "updated_at": "2026-06-29T15:03:19.189599+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-WORKERPLATFORM-PLANNER",
@@ -2432,7 +2513,7 @@
       "path": "Ageix.WorkerPlatform.Planner",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.890463+00:00"
+      "updated_at": "2026-06-29T15:03:20.016741+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-PLANNERAGENT",
@@ -2447,7 +2528,7 @@
       "path": "Ageix.WorkerPlatform.Planner.PlannerAgent",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.885455+00:00"
+      "updated_at": "2026-06-29T15:03:19.999400+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-WORKERPLATFORM-ROUTER",
@@ -2464,7 +2545,7 @@
       "path": "Ageix.WorkerPlatform.Router",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.904905+00:00"
+      "updated_at": "2026-06-29T15:03:20.052391+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-SVC-ROUTINGSERVICE",
@@ -2479,7 +2560,7 @@
       "path": "Ageix.WorkerPlatform.Router.RoutingService",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.899945+00:00"
+      "updated_at": "2026-06-29T15:03:20.036337+00:00"
     },
     {
       "architecture_id": "ARCH-AGEIX-WORKERPLATFORM-VALIDATIONWORKER",
@@ -2494,7 +2575,7 @@
       "path": "Ageix.WorkerPlatform.ValidationWorker",
       "project_id": "Ageix",
       "status": "active",
-      "updated_at": "2026-06-24T19:26:39.920618+00:00"
+      "updated_at": "2026-06-29T15:03:20.082958+00:00"
     }
   ],
   "schema_version": 1

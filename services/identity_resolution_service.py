@@ -37,6 +37,8 @@ class IdentityResolutionService:
         return {
             "client_id": context.client_id,
             "agent_id": context.agent_id,
+            "agent_role": context.agent_role.value,
+            "session_id": context.session_id,
             "participant_id": context.participant_id,
             "project_id": context.project_id,
             "provider": provider,

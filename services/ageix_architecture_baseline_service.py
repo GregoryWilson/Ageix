@@ -222,6 +222,7 @@ class AgeixArchitectureBaselineService:
                 ("SessionState", "Session State", "Carries session continuity across MCP and internal calls. It supports stateless clients while preserving workflow history."),
                 ("WorkflowContext", "Workflow Context", "Tracks current proposal, consultation, decision, and execution workflow context. It lets related tools understand where a request fits."),
                 ("Persistence", "Persistence", "Stores session and workflow records needed for continuity and audit. It avoids relying on model memory for governed state."),
+                ("SharedConversation", "Shared Conversation", "Hosts governed multi-agent conversations between claude.ai, Claude Code, Lex, and the Ageix Chair. It enforces rules of engagement, turn-taking, and directed-question obligations rather than letting agents free-talk."),
             ],
             "ValidationPlatform": [
                 ("ValidationAgent", "Validation Agent", "Runs approved validation profiles and returns deterministic results. It cannot directly write repo changes or bypass governance."),
@@ -295,6 +296,12 @@ class AgeixArchitectureBaselineService:
             "SessionState": ["SessionStateService:Maintains session continuity for external and internal interactions. It lets Ageix preserve context while treating models as stateless participants."],
             "WorkflowContext": ["WorkflowContextService:Retrieves current proposal, consultation, decision, and execution workflow state. It helps tools offer relevant next actions."],
             "Persistence": ["PersistenceService:Writes durable JSON artifacts and indexes for governance records. It favors inspectable state that can be validated and repaired cautiously."],
+            "SharedConversation": [
+                "ConversationService:Opens, transitions, and retrieves governed shared conversations and their rules of engagement. It is the entry point that binds participants, state, and turn history into one addressable conversation.",
+                "TurnService:Appends and retrieves immutable, append-only conversation turns. It enforces the directed-question response contract and never exposes a mutation path for committed turns.",
+                "ParticipantService:Tracks registered participants and per-role directed-question obligations for a conversation. It resolves confidence thresholds per agent role so escalation policy stays consistent.",
+                "HandoffService:Serializes and retrieves governed HANDOFF_PACKAGE artifacts summarizing a conversation for transfer. It packages participants, rules of engagement, and recent turns so context survives a handoff between agents.",
+            ],
             "ValidationAgent": ["ValidationAgentService:Executes validation profiles and normalizes test results. It reports success, failure, and evidence metadata without changing source code."],
             "ValidationProfiles": ["ValidationProfileService:Defines approved validation profiles and command scopes. It makes validation repeatable and governable."],
             "SmokeEvidence": ["SmokeEvidenceService:Creates temporary smoke-related evidence and cleanup rules. It supports immediate post-smoke inspection without long-term history pollution."],

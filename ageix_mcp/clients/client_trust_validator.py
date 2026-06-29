@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ageix_mcp.clients.client_admission_policy import ClientAdmissionDecision, MCPClientAdmissionPolicy
+from models.agent_role import AgentRole
 from services.agent_session_service import AgentSessionService
 from services.mcp_context import AgeixRequestContext
 
@@ -35,6 +36,7 @@ class MCPClientTrustValidator:
             display_name=context.display_name,
             agent_id=context.agent_id,
             claimed_primary=context.claimed_primary,
+            agent_role=context.agent_role.value if context.agent_role is not AgentRole.UNKNOWN else None,
         )
         if not decision.allowed:
             return ClientTrustValidationResult.from_admission(decision)
@@ -65,6 +67,7 @@ class MCPClientTrustValidator:
             "display_name": context.display_name or (definition.display_name if definition else ("Lex" if context.client_id.lower() == "chatgpt" else context.client_id)),
             "provider": context.provider or (definition.provider if definition else ("openai" if context.client_id.lower() == "chatgpt" else context.client_id)),
             "agent_id": context.agent_id,
+            "agent_role": context.agent_role.value,
             "session_id": context.session_id,
             "project_id": context.project_id,
             "participant_id": context.participant_id,

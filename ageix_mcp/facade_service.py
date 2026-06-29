@@ -175,6 +175,7 @@ class MCPFacadeService:
             "client_id": context.client_id,
             "client_context": self.trust.build_client_context(context),
             "authentication_method": context.authentication_method,
+            "agent_role": context.agent_role.value,
         }
         if context.participant_id:
             merged_arguments["participant_id"] = context.participant_id
@@ -227,6 +228,7 @@ class MCPFacadeService:
             client_id=context.client_id,
             project_id=context.project_id,
             participant_id=context.participant_id,
+            agent_role=context.agent_role.value,
         ))
         return AgeixEnvelope.denied(
             validation.reason,

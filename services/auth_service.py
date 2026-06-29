@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from models.agent_role import AgentRole
 from models.auth_identity import AuthIdentity
 from ageix_mcp.clients.client_registry import MCPClientRegistry
 from services.auth_providers.dev_token_provider import DevTokenProvider
@@ -56,8 +57,19 @@ class AuthService:
             raise AuthForbiddenError("invalid_bearer_token")
         raise AuthForbiddenError(f"unsupported_auth_mode:{mode}")
 
-    def build_resolved_context(self, identity: AuthIdentity, *, session_id: str, project_id: str) -> AgeixRequestContext:
-        """Create Ageix-owned execution context from credential identity plus request context."""
+    def build_resolved_context(self, identity: AuthIdentity, *, session_id: str, project_id: str, agent_role: str | None = None) -> AgeixRequestContext:
+        """Create Ageix-owned execution context from credential identity plus request context.
+
+        agent_role is self-declared by the caller at session open (ADR-0014) — it is
+        not derived from the verified token, since Keycloak cannot issue distinct
+        clients per Claude surface. When a role is declared it must resolve to a
+        known AgentRole; declaring an invalid/unknown role is rejected rather than
+        silently defaulted. Callers that omit agent_role entirely (legacy web
+        routes outside the MCP shared-conversation surface) keep prior behavior.
+        """
+        if agent_role is not None and AgentRole.parse(agent_role) is AgentRole.UNKNOWN:
+            raise AuthForbiddenError("agent_role_required_or_unknown")
+        resolved_role = AgentRole.parse(agent_role)
         participant_id = identity.participant_id if identity.auth_enabled else None
         definition = MCPClientRegistry().get(identity.client_id)
         context = AgeixRequestContext(
@@ -69,6 +81,7 @@ class AuthService:
             provider=definition.provider if definition else ("openai" if identity.client_id.lower() == "chatgpt" else identity.client_id),
             display_name=definition.display_name if definition else ("Lex" if identity.agent_id == "lex" else identity.agent_id),
             authentication_method=identity.authentication_method,
+            agent_role=resolved_role,
         )
         self.validate_context(identity, context)
         return context
