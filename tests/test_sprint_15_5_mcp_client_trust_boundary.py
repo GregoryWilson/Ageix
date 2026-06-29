@@ -114,6 +114,52 @@ def test_client_registry_resolves_connector_alias():
     assert registry.get("ageix-connector-bogus") is None
 
 
+def test_claude_code_connector_client_id_resolves_to_distinct_identity(tmp_path: Path):
+    # Claude Code gets its own registry entry (distinct from claude.ai chat's "claude")
+    # so dev-worker actions are audited and trust-scoped separately, even though both
+    # are "Claude" to a human. Once Keycloak provisions "ageix-connector-claude-code",
+    # the existing prefix-stripping resolution must find it without any alias-table entry.
+    _seed_project(tmp_path)
+    response = MCPFacadeService(tmp_path).execute_tool(
+        "ageix.workflow.current",
+        _ctx(
+            "claude-code-connector",
+            client_id="ageix-connector-claude-code",
+            provider="anthropic",
+            agent_id="claude_code",
+            display_name="Claude Code",
+        ),
+        {},
+    )
+
+    assert response.success is True
+
+
+def test_client_registry_resolves_claude_code_without_alias_table_entry():
+    from ageix_mcp.clients.client_registry import CONNECTOR_ID_ALIASES, MCPClientRegistry
+
+    registry = MCPClientRegistry()
+    resolved = registry.get("ageix-connector-claude-code")
+
+    assert resolved is not None
+    assert resolved.client_id == "claude-code"
+    assert resolved.agent_id == "claude_code"
+    assert "claude-code" not in CONNECTOR_ID_ALIASES
+
+
+def test_claude_code_and_claude_ai_are_distinct_registry_entries():
+    from ageix_mcp.clients.client_registry import MCPClientRegistry
+
+    registry = MCPClientRegistry()
+    claude_chat = registry.get("ageix-connector-claude-ai")
+    claude_code = registry.get("ageix-connector-claude-code")
+
+    assert claude_chat is not None
+    assert claude_code is not None
+    assert claude_chat.client_id != claude_code.client_id
+    assert claude_chat.agent_id != claude_code.agent_id
+
+
 def test_unprovisioned_connector_client_id_still_denied(tmp_path: Path):
     # The connector prefix alone must not grant trust -- only connector_ids with a
     # known alias to a registered client should resolve.

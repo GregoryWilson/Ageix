@@ -55,6 +55,10 @@ DEFAULT_CLIENTS: tuple[MCPClientDefinition, ...] = (
     # Backward-compatible local/test profile retained for pre-OAuth Ageix contexts.
     MCPClientDefinition("chatgpt", "Lex", "openai", enabled=True, placeholder=False, agent_id="lex"),
     MCPClientDefinition("claude", "Claude", "anthropic", enabled=True, placeholder=False, agent_id="claude"),
+    # Distinct identity for Claude Code's own connector, so dev-worker actions are
+    # audited and trust-scoped separately from claude.ai chat -- both are "Claude"
+    # but they are not the same caller for governance purposes.
+    MCPClientDefinition("claude-code", "Claude Code", "anthropic", enabled=True, placeholder=False, agent_id="claude_code"),
     MCPClientDefinition("gemini", "Gemini", "google", enabled=False, placeholder=True),
     MCPClientDefinition("openwebui", "OpenWebUI", "openwebui", enabled=False, placeholder=True),
     MCPClientDefinition("custom", "Custom MCP Client", "custom", enabled=False, placeholder=True),

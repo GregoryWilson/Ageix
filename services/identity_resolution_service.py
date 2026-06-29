@@ -19,6 +19,7 @@ class IdentityResolutionService:
     PROVIDER_HINTS = {
         "chatgpt": "openai",
         "claude": "anthropic",
+        "claude-code": "anthropic",
         "gemini": "google",
         "openwebui": "openwebui",
     }
