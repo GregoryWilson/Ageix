@@ -60,11 +60,16 @@ def _register_tool(mcp: Any, service: MCPService, tool_name: str, repo_root: Pat
         if arguments and IDENTITY_ARGUMENT_FIELDS.intersection(arguments.keys()):
             return AgeixEnvelope.denied("identity_fields_not_allowed", tool_name=tool_name).model_dump()
 
+        call_arguments = dict(arguments or {})
+        agent_role = call_arguments.pop("agent_role", None)
+        if not agent_role:
+            return AgeixEnvelope.denied("agent_role_required", tool_name=tool_name).model_dump()
+
         auth = AuthService(repo_root)
         token = _bearer_token_from_request(request)
         try:
             identity = auth.authenticate_bearer_token(token)
-            context = auth.build_resolved_context(identity, session_id=session_id, project_id=project_id)
+            context = auth.build_resolved_context(identity, session_id=session_id, project_id=project_id, agent_role=agent_role)
         except AuthRequiredError as exc:
             return AgeixEnvelope.denied(str(exc), tool_name=tool_name).model_dump()
         except AuthForbiddenError as exc:
@@ -74,13 +79,13 @@ def _register_tool(mcp: Any, service: MCPService, tool_name: str, repo_root: Pat
             return AgeixEnvelope.denied(message, tool_name=tool_name).model_dump()
 
         capability_id = service.tool_registry.map_capability(tool_name) or tool_name
-        requested_capability_id = str((arguments or {}).get("capability_id") or "")
+        requested_capability_id = str(call_arguments.get("capability_id") or "")
         if not identity.capability_allowed(capability_id):
             return AgeixEnvelope.denied("capability_not_authorized_for_token", tool_name=tool_name, capability_id=capability_id).model_dump()
         if capability_id == "capabilities.execute" and requested_capability_id and not identity.capability_allowed(requested_capability_id):
             return AgeixEnvelope.denied("capability_not_authorized_for_token", tool_name=tool_name, capability_id=requested_capability_id).model_dump()
 
-        return service.execute_tool(tool_name, context, arguments or {}).model_dump()
+        return service.execute_tool(tool_name, context, call_arguments).model_dump()
 
     invoke.__name__ = tool_name.replace(".", "_")
     invoke.__doc__ = f"Governed Ageix MCP tool adapter for {tool_name}."

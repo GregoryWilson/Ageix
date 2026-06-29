@@ -20,6 +20,7 @@ PURPOSE_MODEL_MAP = {
     "dev_worker_proposal": "local_coding",
     "code_proposal": "local_coding",
     "code_review": "local_coding",
+    "conversation_context_evaluation": "local_reasoning",
 }
 
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from models.agent_role import AgentRole
 from models.capability_definition import CapabilityDefinition
 from services.identity_resolution_service import IdentityResolutionService
 from services.mcp_context import AgeixRequestContext
@@ -40,6 +41,7 @@ def register_capabilities(repo_root: Path):
                 participant_id=arguments.get("participant_id"),
                 provider=str(arguments.get("provider")) if arguments.get("provider") else None,
                 display_name=str(arguments.get("display_name")) if arguments.get("display_name") else None,
+                agent_role=str(arguments.get("agent_role")) if arguments.get("agent_role") else AgentRole.UNKNOWN,
             )
         except Exception as exc:
             return {"success": False, "result": {}, "error": str(exc)}

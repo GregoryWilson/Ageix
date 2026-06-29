@@ -5,6 +5,7 @@ from typing import Any
 
 from ageix_mcp.clients.client_denylist import MCPClientDenylist
 from ageix_mcp.clients.client_registry import MCPClientRegistry
+from models.agent_role import AgentRole
 
 
 @dataclass(frozen=True)
@@ -44,7 +45,10 @@ class MCPClientAdmissionPolicy:
         display_name: str | None = None,
         agent_id: str | None = None,
         claimed_primary: bool | None = None,
+        agent_role: str | None = None,
     ) -> ClientAdmissionDecision:
+        if agent_role is not None and AgentRole.parse(agent_role) is AgentRole.UNKNOWN:
+            return ClientAdmissionDecision(False, "mcp_client_agent_role_unknown", True, str(client_id or "unknown"))
         if self.denylist.is_blocked(client_id, provider, display_name, agent_id):
             return ClientAdmissionDecision(False, "mcp_client_denylisted", True, str(client_id or "unknown"), {"blocked": True})
 
