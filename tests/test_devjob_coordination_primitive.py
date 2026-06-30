@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -18,7 +19,38 @@ DEVJOB_CAPABILITY_IDS = (
     "devjob.list",
     "devjob.get",
     "devjob.result.submit",
+    "devjob.assign",
+    "devjob.transition",
+    "devjob.event.list",
+    "devjob.review.submit",
+    "devjob.sync.attach",
+    "devjob.scope.revise",
+    "devjob.validation.waiver",
 )
+
+
+def _seed_work_context(tmp_path: Path, work_context_id: str = "WORKCTX-TESTSTUB00001") -> str:
+    """Fabricates a minimal WORKCTX-* package file for assignment validation.
+
+    ArchitectureWorkContextService.get_package() only checks existence and
+    JSON-parseability, so a real ArchitectureRegistryService node tree is
+    unnecessary for DevJob assignment tests.
+    """
+    package_dir = tmp_path / ".ageix" / "architecture" / "work_context" / work_context_id
+    package_dir.mkdir(parents=True, exist_ok=True)
+    (package_dir / "package.json").write_text(
+        json.dumps({"work_context_id": work_context_id, "created_by": "greg"}), encoding="utf-8",
+    )
+    return work_context_id
+
+
+def _assignment_fields(work_context_id: str) -> dict:
+    return {
+        "work_context_id": work_context_id,
+        "acceptance_criteria": ["Tests pass"],
+        "allowed_paths": ["services/"],
+        "prohibited_paths": ["secrets/"],
+    }
 
 
 def _tool_by_capability() -> dict[str, object]:
@@ -120,13 +152,114 @@ def test_list_jobs_filters_and_paginates(tmp_path: Path) -> None:
     assert paged["offset"] == 1
 
 
+# --- Assignment governance tests --------------------------------------------
+
+def test_draft_creation_requires_only_title_and_objective(tmp_path: Path) -> None:
+    registry = DevJobRegistryService(tmp_path)
+    job = registry.create_job(title="A", objective="B", created_by="greg")
+    assert job.status == "draft"
+    assert job.work_context_id is None
+    assert job.acceptance_criteria == []
+
+
+def test_assignment_without_work_context_denied(tmp_path: Path) -> None:
+    registry = DevJobRegistryService(tmp_path)
+    job = registry.create_job(title="A", objective="B", created_by="greg")
+    with pytest.raises(ValueError, match="devjob_assignment_requires_work_context"):
+        registry.assign_job(
+            job.job_id,
+            acceptance_criteria=["Tests pass"],
+            allowed_paths=["services/"],
+            prohibited_paths=["secrets/"],
+            assigned_to="claude.code-worker-1",
+            actor_id="greg",
+            actor_role=AgentRole.UNKNOWN,
+        )
+
+
+def test_assignment_with_unresolvable_work_context_denied(tmp_path: Path) -> None:
+    registry = DevJobRegistryService(tmp_path)
+    job = registry.create_job(title="A", objective="B", created_by="greg")
+    with pytest.raises(ValueError, match="devjob_work_context_not_found"):
+        registry.assign_job(
+            job.job_id,
+            work_context_id="WORKCTX-DOES-NOT-EXIST",
+            acceptance_criteria=["Tests pass"],
+            allowed_paths=["services/"],
+            prohibited_paths=["secrets/"],
+            assigned_to="claude.code-worker-1",
+            actor_id="greg",
+            actor_role=AgentRole.UNKNOWN,
+        )
+
+
+def test_direct_create_as_assigned_also_denied_without_work_context(tmp_path: Path) -> None:
+    """The direct-create-as-assigned path must enforce the same rules as assign_job
+    (no alternate governance path for assignment)."""
+    registry = DevJobRegistryService(tmp_path)
+    with pytest.raises(ValueError, match="devjob_assignment_requires_work_context"):
+        registry.create_job(
+            title="A", objective="B", created_by="greg",
+            status="assigned", assigned_to="claude.code-worker-1",
+        )
+
+
+def test_unauthorized_assignment_denied(tmp_path: Path) -> None:
+    registry = DevJobRegistryService(tmp_path)
+    work_context_id = _seed_work_context(tmp_path)
+    job = registry.create_job(title="A", objective="B", created_by="greg")
+    with pytest.raises(ValueError, match="devjob_transition_requires_creator_or_governance"):
+        registry.assign_job(
+            job.job_id,
+            actor_id="someone-else",
+            actor_role=AgentRole.CLAUDE_CODE,
+            **_assignment_fields(work_context_id),
+            assigned_to="claude.code-worker-1",
+        )
+
+
+def test_assignment_missing_scope_fields_denied(tmp_path: Path) -> None:
+    registry = DevJobRegistryService(tmp_path)
+    work_context_id = _seed_work_context(tmp_path)
+    job = registry.create_job(title="A", objective="B", created_by="greg")
+    with pytest.raises(ValueError, match="devjob_assignment_requires_acceptance_criteria"):
+        registry.assign_job(
+            job.job_id,
+            work_context_id=work_context_id,
+            allowed_paths=["services/"],
+            prohibited_paths=["secrets/"],
+            assigned_to="claude.code-worker-1",
+            actor_id="greg",
+            actor_role=AgentRole.UNKNOWN,
+        )
+
+
+def test_assign_job_records_identity_fields_immutably(tmp_path: Path) -> None:
+    registry = DevJobRegistryService(tmp_path)
+    work_context_id = _seed_work_context(tmp_path)
+    job = registry.create_job(title="Original Title", objective="Original Objective", created_by="greg")
+    assigned = registry.assign_job(
+        job.job_id,
+        actor_id="greg",
+        actor_role=AgentRole.UNKNOWN,
+        assigned_to="claude.code-worker-1",
+        **_assignment_fields(work_context_id),
+    )
+    assert assigned.title == "Original Title"
+    assert assigned.objective == "Original Objective"
+    assert assigned.created_by == "greg"
+    assert assigned.job_id == job.job_id
+
+
 # --- Lifecycle transition tests --------------------------------------------
 
 def test_assigned_devworker_can_progress_job_to_submitted(tmp_path: Path) -> None:
     registry = DevJobRegistryService(tmp_path)
+    work_context_id = _seed_work_context(tmp_path)
     job = registry.create_job(
         title="Implement", objective="Ship it", created_by="greg",
         status="assigned", assigned_to="claude.code-worker-1",
+        **_assignment_fields(work_context_id),
     )
     registry.transition_job(job.job_id, "in_progress", actor_id="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE)
     updated = registry.transition_job(job.job_id, "submitted", actor_id="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE)
@@ -143,9 +276,11 @@ def test_invalid_transition_rejected(tmp_path: Path) -> None:
 
 def test_unassigned_devworker_cannot_start_job(tmp_path: Path) -> None:
     registry = DevJobRegistryService(tmp_path)
+    work_context_id = _seed_work_context(tmp_path)
     job = registry.create_job(
         title="A", objective="B", created_by="greg",
         status="assigned", assigned_to="claude.code-worker-1",
+        **_assignment_fields(work_context_id),
     )
     with pytest.raises(ValueError, match="devjob_transition_requires_assigned_devworker"):
         registry.transition_job(job.job_id, "in_progress", actor_id="claude.code-worker-2", actor_role=AgentRole.CLAUDE_CODE)
@@ -153,12 +288,17 @@ def test_unassigned_devworker_cannot_start_job(tmp_path: Path) -> None:
 
 def test_only_greg_or_governance_can_complete_job(tmp_path: Path) -> None:
     registry = DevJobRegistryService(tmp_path)
+    work_context_id = _seed_work_context(tmp_path)
     job = registry.create_job(
         title="A", objective="B", created_by="greg",
         status="assigned", assigned_to="claude.code-worker-1",
+        **_assignment_fields(work_context_id),
     )
     registry.transition_job(job.job_id, "in_progress", actor_id="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE)
-    registry.submit_result(job_id=job.job_id, submitted_by="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE)
+    registry.submit_result(
+        job_id=job.job_id, submitted_by="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE,
+        validation_run_id="VALRUN-COMPLETE0001", branch_name="feature/devjob-complete",
+    )
     registry.transition_job(job.job_id, "reviewed", actor_id="greg", actor_role=AgentRole.UNKNOWN)
 
     with pytest.raises(ValueError, match="devjob_transition_requires_greg_or_governance"):
@@ -170,9 +310,11 @@ def test_only_greg_or_governance_can_complete_job(tmp_path: Path) -> None:
 
 def test_reviewer_role_can_mark_reviewed(tmp_path: Path) -> None:
     registry = DevJobRegistryService(tmp_path)
+    work_context_id = _seed_work_context(tmp_path)
     job = registry.create_job(
         title="A", objective="B", created_by="greg",
         status="assigned", assigned_to="claude.code-worker-1",
+        **_assignment_fields(work_context_id),
     )
     registry.transition_job(job.job_id, "in_progress", actor_id="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE)
     registry.submit_result(job_id=job.job_id, submitted_by="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE)
@@ -180,13 +322,166 @@ def test_reviewer_role_can_mark_reviewed(tmp_path: Path) -> None:
     assert reviewed.status == "reviewed"
 
 
+def test_blocked_transition_requires_reason(tmp_path: Path) -> None:
+    registry = DevJobRegistryService(tmp_path)
+    work_context_id = _seed_work_context(tmp_path)
+    job = registry.create_job(
+        title="A", objective="B", created_by="greg",
+        status="assigned", assigned_to="claude.code-worker-1",
+        **_assignment_fields(work_context_id),
+    )
+    registry.transition_job(job.job_id, "in_progress", actor_id="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE)
+    with pytest.raises(ValueError, match="devjob_blocked_requires_reason"):
+        registry.transition_job(job.job_id, "blocked", actor_id="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE)
+    blocked = registry.transition_job(
+        job.job_id, "blocked", actor_id="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE, note="Waiting on upstream API",
+    )
+    assert blocked.status == "blocked"
+    assert blocked.lifecycle_history[-1]["note"] == "Waiting on upstream API"
+
+
+def test_declined_transition_requires_reason(tmp_path: Path) -> None:
+    registry = DevJobRegistryService(tmp_path)
+    work_context_id = _seed_work_context(tmp_path)
+    job = registry.create_job(
+        title="A", objective="B", created_by="greg",
+        status="assigned", assigned_to="claude.code-worker-1",
+        **_assignment_fields(work_context_id),
+    )
+    with pytest.raises(ValueError, match="devjob_declined_requires_reason"):
+        registry.transition_job(job.job_id, "declined", actor_id="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE)
+    declined = registry.transition_job(
+        job.job_id, "declined", actor_id="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE, note="Out of scope",
+    )
+    assert declined.status == "declined"
+
+
+def test_list_events_merges_lifecycle_and_governed_events(tmp_path: Path) -> None:
+    registry = DevJobRegistryService(tmp_path)
+    work_context_id = _seed_work_context(tmp_path)
+    job = registry.create_job(
+        title="A", objective="B", created_by="greg",
+        status="assigned", assigned_to="claude.code-worker-1",
+        **_assignment_fields(work_context_id),
+    )
+    registry.transition_job(job.job_id, "in_progress", actor_id="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE)
+    registry.attach_sync(
+        job.job_id, branch="feature/devjob-thing", actor_id="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE,
+    )
+    events = registry.list_events(job.job_id)
+    event_types = [event["event_type"] for event in events["events"]]
+    assert "lifecycle_transition" in event_types
+    assert "git_sync_attached" in event_types
+    assert events["count"] == len(events["events"])
+
+
+def test_scope_revision_requires_evidence_and_reason(tmp_path: Path) -> None:
+    registry = DevJobRegistryService(tmp_path)
+    work_context_id = _seed_work_context(tmp_path)
+    job = registry.create_job(
+        title="A", objective="B", created_by="greg",
+        status="assigned", assigned_to="claude.code-worker-1",
+        **_assignment_fields(work_context_id),
+    )
+    with pytest.raises(ValueError, match="devjob_scope_revision_requires_evidence"):
+        registry.revise_scope(
+            job.job_id, reason="Need to add a path", evidence_package_ids=[],
+            allowed_paths=["services/", "models/"],
+            actor_id="greg", actor_role=AgentRole.UNKNOWN,
+        )
+    with pytest.raises(ValueError, match="devjob_scope_revision_requires_reason"):
+        registry.revise_scope(
+            job.job_id, reason="", evidence_package_ids=["EVPKG-1"],
+            allowed_paths=["services/", "models/"],
+            actor_id="greg", actor_role=AgentRole.UNKNOWN,
+        )
+    revised = registry.revise_scope(
+        job.job_id, reason="Need to add a path", evidence_package_ids=["EVPKG-1"],
+        allowed_paths=["services/", "models/"],
+        actor_id="greg", actor_role=AgentRole.UNKNOWN,
+    )
+    assert revised.allowed_paths == ["services/", "models/"]
+    assert revised.title == "A"  # core identity fields untouched
+    assert "EVPKG-1" in revised.evidence_package_ids
+    scope_events = [event for event in revised.events if event["event_type"] == "scope_revision"]
+    assert len(scope_events) == 1
+    assert scope_events[0]["before"]["allowed_paths"] == ["services/"]
+    assert scope_events[0]["after"]["allowed_paths"] == ["services/", "models/"]
+
+
+def test_completion_requires_validation_or_waiver(tmp_path: Path) -> None:
+    registry = DevJobRegistryService(tmp_path)
+    work_context_id = _seed_work_context(tmp_path)
+    job = registry.create_job(
+        title="A", objective="B", created_by="greg",
+        status="assigned", assigned_to="claude.code-worker-1",
+        **_assignment_fields(work_context_id),
+    )
+    registry.transition_job(job.job_id, "in_progress", actor_id="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE)
+    registry.submit_result(
+        job_id=job.job_id, submitted_by="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE,
+        branch_name="feature/devjob-thing",
+    )
+    registry.transition_job(job.job_id, "reviewed", actor_id="greg", actor_role=AgentRole.UNKNOWN)
+
+    with pytest.raises(ValueError, match="devjob_completion_requires_validation_or_waiver"):
+        registry.transition_job(job.job_id, "completed", actor_id="greg", actor_role=AgentRole.UNKNOWN)
+
+    registry.record_validation_waiver(job.job_id, reason="No validation profile applicable", actor_id="greg", actor_role=AgentRole.UNKNOWN)
+    completed = registry.transition_job(job.job_id, "completed", actor_id="greg", actor_role=AgentRole.UNKNOWN)
+    assert completed.status == "completed"
+
+
+def test_completion_requires_git_sync_reference(tmp_path: Path) -> None:
+    registry = DevJobRegistryService(tmp_path)
+    work_context_id = _seed_work_context(tmp_path)
+    job = registry.create_job(
+        title="A", objective="B", created_by="greg",
+        status="assigned", assigned_to="claude.code-worker-1",
+        **_assignment_fields(work_context_id),
+    )
+    registry.transition_job(job.job_id, "in_progress", actor_id="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE)
+    registry.submit_result(
+        job_id=job.job_id, submitted_by="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE,
+        validation_run_id="VALRUN-NOGITSYNC001",
+    )
+    registry.transition_job(job.job_id, "reviewed", actor_id="greg", actor_role=AgentRole.UNKNOWN)
+
+    with pytest.raises(ValueError, match="devjob_completion_requires_git_sync_reference"):
+        registry.transition_job(job.job_id, "completed", actor_id="greg", actor_role=AgentRole.UNKNOWN)
+
+    registry.attach_sync(job.job_id, commit_sha="abc123", actor_id="greg", actor_role=AgentRole.UNKNOWN)
+    completed = registry.transition_job(job.job_id, "completed", actor_id="greg", actor_role=AgentRole.UNKNOWN)
+    assert completed.status == "completed"
+
+
+def test_review_decline_requires_reviewer_or_greg(tmp_path: Path) -> None:
+    registry = DevJobRegistryService(tmp_path)
+    work_context_id = _seed_work_context(tmp_path)
+    job = registry.create_job(
+        title="A", objective="B", created_by="greg",
+        status="assigned", assigned_to="claude.code-worker-1",
+        **_assignment_fields(work_context_id),
+    )
+    registry.transition_job(job.job_id, "in_progress", actor_id="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE)
+    registry.submit_result(job_id=job.job_id, submitted_by="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE)
+    declined = registry.submit_review(
+        job.job_id, decision="changes_requested", reviewer_notes="Missing tests", actor_id="reviewer-1", actor_role=AgentRole.LEX,
+    )
+    assert declined.status == "declined"
+    review_events = [event for event in declined.events if event["event_type"] == "review_submitted"]
+    assert review_events[0]["decision"] == "changes_requested"
+
+
 # --- Result submission tests -------------------------------------------------
 
 def test_submit_result_carries_reference_fields_only(tmp_path: Path) -> None:
     registry = DevJobRegistryService(tmp_path)
+    work_context_id = _seed_work_context(tmp_path)
     job = registry.create_job(
         title="A", objective="B", created_by="greg",
         status="assigned", assigned_to="claude.code-worker-1",
+        **_assignment_fields(work_context_id),
     )
     registry.transition_job(job.job_id, "in_progress", actor_id="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE)
     outcome = registry.submit_result(
@@ -275,13 +570,22 @@ def test_devjob_lifecycle_through_capability_execution(tmp_path: Path) -> None:
         "agent_role": "claude.ai",
         "title": "Implement DevJob primitive",
         "objective": "Ship the first DevJob coordination primitive.",
-        "status": "assigned",
-        "assigned_to": "ageix-connector-claude-code",
         "created_by": "greg",
     })
     assert created["success"] is True
     job_id = created["result"]["job_id"]
-    assert created["result"]["status"] == "assigned"
+    assert created["result"]["status"] == "draft"
+
+    work_context_id = _seed_work_context(tmp_path)
+    assigned = _execute(tmp_path, "devjob.assign", {
+        "client_id": "greg",
+        "actor_id": "greg",
+        "job_id": job_id,
+        "assigned_to": "ageix-connector-claude-code",
+        **_assignment_fields(work_context_id),
+    })
+    assert assigned["success"] is True
+    assert assigned["result"]["status"] == "assigned"
 
     fetched = _execute(tmp_path, "devjob.get", {"client_id": "ageix-connector-claude-code", "job_id": job_id})
     assert fetched["success"] is True
@@ -291,11 +595,15 @@ def test_devjob_lifecycle_through_capability_execution(tmp_path: Path) -> None:
     assert listed["success"] is True
     assert listed["result"]["total_count"] == 1
 
-    # in_progress is not yet exposed as its own MCP capability in this sprint;
-    # move the job there at the service layer before exercising result.submit.
-    DevJobRegistryService(tmp_path).transition_job(
-        job_id, "in_progress", actor_id="ageix-connector-claude-code", actor_role=AgentRole.CLAUDE_CODE,
-    )
+    in_progress = _execute(tmp_path, "devjob.transition", {
+        "client_id": "ageix-connector-claude-code",
+        "agent_role": "claude.code",
+        "actor_id": "ageix-connector-claude-code",
+        "job_id": job_id,
+        "target_status": "in_progress",
+    })
+    assert in_progress["success"] is True
+    assert in_progress["result"]["status"] == "in_progress"
 
     submitted = _execute(tmp_path, "devjob.result.submit", {
         "client_id": "ageix-connector-claude-code",
@@ -322,3 +630,111 @@ def test_devjob_create_missing_fields_returns_error(tmp_path: Path) -> None:
     result = _execute(tmp_path, "devjob.create", {"client_id": "ageix-connector-claude-ai"})
     assert result["success"] is False
     assert result["error"] == "title_required"
+
+
+def test_devjob_assign_capability_denied_without_work_context(tmp_path: Path) -> None:
+    created = _execute(tmp_path, "devjob.create", {
+        "client_id": "ageix-connector-claude-ai", "title": "A", "objective": "B", "created_by": "greg",
+    })
+    job_id = created["result"]["job_id"]
+    result = _execute(tmp_path, "devjob.assign", {
+        "client_id": "greg", "actor_id": "greg", "job_id": job_id,
+        "assigned_to": "ageix-connector-claude-code",
+        "acceptance_criteria": ["Tests pass"], "allowed_paths": ["services/"], "prohibited_paths": ["secrets/"],
+    })
+    assert result["success"] is False
+    assert result["error"] == "devjob_assignment_requires_work_context"
+
+
+def test_devjob_governed_capability_full_cycle(tmp_path: Path) -> None:
+    created = _execute(tmp_path, "devjob.create", {
+        "client_id": "ageix-connector-claude-ai", "title": "A", "objective": "B", "created_by": "greg",
+    })
+    job_id = created["result"]["job_id"]
+    work_context_id = _seed_work_context(tmp_path)
+
+    assigned = _execute(tmp_path, "devjob.assign", {
+        "client_id": "greg", "actor_id": "greg", "job_id": job_id,
+        "assigned_to": "ageix-connector-claude-code",
+        **_assignment_fields(work_context_id),
+    })
+    assert assigned["success"] is True
+
+    started = _execute(tmp_path, "devjob.transition", {
+        "client_id": "ageix-connector-claude-code", "agent_role": "claude.code",
+        "actor_id": "ageix-connector-claude-code", "job_id": job_id, "target_status": "in_progress",
+    })
+    assert started["success"] is True
+
+    synced = _execute(tmp_path, "devjob.sync.attach", {
+        "client_id": "ageix-connector-claude-code", "agent_role": "claude.code",
+        "actor_id": "ageix-connector-claude-code", "job_id": job_id, "branch": "feature/devjob-full-cycle",
+    })
+    assert synced["success"] is True
+
+    submitted = _execute(tmp_path, "devjob.result.submit", {
+        "client_id": "ageix-connector-claude-code", "agent_role": "claude.code",
+        "actor_id": "ageix-connector-claude-code", "job_id": job_id,
+        "result_summary": "Done.", "validation_run_id": "VALRUN-FULLCYCLE001",
+    })
+    assert submitted["success"] is True
+
+    reviewed = _execute(tmp_path, "devjob.review.submit", {
+        "client_id": "greg", "actor_id": "greg", "job_id": job_id, "decision": "approved",
+    })
+    assert reviewed["success"] is True
+    assert reviewed["result"]["status"] == "reviewed"
+
+    completed = _execute(tmp_path, "devjob.transition", {
+        "client_id": "greg", "actor_id": "greg", "job_id": job_id, "target_status": "completed",
+    })
+    assert completed["success"] is True
+    assert completed["result"]["status"] == "completed"
+
+    events = _execute(tmp_path, "devjob.event.list", {"client_id": "greg", "job_id": job_id})
+    assert events["success"] is True
+    event_types = {event["event_type"] for event in events["result"]["events"]}
+    assert {"lifecycle_transition", "git_sync_attached", "review_submitted"} <= event_types
+
+
+def test_devjob_scope_revise_and_validation_waiver_capabilities(tmp_path: Path) -> None:
+    created = _execute(tmp_path, "devjob.create", {
+        "client_id": "ageix-connector-claude-ai", "title": "A", "objective": "B", "created_by": "greg",
+    })
+    job_id = created["result"]["job_id"]
+    work_context_id = _seed_work_context(tmp_path)
+    _execute(tmp_path, "devjob.assign", {
+        "client_id": "greg", "actor_id": "greg", "job_id": job_id,
+        "assigned_to": "ageix-connector-claude-code",
+        **_assignment_fields(work_context_id),
+    })
+
+    revised = _execute(tmp_path, "devjob.scope.revise", {
+        "client_id": "greg", "actor_id": "greg", "job_id": job_id,
+        "reason": "Add another allowed path", "evidence_package_ids": ["EVPKG-1"],
+        "allowed_paths": ["services/", "models/"],
+    })
+    assert revised["success"] is True
+    assert revised["result"]["allowed_paths"] == ["services/", "models/"]
+
+    no_evidence = _execute(tmp_path, "devjob.scope.revise", {
+        "client_id": "greg", "actor_id": "greg", "job_id": job_id,
+        "reason": "No evidence attached", "evidence_package_ids": [],
+        "allowed_paths": ["services/"],
+    })
+    assert no_evidence["success"] is False
+    assert no_evidence["error"] == "devjob_scope_revision_requires_evidence"
+
+    waiver = _execute(tmp_path, "devjob.validation.waiver", {
+        "client_id": "greg", "actor_id": "greg", "job_id": job_id, "reason": "No validation profile applicable",
+    })
+    assert waiver["success"] is True
+    waiver_events = [event for event in waiver["result"]["events"] if event["event_type"] == "validation_waiver"]
+    assert len(waiver_events) == 1
+
+    denied_waiver = _execute(tmp_path, "devjob.validation.waiver", {
+        "client_id": "ageix-connector-claude-code", "agent_role": "claude.code",
+        "actor_id": "ageix-connector-claude-code", "job_id": job_id, "reason": "Not governance",
+    })
+    assert denied_waiver["success"] is False
+    assert denied_waiver["error"] == "devjob_validation_waiver_requires_governance"

@@ -13,6 +13,8 @@ DevJobStatus = Literal[
     "submitted",
     "reviewed",
     "completed",
+    "blocked",
+    "declined",
     "cancelled",
 ]
 
@@ -42,6 +44,9 @@ class DevJob(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     lifecycle_history: list[dict[str, Any]] = Field(default_factory=list)
+    # Append-only governed events that are not status transitions: scope_revision,
+    # validation_waiver, git_sync_attached, review_submitted.
+    events: list[dict[str, Any]] = Field(default_factory=list)
 
     def to_summary(self) -> dict[str, Any]:
         return {
@@ -71,4 +76,5 @@ class DevJob(BaseModel):
             "conversation_id": self.conversation_id,
             "handoff_id": self.handoff_id,
             "lifecycle_history": self.lifecycle_history,
+            "events": self.events,
         }

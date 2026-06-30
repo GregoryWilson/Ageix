@@ -94,6 +94,137 @@ def register_capabilities(repo_root: Path):
             return {"success": False, "result": {}, "error": str(exc)}
         return {"success": True, "result": result, "metadata": {"source": "devjob_registry_service"}}
 
+    def devjob_assign(arguments: dict[str, Any]) -> dict[str, Any]:
+        job_id = str(arguments.get("job_id") or "")
+        if not job_id:
+            return {"success": False, "result": {}, "error": "job_id_required"}
+        actor_id = str(arguments.get("actor_id") or _actor_id(arguments))
+        actor_role = AgentRole.parse(str(arguments.get("agent_role") or ""))
+        try:
+            job = registry().assign_job(
+                job_id,
+                work_context_id=arguments.get("work_context_id"),
+                acceptance_criteria=arguments.get("acceptance_criteria"),
+                allowed_paths=arguments.get("allowed_paths"),
+                prohibited_paths=arguments.get("prohibited_paths"),
+                instructions=arguments.get("instructions"),
+                assigned_to=arguments.get("assigned_to"),
+                actor_id=actor_id,
+                actor_role=actor_role,
+                note=str(arguments.get("note") or ""),
+            )
+        except ValueError as exc:
+            return {"success": False, "result": {}, "error": str(exc)}
+        return {"success": True, "result": job.to_metadata(), "metadata": {"source": "devjob_registry_service"}}
+
+    def devjob_transition(arguments: dict[str, Any]) -> dict[str, Any]:
+        job_id = str(arguments.get("job_id") or "")
+        target_status = str(arguments.get("target_status") or "")
+        if not job_id:
+            return {"success": False, "result": {}, "error": "job_id_required"}
+        if not target_status:
+            return {"success": False, "result": {}, "error": "target_status_required"}
+        actor_id = str(arguments.get("actor_id") or _actor_id(arguments))
+        actor_role = AgentRole.parse(str(arguments.get("agent_role") or ""))
+        try:
+            job = registry().transition_job(
+                job_id,
+                target_status,  # type: ignore[arg-type]
+                actor_id=actor_id,
+                actor_role=actor_role,
+                note=str(arguments.get("note") or ""),
+            )
+        except ValueError as exc:
+            return {"success": False, "result": {}, "error": str(exc)}
+        return {"success": True, "result": job.to_metadata(), "metadata": {"source": "devjob_registry_service"}}
+
+    def devjob_event_list(arguments: dict[str, Any]) -> dict[str, Any]:
+        job_id = str(arguments.get("job_id") or "")
+        if not job_id:
+            return {"success": False, "result": {}, "error": "job_id_required"}
+        try:
+            result = registry().list_events(job_id)
+        except ValueError as exc:
+            return {"success": False, "result": {}, "error": str(exc)}
+        return {"success": True, "result": result, "metadata": {"source": "devjob_registry_service"}}
+
+    def devjob_review_submit(arguments: dict[str, Any]) -> dict[str, Any]:
+        job_id = str(arguments.get("job_id") or "")
+        if not job_id:
+            return {"success": False, "result": {}, "error": "job_id_required"}
+        actor_id = str(arguments.get("actor_id") or _actor_id(arguments))
+        actor_role = AgentRole.parse(str(arguments.get("agent_role") or ""))
+        try:
+            job = registry().submit_review(
+                job_id,
+                decision=str(arguments.get("decision") or ""),
+                reviewer_notes=str(arguments.get("reviewer_notes") or ""),
+                actor_id=actor_id,
+                actor_role=actor_role,
+            )
+        except ValueError as exc:
+            return {"success": False, "result": {}, "error": str(exc)}
+        return {"success": True, "result": job.to_metadata(), "metadata": {"source": "devjob_registry_service"}}
+
+    def devjob_sync_attach(arguments: dict[str, Any]) -> dict[str, Any]:
+        job_id = str(arguments.get("job_id") or "")
+        if not job_id:
+            return {"success": False, "result": {}, "error": "job_id_required"}
+        actor_id = str(arguments.get("actor_id") or _actor_id(arguments))
+        actor_role = AgentRole.parse(str(arguments.get("agent_role") or ""))
+        try:
+            job = registry().attach_sync(
+                job_id,
+                branch=arguments.get("branch"),
+                pr_reference=arguments.get("pr_reference"),
+                commit_sha=arguments.get("commit_sha"),
+                note=str(arguments.get("note") or ""),
+                actor_id=actor_id,
+                actor_role=actor_role,
+            )
+        except ValueError as exc:
+            return {"success": False, "result": {}, "error": str(exc)}
+        return {"success": True, "result": job.to_metadata(), "metadata": {"source": "devjob_registry_service"}}
+
+    def devjob_scope_revise(arguments: dict[str, Any]) -> dict[str, Any]:
+        job_id = str(arguments.get("job_id") or "")
+        if not job_id:
+            return {"success": False, "result": {}, "error": "job_id_required"}
+        actor_id = str(arguments.get("actor_id") or _actor_id(arguments))
+        actor_role = AgentRole.parse(str(arguments.get("agent_role") or ""))
+        try:
+            job = registry().revise_scope(
+                job_id,
+                reason=str(arguments.get("reason") or ""),
+                evidence_package_ids=arguments.get("evidence_package_ids") or [],
+                instructions=arguments.get("instructions"),
+                acceptance_criteria=arguments.get("acceptance_criteria"),
+                allowed_paths=arguments.get("allowed_paths"),
+                prohibited_paths=arguments.get("prohibited_paths"),
+                actor_id=actor_id,
+                actor_role=actor_role,
+            )
+        except ValueError as exc:
+            return {"success": False, "result": {}, "error": str(exc)}
+        return {"success": True, "result": job.to_metadata(), "metadata": {"source": "devjob_registry_service"}}
+
+    def devjob_validation_waiver(arguments: dict[str, Any]) -> dict[str, Any]:
+        job_id = str(arguments.get("job_id") or "")
+        if not job_id:
+            return {"success": False, "result": {}, "error": "job_id_required"}
+        actor_id = str(arguments.get("actor_id") or _actor_id(arguments))
+        actor_role = AgentRole.parse(str(arguments.get("agent_role") or ""))
+        try:
+            job = registry().record_validation_waiver(
+                job_id,
+                reason=str(arguments.get("reason") or ""),
+                actor_id=actor_id,
+                actor_role=actor_role,
+            )
+        except ValueError as exc:
+            return {"success": False, "result": {}, "error": str(exc)}
+        return {"success": True, "result": job.to_metadata(), "metadata": {"source": "devjob_registry_service"}}
+
     return [
         (CapabilityDefinition(
             capability_id="devjob.create",
@@ -123,4 +254,53 @@ def register_capabilities(repo_root: Path):
             handler="devjob.result.submit",
             description="Submit a reference-only DevJob result (patch_id, artifact_ids, validation_run_id, branch info) and move the DevJob to submitted, per INTENT-0007.",
         ), devjob_result_submit),
+        (CapabilityDefinition(
+            capability_id="devjob.assign",
+            category="devjob",
+            access_level="governed_read",
+            handler="devjob.assign",
+            description="Move a draft DevJob to assigned, requiring a resolvable WORKCTX-*, acceptance criteria, allowed/prohibited paths, an assigned worker, and an authorized assigner, per INTENT-0007 Phase 2.",
+        ), devjob_assign),
+        (CapabilityDefinition(
+            capability_id="devjob.transition",
+            category="devjob",
+            access_level="governed_read",
+            handler="devjob.transition",
+            description="Move a DevJob to an allowed lifecycle status (in_progress, blocked, declined, reviewed, completed, cancelled), enforcing authorization, reason requirements, and the completion gate, per INTENT-0007 Phase 2.",
+        ), devjob_transition),
+        (CapabilityDefinition(
+            capability_id="devjob.event.list",
+            category="devjob",
+            access_level="governed_read",
+            handler="devjob.event.list",
+            description="List a DevJob's full governed event history: lifecycle transitions plus non-status events (scope_revision, validation_waiver, git_sync_attached, review_submitted), in chronological order.",
+        ), devjob_event_list),
+        (CapabilityDefinition(
+            capability_id="devjob.review.submit",
+            category="devjob",
+            access_level="governed_read",
+            handler="devjob.review.submit",
+            description="Submit a formal review decision (approved or changes_requested) for a submitted DevJob, moving it to reviewed or declined, per INTENT-0007 Phase 2.",
+        ), devjob_review_submit),
+        (CapabilityDefinition(
+            capability_id="devjob.sync.attach",
+            category="devjob",
+            access_level="governed_read",
+            handler="devjob.sync.attach",
+            description="Record a git synchronization reference (branch, PR, or commit SHA) on a DevJob by reference only; never mutates the target repository, per INTENT-0007 Phase 2.",
+        ), devjob_sync_attach),
+        (CapabilityDefinition(
+            capability_id="devjob.scope.revise",
+            category="devjob",
+            access_level="governed_read",
+            handler="devjob.scope.revise",
+            description="Record an evidence-gated revision to a DevJob's scope (instructions, acceptance criteria, allowed/prohibited paths) as an append-only event rather than an in-place edit, per INTENT-0007 Phase 2.",
+        ), devjob_scope_revise),
+        (CapabilityDefinition(
+            capability_id="devjob.validation.waiver",
+            category="devjob",
+            access_level="governed_read",
+            handler="devjob.validation.waiver",
+            description="Record a governed waiver of the validation-attached completion requirement for a DevJob; restricted to Greg/governance and requires a reason, per INTENT-0007 Phase 2.",
+        ), devjob_validation_waiver),
     ]
