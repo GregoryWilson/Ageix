@@ -4,9 +4,6 @@ from pathlib import Path
 from typing import Any
 
 from models.capability_definition import CapabilityDefinition
-from models.capability_request import CapabilityRequest
-from services.capability_execution_service import CapabilityExecutionService
-from services.capability_registry_service import CapabilityRegistryService
 
 
 SUPPORTED_ACTIONS = {"approve", "reject", "defer", "request_changes", "add_comment"}
@@ -21,63 +18,13 @@ TARGET_CAPABILITY_ROUTES = {
 
 
 def register_capabilities(repo_root: Path):
-    registry = CapabilityRegistryService(repo_root)
-    executor = CapabilityExecutionService(repo_root)
-
     def execute_approval(arguments: dict[str, Any]) -> dict[str, Any]:
         try:
             clean = _validated(arguments)
-            target_capability_id = TARGET_CAPABILITY_ROUTES[clean["target_record_type"]]
-            if not registry.lookup(target_capability_id):
-                return _capability_unavailable(clean, target_capability_id)
-            delegated = executor.execute(CapabilityRequest(
-                capability_id=target_capability_id,
-                session_id=str(arguments.get("session_id") or "human-interface"),
-                agent_id=str(arguments.get("agent_id") or "chair"),
-                arguments={
-                    **arguments,
-                    **clean,
-                    "source_capability_id": "human_interface.approval.execute",
-                    "human_interface_translation_only": True,
-                },
-            ))
         except ValueError as exc:
             return {"success": False, "result": {}, "error": str(exc)}
-        if not delegated.success:
-            return {
-                "success": False,
-                "result": {
-                    "project_id": clean["project_id"],
-                    "target_record_id": clean["target_record_id"],
-                    "target_record_type": clean["target_record_type"],
-                    "action": clean["action"],
-                    "routed_capability_id": target_capability_id,
-                    "mutation_performed_by_human_interface": False,
-                },
-                "error": delegated.error or "governance_rejection",
-                "metadata": {
-                    "source": "human_interface_approval_router",
-                    "routed_capability_id": target_capability_id,
-                    "delegated_metadata": delegated.metadata,
-                },
-            }
-        return {
-            "success": True,
-            "result": {
-                **dict(delegated.result or {}),
-                "project_id": clean["project_id"],
-                "target_record_id": clean["target_record_id"],
-                "target_record_type": clean["target_record_type"],
-                "action": clean["action"],
-                "routed_capability_id": target_capability_id,
-                "mutation_performed_by_human_interface": False,
-            },
-            "metadata": {
-                "source": "human_interface_approval_router",
-                "routed_capability_id": target_capability_id,
-                "delegated_metadata": delegated.metadata,
-            },
-        }
+        target_capability_id = TARGET_CAPABILITY_ROUTES[clean["target_record_type"]]
+        return _capability_unavailable(clean, target_capability_id)
 
     return [
         (CapabilityDefinition(
