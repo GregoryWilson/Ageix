@@ -1,0 +1,168 @@
+{
+  "artifact_id": "ARCH-SUPP-OPEN-WEBUI-ADAPTER-SPRINT-26-1",
+  "artifact_type": "integration_spike_adapter_pattern",
+  "project_id": "Ageix",
+  "sprint": "26.1",
+  "title": "Open WebUI Integration Adapter Pattern",
+  "status": "proposed",
+  "scope": "architecture_supporting_only",
+  "base_branch": "sprint-26-human-interface-architecture",
+  "governing_artifacts": {
+    "evidence_package_ids": [
+      "EVPKG-298023C1EE14"
+    ],
+    "adr_ids": [
+      "ADR-0017",
+      "ADR-1CE374A025B2"
+    ],
+    "principle_ids": [
+      "PRIN-0007"
+    ],
+    "intent_ids": [
+      "INTENT-0008"
+    ],
+    "architecture_review_ids": [
+      "ARCHREV-2F16C935631A"
+    ],
+    "architecture_files": [
+      ".ageix/architecture/human_interface_architecture.json",
+      ".ageix/architecture/human_interface_foundation.md",
+      ".ageix/architecture/validation/sprint_26_human_interface_validation.md"
+    ]
+  },
+  "decision": {
+    "summary": "Use Open WebUI as a shell and access surface only. Place the Ageix Human Interface Adapter inside Ageix or as an Ageix-owned sidecar, exposed through narrow OpenAPI first and optionally governed MCP second.",
+    "recommendation": "openapi_first_ageix_owned_adapter",
+    "open_webui_role": "interaction_shell_only",
+    "ageix_role": "system_of_record_and_governance_authority"
+  },
+  "architecture_mapping": {
+    "domain": "ARCH-AGEIX-HUMANINTERFACE",
+    "interaction_shell": "ARCH-AGEIX-HUMANINTERFACE-INTERACTIONSHELL",
+    "adapter": "ARCH-AGEIX-HUMANINTERFACE-GOVERNEDINTERACTIONADAPTER",
+    "decision_review": "ARCH-AGEIX-HUMANINTERFACE-DECISIONREVIEW",
+    "related_platforms": [
+      "ARCH-AGEIX-WEBPLATFORM",
+      "ARCH-AGEIX-GOVERNANCEPLATFORM",
+      "ARCH-AGEIX-SESSIONPLATFORM",
+      "ARCH-AGEIX-SECURITYPLATFORM",
+      "ARCH-AGEIX-MCPPLATFORM",
+      "ARCH-AGEIX-EVIDENCEPLATFORM",
+      "ARCH-AGEIX-VALIDATIONPLATFORM",
+      "ARCH-AGEIX-WORKERPLATFORM"
+    ]
+  },
+  "adapter_contract": {
+    "placement_preference_order": [
+      {
+        "placement": "inside_ageix",
+        "recommendation": "preferred",
+        "reason": "Keeps governance, authorization, audit, and state ownership in Ageix."
+      },
+      {
+        "placement": "beside_open_webui_as_ageix_owned_sidecar",
+        "recommendation": "acceptable_for_spike_or_deployment_boundary",
+        "reason": "Can preserve ownership if code is versioned, reviewed, and governed as Ageix adapter code."
+      },
+      {
+        "placement": "inside_open_webui_plugin_or_pipeline",
+        "recommendation": "not_recommended_for_production",
+        "reason": "Arbitrary Python execution, upgrade fragility, and authority drift risk."
+      }
+    ],
+    "preferred_external_surface": "OpenAPI",
+    "optional_external_surface": "MCP Streamable HTTP for constrained governed capability access",
+    "project_context": {
+      "required_project_id": "Ageix",
+      "enforcement": "Adapter rejects or normalizes Ageix-specific requests unless project_id is exactly Ageix. Open WebUI workspace, chat, model, or group context is never treated as project authority."
+    },
+    "identity_context": {
+      "source": "OIDC/SSO claims, OAuth tool authorization, gateway identity, or Open WebUI header templates where available",
+      "ageix_validation_required": true,
+      "open_webui_identity_authoritative": false
+    },
+    "session_context": {
+      "open_webui_chat_id": "correlation_metadata_only",
+      "open_webui_message_id": "correlation_metadata_only",
+      "ageix_session": "created_or_resolved_by_ageix_boundary",
+      "session_authority": "Ageix"
+    },
+    "rationale_capture": {
+      "required_for_future_mutations": true,
+      "source": "explicit human input",
+      "not_allowed_sources": [
+        "model inference alone",
+        "Open WebUI button click without rationale where policy requires rationale",
+        "Open WebUI local approval state"
+      ]
+    }
+  },
+  "allowed_initial_26_2_surface": {
+    "name": "Decision Inbox MVP",
+    "mode": "read_only",
+    "minimum_endpoint_shape": "GET /human-interface/decision-inbox?project_id=Ageix",
+    "allowed_data": [
+      "proposal summaries",
+      "architecture decision summaries",
+      "evidence package references",
+      "validation result summaries",
+      "decision trace references",
+      "status labels",
+      "next governed action labels without executable mutation"
+    ],
+    "prohibited_data_or_controls": [
+      "approval mutation controls",
+      "worker trigger controls",
+      "repository write controls",
+      "local Open WebUI approval records",
+      "implicit model-mediated approvals"
+    ]
+  },
+  "invariants": [
+    "Ageix remains the system of record.",
+    "Open WebUI is shell only.",
+    "No direct UI-to-worker mutation path is introduced.",
+    "No direct UI-to-repository mutation path is introduced.",
+    "No separate approval store is introduced.",
+    "Open WebUI RBAC controls shell access only and does not authorize Ageix decisions.",
+    "All Ageix state-changing requests route through governed Ageix capabilities.",
+    "All Ageix-specific requests explicitly carry project_id Ageix.",
+    "Future mutations require explicit human rationale where governance requires rationale.",
+    "No dependency on the unfinished intent engine is introduced."
+  ],
+  "risk_summary": [
+    {
+      "risk": "arbitrary_python_execution_in_open_webui_plugins",
+      "severity": "high",
+      "mitigation": "Avoid production mutation paths in Tools, Functions, Pipes, Filters, or Pipelines. Use Ageix-owned adapter."
+    },
+    {
+      "risk": "auth_session_mismatch",
+      "severity": "high",
+      "mitigation": "Ageix validates identity and authorizes capability calls at the adapter boundary."
+    },
+    {
+      "risk": "chat_coupled_decision_workflow",
+      "severity": "medium",
+      "mitigation": "Decision Inbox is structured and read-only; chat/tool calls may supplement but not define workflow state."
+    },
+    {
+      "risk": "open_webui_as_parallel_authority",
+      "severity": "high",
+      "mitigation": "No approval state or governance authority is stored in Open WebUI."
+    },
+    {
+      "risk": "upgrade_fragility",
+      "severity": "medium",
+      "mitigation": "Avoid Open WebUI core forks/custom pages for 26.2; prefer stable external adapter contracts."
+    }
+  ],
+  "validation_expectations": [
+    "Confirm all 26.2 Decision Inbox endpoints are read-only.",
+    "Confirm project_id Ageix is required and enforced.",
+    "Confirm unauthorized users cannot see privileged records or controls.",
+    "Confirm Open WebUI stores no approval or decision authority state.",
+    "Confirm no shell, Git, worker, or repository mutation code is introduced.",
+    "Confirm no unreviewed Open WebUI community plugins are required."
+  ]
+}
