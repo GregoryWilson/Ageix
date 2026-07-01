@@ -1,0 +1,102 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Ageix Human Interface Decision Inbox",
+    "version": "26.2.5",
+    "description": "Read-only Open WebUI-compatible registration surface for the Ageix Human Interface Decision Inbox. Ageix remains the system of record and authorization authority."
+  },
+  "servers": [
+    {
+      "url": "https://ageix.wilsongpt.com",
+      "description": "Production Ageix gateway when publicly enabled"
+    },
+    {
+      "url": "http://localhost:8000",
+      "description": "Local Ageix Human Interface Adapter development server"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/human-interface/decision-inbox": {
+      "get": {
+        "operationId": "get_ageix_decision_inbox",
+        "summary": "Read the Ageix Decision Inbox",
+        "description": "Returns the read-only, project-scoped Ageix Human Interface Decision Inbox. This operation does not approve, reject, defer, request changes, trigger workers, mutate repository state, or store Open WebUI approval state.",
+        "tags": [
+          "human-interface"
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": true,
+            "description": "Explicit Ageix project context. Must be exactly Ageix.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Ageix"
+              ],
+              "default": "Ageix"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Read-only Decision Inbox response from Ageix.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "summary",
+                    "project_id",
+                    "read_only",
+                    "records"
+                  ],
+                  "properties": {
+                    "summary": {
+                      "type": "object"
+                    },
+                    "project_id": {
+                      "type": "string",
+                      "const": "Ageix"
+                    },
+                    "adapter": {
+                      "type": "string"
+                    },
+                    "read_only": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "records": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied by Ageix authorization or project-scope enforcement."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Ageix-issued or gateway-accepted bearer token. Open WebUI shell identity is not sufficient by itself."
+      }
+    }
+  }
+}
