@@ -77,8 +77,11 @@ def _make_assigned_job(
     job = registry.create_job(
         title="Test DevJob",
         objective="Implement test feature.",
+        acceptance_criteria=["Tests pass."],
         allowed_paths=allowed_paths if allowed_paths is not None else ["src/"],
-        prohibited_paths=prohibited_paths or [],
+        # Default to a non-empty prohibited_paths so the DevJob satisfies the
+        # assignment invariant; explicit overrides (including []) are preserved.
+        prohibited_paths=prohibited_paths if prohibited_paths is not None else ["secrets/"],
         work_context_id=work_context_id,
         evidence_package_ids=evidence_package_ids or [],
         created_by="greg",
