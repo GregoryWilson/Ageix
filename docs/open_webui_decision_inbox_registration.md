@@ -1,13 +1,13 @@
 # Open WebUI Decision Inbox Registration
 
 Project: Ageix  
-Sprint: 26.2.5  
-Surface: read-only Human Interface Decision Inbox  
+Sprint: 26.3  
+Surface: read-only Human Interface Decision Inbox and Decision Detail  
 Registration artifact: `open_webui/decision_inbox_openapi.json`
 
 ## Purpose
 
-This document describes the narrow Open WebUI registration path for the Ageix Decision Inbox MVP.
+This document describes the narrow Open WebUI registration path for the Ageix Decision Inbox and Decision Detail surfaces.
 
 Open WebUI remains an interaction shell only. Ageix remains the system of record, authorization authority, project-scope authority, and governance authority.
 
@@ -35,14 +35,23 @@ open_webui/decision_inbox_openapi.json
 
 MCP Streamable HTTP is not required for this sprint. Open WebUI plugin code, pipeline code, and arbitrary Python execution are not required for production use.
 
-## Adapter endpoint
+## Adapter endpoints
+
+Decision Inbox:
 
 ```http
 GET /human-interface/decision-inbox?project_id=Ageix
 Authorization: Bearer <Ageix-authorized-token>
 ```
 
-The endpoint is exposed by the Ageix Human Interface Adapter FastAPI app. The OpenAPI-compatible app surface is `human_interface_gateway.app`, which includes the `human_interface_adapter` router.
+Decision Detail:
+
+```http
+GET /human-interface/decision-detail/{decision_id}?project_id=Ageix
+Authorization: Bearer <Ageix-authorized-token>
+```
+
+The endpoints are exposed by the Ageix Human Interface Adapter FastAPI app. The OpenAPI-compatible app surface is `human_interface_gateway.app`, which includes the `human_interface_adapter` router.
 
 ## Open WebUI setup
 
@@ -50,7 +59,7 @@ The endpoint is exposed by the Ageix Human Interface Adapter FastAPI app. The Op
 2. Confirm the Ageix adapter OpenAPI document is reachable from the Open WebUI host:
 
    ```bash
-   curl -sS http://localhost:8000/openapi.json | jq '.paths["/human-interface/decision-inbox"].get.operationId'
+   curl -sS http://localhost:8000/openapi.json | jq '.paths["/human-interface/decision-inbox"].get.operationId, .paths["/human-interface/decision-detail/{decision_id}"].get.operationId'
    ```
 
 3. In Open WebUI, register an OpenAPI tool server using the adapter OpenAPI URL:
@@ -60,12 +69,12 @@ The endpoint is exposed by the Ageix Human Interface Adapter FastAPI app. The Op
    ```
 
    Use the production gateway URL instead when Open WebUI is calling the deployed Ageix gateway.
-
 4. Configure bearer-token authorization for the registered tool server. The token must be accepted by Ageix. Open WebUI workspace, chat, model, or group context is not Ageix authorization.
-5. Use the registered operation:
+5. Use the registered operations:
 
    ```text
    get_ageix_decision_inbox
+   get_ageix_decision_detail
    ```
 
 6. Supply the required query parameter exactly:
@@ -74,9 +83,11 @@ The endpoint is exposed by the Ageix Human Interface Adapter FastAPI app. The Op
    project_id=Ageix
    ```
 
+7. For Decision Detail, pass a selected inbox record identifier as `decision_id`. The adapter can resolve the selected record by inbox `record_id`, source `decision_id`, source `proposal_id`, source `adr_id`, or validation artifact stem when available.
+
 ## Expected smoke checks
 
-Authorized read:
+Authorized inbox read:
 
 ```bash
 curl -sS \
@@ -86,6 +97,23 @@ curl -sS \
 ```
 
 Expected values:
+
+```text
+"read_only"
+true
+false
+```
+
+Authorized detail read:
+
+```bash
+curl -sS \
+  -H "Authorization: Bearer $AGEIX_TOKEN" \
+  "http://localhost:8000/human-interface/decision-detail/<record_id>?project_id=Ageix" \
+  | jq '.summary.mode, .read_only, .summary.action_contracts_executable, .available_next_governed_action_labels'
+```
+
+Expected values include:
 
 ```text
 "read_only"
@@ -122,6 +150,30 @@ curl -i -sS \
 
 Expected result: HTTP 403 with `error: authorization_required`.
 
+## Governed action contracts
+
+Sprint 26.3 defines future governed action contracts as non-executable metadata only:
+
+- `approve`
+- `reject`
+- `defer`
+- `request_changes`
+- `add_comment/rationale`
+
+Each future action requires:
+
+- `project_id: "Ageix"`
+- target record ID
+- target record type
+- explicit rationale
+- authenticated identity
+- capability authorization
+- decision trace update
+- audit linkage
+- validation evidence where applicable
+
+No mutation endpoint is exposed for these actions in Sprint 26.3.
+
 ## Governance constraints preserved
 
-This registration path exposes only a GET operation. It does not expose approval, rejection, deferral, request-changes, rationale/comment mutation, worker execution, notification behavior, repository mutation, Open WebUI approval state, Open WebUI plugin code, Open WebUI pipeline code, or dependency on the unfinished intent engine.
+This registration path exposes only GET operations. It does not expose approval, rejection, deferral, request-changes, rationale/comment mutation, worker execution, notification behavior, repository mutation, Open WebUI approval state, Open WebUI plugin code, Open WebUI pipeline code, or dependency on the unfinished intent engine.
