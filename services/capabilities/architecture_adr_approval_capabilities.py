@@ -17,7 +17,7 @@ def register_capabilities(repo_root: Path):
         (CapabilityDefinition(
             capability_id=ArchitectureAdrApprovalService.CAPABILITY_ID,
             category="architecture",
-            access_level="governed_write",
+            access_level="governed_execute",
             handler=ArchitectureAdrApprovalService.CAPABILITY_ID,
             description="Execute target-specific governed Architecture ADR approval actions through ADR lifecycle governance.",
             requires_proposal=False,
