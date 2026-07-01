@@ -1,0 +1,161 @@
+{
+  "artifact_id": "ARCH-SUPP-HUMAN-INTERFACE-SPRINT-26-0",
+  "artifact_type": "architecture_domain_foundation",
+  "project_id": "Ageix",
+  "sprint": "26.0",
+  "title": "Human Interface Architecture Foundation",
+  "status": "proposed",
+  "scope": "architecture_only",
+  "governing_artifacts": {
+    "evidence_package_ids": [
+      "EVPKG-298023C1EE14"
+    ],
+    "architecture_review_proposal_ids": [
+      "ARCHREVPROP-B2A5E2D22EFD"
+    ],
+    "adr_ids": [
+      "ADR-0017",
+      "ADR-1CE374A025B2"
+    ],
+    "principle_ids": [
+      "PRIN-0007"
+    ],
+    "intent_ids": [
+      "INTENT-0008"
+    ],
+    "architecture_review_ids": [
+      "ARCHREV-2F16C935631A"
+    ]
+  },
+  "nodes": [
+    {
+      "architecture_id": "ARCH-AGEIX-HUMANINTERFACE",
+      "project_id": "Ageix",
+      "node_key": "HumanInterface",
+      "path": "Ageix.HumanInterface",
+      "name": "Human Interface",
+      "node_type": "domain",
+      "parent_id": "ARCH-AGEIX-PROJECT",
+      "status": "proposed",
+      "description_state": "proposed",
+      "description": "Defines governed human interaction with Ageix for review, approval, feedback, manual workflow initiation, notifications, and future human-facing entry points. This domain does not implement UI functionality and does not own Ageix state."
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-HUMANINTERFACE-INTERACTIONSHELL",
+      "project_id": "Ageix",
+      "node_key": "InteractionShell",
+      "path": "Ageix.HumanInterface.InteractionShell",
+      "name": "Interaction Shell",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-HUMANINTERFACE",
+      "status": "proposed",
+      "description_state": "proposed",
+      "description": "Defines the boundary for Open WebUI and future human-facing shells. Interface shells display Ageix context and collect human input but remain non-authoritative."
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-HUMANINTERFACE-GOVERNEDINTERACTIONADAPTER",
+      "project_id": "Ageix",
+      "node_key": "GovernedInteractionAdapter",
+      "path": "Ageix.HumanInterface.GovernedInteractionAdapter",
+      "name": "Governed Interaction Adapter",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-HUMANINTERFACE",
+      "status": "proposed",
+      "description_state": "proposed",
+      "description": "Defines the adapter boundary between human-facing shells and governed Ageix capabilities. State-changing actions must route through project-scoped governed capability execution."
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-HUMANINTERFACE-DECISIONREVIEW",
+      "project_id": "Ageix",
+      "node_key": "DecisionReview",
+      "path": "Ageix.HumanInterface.DecisionReview",
+      "name": "Decision Review",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-HUMANINTERFACE",
+      "status": "proposed",
+      "description_state": "proposed",
+      "description": "Defines human-facing review concepts for proposals, architecture decisions, evidence, validation outcomes, waivers, approvals, and feedback while preserving existing governance paths."
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-HUMANINTERFACE-NOTIFICATIONINTAKE",
+      "project_id": "Ageix",
+      "node_key": "NotificationIntake",
+      "path": "Ageix.HumanInterface.NotificationIntake",
+      "name": "Notification Intake",
+      "node_type": "component",
+      "parent_id": "ARCH-AGEIX-HUMANINTERFACE",
+      "status": "proposed",
+      "description_state": "proposed",
+      "description": "Defines future notification and lightweight approval-link intake boundaries without introducing mobile implementation or new authority paths."
+    }
+  ],
+  "relationships": [
+    {
+      "source_architecture_id": "ARCH-AGEIX-HUMANINTERFACE",
+      "relationship_type": "child_of",
+      "target_architecture_id": "ARCH-AGEIX-PROJECT",
+      "description": "Human Interface is a first-level Ageix architecture domain."
+    },
+    {
+      "source_architecture_id": "ARCH-AGEIX-HUMANINTERFACE",
+      "relationship_type": "uses_governed_capabilities_from",
+      "target_architecture_id": "ARCH-AGEIX-MCPPLATFORM",
+      "description": "Human-facing actions enter Ageix through governed capability surfaces rather than direct mutation."
+    },
+    {
+      "source_architecture_id": "ARCH-AGEIX-HUMANINTERFACE",
+      "relationship_type": "preserves_governance_of",
+      "target_architecture_id": "ARCH-AGEIX-GOVERNANCEPLATFORM",
+      "description": "Review, approval, waiver, and feedback flows preserve existing governance semantics."
+    },
+    {
+      "source_architecture_id": "ARCH-AGEIX-HUMANINTERFACE",
+      "relationship_type": "uses_identity_and_session_context_from",
+      "target_architecture_id": "ARCH-AGEIX-SESSIONPLATFORM",
+      "description": "Human interaction must remain project-scoped and session-aware."
+    },
+    {
+      "source_architecture_id": "ARCH-AGEIX-HUMANINTERFACE",
+      "relationship_type": "respects_trust_boundaries_from",
+      "target_architecture_id": "ARCH-AGEIX-SECURITYPLATFORM",
+      "description": "Human interfaces must not bypass admission, identity, authorization, or trust-boundary checks."
+    },
+    {
+      "source_architecture_id": "ARCH-AGEIX-HUMANINTERFACE-INTERACTIONSHELL",
+      "relationship_type": "shell_only_boundary_for",
+      "target_architecture_id": "ARCH-AGEIX-WEBPLATFORM",
+      "description": "Open WebUI and future web shells are presentation and input surfaces only."
+    }
+  ],
+  "responsibilities": [
+    "Present governed Ageix context to humans for review and action.",
+    "Collect human approvals, feedback, decisions, and manual workflow initiation intent.",
+    "Route state-changing requests through governed project-scoped Ageix capabilities.",
+    "Preserve evidence, validation, proposal, architecture, worker, and audit traceability.",
+    "Define interface boundaries for Open WebUI and future human-facing shells without implementing them."
+  ],
+  "boundaries": {
+    "in_scope": [
+      "Architecture domain definition",
+      "Architecture relationships",
+      "Governed human interaction responsibilities",
+      "Open WebUI shell boundary",
+      "No direct UI-to-worker mutation rule"
+    ],
+    "out_of_scope": [
+      "Open WebUI integration implementation",
+      "Chat feature implementation",
+      "Mobile implementation",
+      "New authority paths",
+      "Governance policy changes",
+      "Direct worker mutation from UI"
+    ]
+  },
+  "invariants": [
+    "Open WebUI is a shell only.",
+    "Ageix remains the system of record.",
+    "No direct UI-to-worker mutation path is introduced.",
+    "All state-changing UI actions route through governed Ageix capabilities.",
+    "Human Interface does not weaken project-scoped operations."
+  ]
+}
