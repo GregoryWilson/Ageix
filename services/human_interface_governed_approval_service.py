@@ -63,7 +63,7 @@ class HumanInterfaceGovernedApprovalService:
             "client_id": str(identity.get("client_id") or "human_interface"),
             "provider": str(identity.get("provider") or "human_interface"),
             "participant_id": identity.get("participant_id"),
-            "agent_role": str(identity.get("agent_role") or "ageix_chair"),
+            "agent_role": str(identity.get("agent_role") or "ageix.chair"),
             "authenticated_identity": identity,
         }
         request = CapabilityRequest(
