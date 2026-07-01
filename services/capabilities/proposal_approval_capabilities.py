@@ -17,7 +17,7 @@ def register_capabilities(repo_root: Path):
         (CapabilityDefinition(
             capability_id=ProposalApprovalService.CAPABILITY_ID,
             category="proposal",
-            access_level="governed_write",
+            access_level="governed_execute",
             handler=ProposalApprovalService.CAPABILITY_ID,
             description="Execute target-specific governed proposal approval actions through Proposal System lifecycle state.",
             requires_proposal=False,
