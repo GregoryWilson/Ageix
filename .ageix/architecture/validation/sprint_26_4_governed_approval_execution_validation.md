@@ -4,11 +4,28 @@ Date: 2026-07-01
 Project: Ageix
 Branch: sprint-26-4-governed-approval-execution
 
-## Scope
+## Revision Status
 
-Sprint 26.4 introduces the first executable Human Interface mutation path for governed decision actions.
+This validation artifact reflects the Sprint 26.4 correction that `human_interface.approval.execute` must be routing/translation only.
 
-Supported actions:
+The previous implementation incorrectly placed target-specific approval semantics inside the Human Interface capability. That behavior was removed.
+
+## Corrected Scope
+
+Sprint 26.4 now provides:
+
+- Human Interface action endpoint
+- request shape validation
+- explicit `project_id=Ageix` enforcement
+- authenticated identity requirement
+- rationale requirement
+- supported action validation
+- target type routing
+- structured `capability_unavailable` response when the target-specific governed capability does not exist
+
+Sprint 26.4 does not implement target-specific approval semantics.
+
+## Supported Human Interface Actions
 
 - approve
 - reject
@@ -16,71 +33,57 @@ Supported actions:
 - request_changes
 - add_comment
 
-Supported target types:
+## Target Routing
 
-- proposal / pending_proposal
-- adr / architecture_decision / architecture_decision_record / pending_architecture_decision
+Current routing table:
+
+- `proposal` / `pending_proposal` -> `proposal.approval.execute`
+- `adr` / `architecture_decision` / `architecture_decision_record` / `pending_architecture_decision` -> `architecture.adr.approval.execute`
+
+Repository/capability inspection did not identify existing target-specific governed approval capabilities for those routes in the current branch context.
+
+Therefore valid requests currently return:
+
+```json
+{
+  "success": false,
+  "error": "capability_unavailable"
+}
+```
 
 ## Governance Verification Summary
 
-The implementation preserves the Human Interface Adapter as a translation layer only.
+The Human Interface Adapter and Human Interface approval capability do not:
 
-The adapter:
+- map approval actions to proposal statuses
+- mutate proposal status
+- mutate proposal metadata or conditions
+- accept ADRs
+- create decision traces as the primary governance path
+- create Open WebUI approval state
+- invoke Git
+- invoke workers
+- implement target-specific approval semantics
 
-- requires an authenticated boundary before action execution
-- requires explicit `project_id`
-- requires `target_record_id`
-- requires `target_record_type`
-- requires a supported action
-- requires rationale
-- builds an authenticated identity context
-- delegates execution to `CapabilityExecutionService`
-- does not write repository files directly
-- does not invoke Git
-- does not invoke workers
-- does not create Open WebUI approval state
+The Human Interface layer may only validate and route requests to existing target-specific governed capabilities.
 
-Governed execution is routed through:
-
-1. `human_interface_adapter.py`
-2. `HumanInterfaceGovernedApprovalService`
-3. `CapabilityExecutionService`
-4. `AgentAuthorizationService`
-5. registered capability `human_interface.approval.execute`
-6. existing Ageix system-of-record services:
-   - `ProposalService`
-   - `ArchitectureDecisionRecordService`
-   - `DecisionTraceService`
-   - `CapabilityAuditService`
-
-## Existing Governed Infrastructure Reused
+## Existing Infrastructure Reused
 
 Reused components:
 
-- `CapabilityExecutionService` for capability lookup, authorization, execution, workflow event recording, and audit recording
-- `AgentAuthorizationService` for capability authorization and role-policy enforcement
-- `ProposalService` for governed proposal status updates and rationale/comment metadata
-- `ArchitectureDecisionRecordService` for ADR acceptance after proposal approval
-- `DecisionTraceService` for append-only decision trace generation
-- `CapabilityAuditService` for capability audit linkage
+- `CapabilityExecutionService` for capability authorization, execution boundary, workflow event handling, and audit recording
+- `AgentAuthorizationService` for role/capability authorization
+- `CapabilityRegistryService` for target-specific capability lookup
 
-The sprint adds an adapter-facing governed capability registration, not a duplicate approval system.
+Target-specific system-of-record services are intentionally not invoked by Human Interface routing when the target-specific governed approval capability is absent.
 
 ## Mutation Boundary
 
-Repository/system-of-record updates occur inside Ageix governed services invoked by the governed capability handler.
+No target state mutation occurs in Sprint 26.4 when target-specific approval capabilities are unavailable.
 
-The Human Interface Adapter does not directly mutate:
+Expected target state remains unchanged for valid Human Interface action requests until a proper target-specific governed approval capability exists.
 
-- proposals
-- ADRs
-- decision traces
-- evidence packages
-- validation artifacts
-- repository files
-- Git state
-- worker state
-- Open WebUI state
+Capability audit records may still be written by the existing capability execution infrastructure to document the failed routed attempt.
 
 ## Failure Behavior
 
@@ -94,50 +97,50 @@ Implemented structured failure responses for:
 - missing action
 - unsupported action
 - missing rationale
-- invalid target
+- invalid target type
 - capability authorization denial
-- capability unavailable
-- governance rejection
-
-Validation failures are rejected before capability execution and before target mutation.
+- missing target-specific governed approval capability
 
 ## Validation Evidence
 
-Tests added in `tests/test_human_interface_governed_approval.py` cover:
+The intended revised tests should verify:
 
-- successful approval
-- successful rejection
-- successful defer
-- successful request changes
-- successful comment/rationale submission
-- missing rationale
-- missing authorization
-- invalid project
-- unsupported action
-- invalid record
-- capability denial
-- audit creation
-- decision trace creation
-- Decision Inbox regression
+- valid approve returns `capability_unavailable` and does not mutate target state
+- valid reject returns `capability_unavailable` and does not mutate target state
+- valid defer returns `capability_unavailable` and does not mutate target state
+- valid request_changes returns `capability_unavailable` and does not mutate target state
+- valid add_comment returns `capability_unavailable` and does not mutate target state
+- missing rationale is rejected before routing
+- missing authorization is rejected before routing
+- invalid project is rejected before routing
+- unsupported action is rejected before routing
+- non-Chair role denial occurs before routing
+- no decision trace is created by Human Interface routing
+- Decision Inbox remains read-only
 
-Decision Detail regression was not added because the currently inspected `main` branch did not expose a Decision Detail service or route under the expected Human Interface files.
+## Tool Limitation During Revision
 
-## Tests
+The GitHub connector accepted the routing-only implementation update but repeatedly blocked updates and deletion attempts for the existing test file `tests/test_human_interface_governed_approval.py` after the revision request.
 
-Recommended command:
+As a result, that test file may still contain stale expectations from the superseded implementation and must be corrected locally before merge.
+
+Do not merge until the stale tests are revised or removed and the focused routing-only test suite passes.
+
+## Recommended Test Command
 
 ```bash
 pytest tests/test_human_interface_decision_inbox.py tests/test_human_interface_governed_approval.py
 ```
 
-Tool-context status: tests were added for the requested paths, but were not executed in this ChatGPT GitHub connector session because the active tool context provided repository file operations but not a checked-out runtime test environment.
+## Known Gap
 
-## Known Risks
+The required target-specific governed approval capabilities do not appear to exist yet:
 
-- The implementation relies on the existing `CapabilityExecutionService` authorization/audit path and the existing proposal/ADR services as the governance authority.
-- Full multi-file transactional rollback is not introduced in this sprint. Request validation failures occur before mutation. Runtime exceptions from reused system-of-record services are surfaced as governance failures.
-- Validation evidence generation is represented by decision trace and audit linkage for approval actions. No new validation run is started because the sprint forbids worker execution and direct repository mutation from the adapter.
+- `proposal.approval.execute`
+- `architecture.adr.approval.execute`
+
+This is the correct Sprint 26.4 outcome under the revised constraint. A later sprint should implement those capabilities under the proper governance domains, not under Human Interface.
 
 ## Conclusion
 
-Sprint 26.4 preserves Ageix as the system of record and Open WebUI as a shell. The Human Interface Adapter translates authenticated user action requests into a governed Ageix capability invocation. Capability authorization, project authorization, rationale enforcement, audit linkage, and decision trace generation remain inside Ageix governed infrastructure.
+Sprint 26.4 now preserves Human Interface as a routing and translation layer. The action endpoint can receive and validate governed action requests, but target-specific approval execution remains unavailable until proper governed approval capabilities are implemented outside the Human Interface domain.
