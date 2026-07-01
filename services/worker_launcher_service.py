@@ -171,7 +171,7 @@ class WorkerLauncherService:
             created_by=str(actor_id or "worker_launcher_service"),
             project_id=effective_project_id,
             source_id=artifact.launch_artifact_id,
-            summary=f"Manual Claude Code launch handoff for {ticket.target_type} {ticket.target_id}.",
+            summary=f"Manual {profile.worker_type} launch handoff for {ticket.target_type} {ticket.target_id}.",
             path=record_path,
             references=[
                 ArtifactReference(reference_type="worker_admission_ticket", reference_id=ticket.ticket_id, relationship="admits"),
@@ -183,6 +183,7 @@ class WorkerLauncherService:
             metadata={
                 "launch_artifact_id": artifact.launch_artifact_id,
                 "adapter": artifact.adapter,
+                "worker_type": profile.worker_type,
                 "non_authoritative": True,
                 "execution_performed": False,
                 "denied_actions": list(LAUNCHER_DENIED_ACTIONS),
