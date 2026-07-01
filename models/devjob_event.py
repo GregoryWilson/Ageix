@@ -10,6 +10,11 @@ DevJobEventType = Literal[
     "execution_blocked",
     "execution_failed",
     "execution_warning",
+    # Worker Execution Bridge launch states (Sprint 21.5). Surfaced on the
+    # DevJob so worker activation outcomes are visible through its lifecycle.
+    "worker_launched",
+    "worker_queued",
+    "worker_launch_failed",
 ]
 
 

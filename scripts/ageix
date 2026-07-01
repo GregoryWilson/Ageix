@@ -238,7 +238,71 @@ def cmd_directive_submit(args: argparse.Namespace) -> int:
         print(f"  delegation     : {delegation_id} (consumed)")
     print(f"  approval record: {capture.relative_to(repo)}")
     print(f"  audit trail    : .ageix/instance/capability_audit.json")
+
+    # Optionally continue the governed chain into worker execution so the
+    # directive no longer terminates at "directive recorded" (Sprint 21.5).
+    if getattr(args, "engage", False):
+        if not devjob_id:
+            return _fail("--engage requires --devjob")
+        return _engage_worker(
+            repo, devjob_id=devjob_id, project=args.project,
+            directive_turn_id=turn_id, delegation_id=delegation_id, conversation_id=conversation_id,
+        )
     return 0
+
+
+def _engage_worker(repo: Path, *, devjob_id: str, project: str,
+                   directive_turn_id: str | None = None, delegation_id: str | None = None,
+                   conversation_id: str | None = None, worker_id: str | None = None) -> int:
+    """Invoke the governed Worker Execution Bridge for a DevJob."""
+    result = _execute(repo, "worker.launcher.execute", CHAIR_ACTOR, {
+        "actor_id": CHAIR_ACTOR, "agent_role": CHAIR_ROLE,
+        "devjob_id": devjob_id, "project_id": project,
+        "worker_id": worker_id,
+        "directive_turn_id": directive_turn_id,
+        "delegation_id": delegation_id,
+        "conversation_id": conversation_id,
+    })
+    if not result["success"]:
+        return _fail(f"worker execution bridge denied: {result['error']}")
+    rec = result["result"]
+    print("\nWorker Execution Bridge:")
+    print(f"  state          : {rec['state']}")
+    print(f"  devjob         : {rec['devjob_id']} -> {rec['devjob_status_after']}")
+    print(f"  worker         : {rec['worker_id']}")
+    print(f"  provider       : {rec['launch_provider'] or '(none — queued)'}")
+    if rec.get("worker_session_ref"):
+        print(f"  session ref    : {rec['worker_session_ref']}")
+    print(f"  admission ticket: {rec['admission_ticket_id']}")
+    print(f"  launch artifact : {rec['launch_artifact_id']}")
+    print(f"  execution record: {rec['execution_id']}")
+    return 0 if rec["state"] != "worker_launch_failed" else 1
+
+
+def cmd_worker_engage(args: argparse.Namespace) -> int:
+    repo = _resolve_repo(args.repo)
+    devjob = _load_devjob(repo, args.devjob)
+    if devjob is None:
+        return _fail(f"devjob {args.devjob} not found in {repo}")
+    summary = [
+        "",
+        "=== Ageix Worker Execution Bridge — explicit approval ===",
+        f"  repo          : {repo}",
+        f"  devjob        : {args.devjob} (title='{devjob['title']}', status={devjob['status']}, "
+        f"assigned_to={devjob['assigned_to']})",
+        f"  directive turn: {args.directive_turn or '(none)'}",
+        f"  delegation    : {args.delegation or '(none)'}",
+        f"  conversation  : {args.conversation or '(none)'}",
+        "  action        : engage the assigned worker (launch if a provider is configured, else queue).",
+    ]
+    if not _confirm(summary, assume_yes=args.yes):
+        print("Cancelled. No worker engaged.")
+        return 2
+    return _engage_worker(
+        repo, devjob_id=args.devjob, project=args.project,
+        directive_turn_id=args.directive_turn, delegation_id=args.delegation,
+        conversation_id=args.conversation,
+    )
 
 
 def cmd_delegation_create(args: argparse.Namespace) -> int:
@@ -331,6 +395,9 @@ def build_parser() -> argparse.ArgumentParser:
                              "Default: submit directly as Greg (Chair).")
     submit.add_argument("--project", default="Ageix", help="Project ID (default: Ageix).")
     submit.add_argument("--confidence", type=float, default=10.0, help="Turn confidence 0.0-10.0 (default 10.0).")
+    submit.add_argument("--engage", action="store_true",
+                        help="After recording the directive, invoke the Worker Execution Bridge for --devjob "
+                             "(launch the assigned worker if a provider is configured, else queue).")
     submit.add_argument("--yes", action="store_true", help="Skip the interactive approval prompt.")
     submit.set_defaults(func=cmd_directive_submit)
 
@@ -352,6 +419,18 @@ def build_parser() -> argparse.ArgumentParser:
     get = g_sub.add_parser("get", help="Show a delegation.")
     get.add_argument("--delegation", required=True, help="Delegation ID (CHAIRDLG-...).")
     get.set_defaults(func=cmd_delegation_get)
+
+    # ageix worker engage
+    worker = groups.add_parser("worker", help="Worker execution bridge actions.")
+    w_sub = worker.add_subparsers(dest="action", required=True)
+    engage = w_sub.add_parser("engage", help="Engage the worker assigned to a launchable DevJob.")
+    engage.add_argument("--devjob", required=True, help="DevJob to engage (DEVJOB-...).")
+    engage.add_argument("--directive-turn", dest="directive_turn", help="Authorizing directive turn ID (TURN-...).")
+    engage.add_argument("--delegation", help="Delegation ID for traceability (CHAIRDLG-...).")
+    engage.add_argument("--conversation", help="Conversation ID for traceability (CONV-...).")
+    engage.add_argument("--project", default="Ageix", help="Project ID (default: Ageix).")
+    engage.add_argument("--yes", action="store_true", help="Skip the interactive approval prompt.")
+    engage.set_defaults(func=cmd_worker_engage)
 
     return parser
 

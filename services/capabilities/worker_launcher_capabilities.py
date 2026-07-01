@@ -5,12 +5,16 @@ from typing import Any
 
 from models.agent_role import AgentRole
 from models.capability_definition import CapabilityDefinition
+from services.worker_execution_bridge_service import WorkerExecutionBridgeService
 from services.worker_launcher_service import WorkerLauncherService
 
 
 def register_capabilities(repo_root: Path):
     def service() -> WorkerLauncherService:
         return WorkerLauncherService(repo_root)
+
+    def bridge() -> WorkerExecutionBridgeService:
+        return WorkerExecutionBridgeService(repo_root)
 
     def _actor_id(arguments: dict[str, Any]) -> str:
         return str(arguments.get("actor_id") or arguments.get("client_id") or "")
@@ -61,6 +65,46 @@ def register_capabilities(repo_root: Path):
         )
         return {"success": True, "result": result, "metadata": {"source": "worker_launcher_service"}}
 
+    def launcher_execute(arguments: dict[str, Any]) -> dict[str, Any]:
+        devjob_id = str(arguments.get("devjob_id") or "")
+        if not devjob_id:
+            return {"success": False, "result": {}, "error": "devjob_id_required"}
+        try:
+            record = bridge().engage_worker(
+                devjob_id=devjob_id,
+                actor_id=_actor_id(arguments),
+                actor_role=_role(arguments),
+                worker_id=arguments.get("worker_id"),
+                worker_profile_id=arguments.get("worker_profile_id"),
+                directive_turn_id=arguments.get("directive_turn_id"),
+                delegation_id=arguments.get("delegation_id"),
+                conversation_id=arguments.get("conversation_id"),
+                project_id=str(arguments.get("project_id") or "Ageix"),
+            )
+        except ValueError as exc:
+            return {"success": False, "result": {}, "error": str(exc)}
+        return {"success": True, "result": record, "metadata": {"source": "worker_execution_bridge_service"}}
+
+    def execution_get(arguments: dict[str, Any]) -> dict[str, Any]:
+        execution_id = str(arguments.get("execution_id") or "")
+        if not execution_id:
+            return {"success": False, "result": {}, "error": "execution_id_required"}
+        try:
+            record = bridge().get_execution(execution_id)
+        except ValueError as exc:
+            return {"success": False, "result": {}, "error": str(exc)}
+        return {"success": True, "result": record, "metadata": {"source": "worker_execution_bridge_service"}}
+
+    def execution_list(arguments: dict[str, Any]) -> dict[str, Any]:
+        raw_limit = arguments.get("limit")
+        result = bridge().list_executions(
+            devjob_id=arguments.get("devjob_id"),
+            state=arguments.get("state"),
+            limit=int(raw_limit) if raw_limit is not None else 20,
+            offset=int(arguments.get("offset") or 0),
+        )
+        return {"success": True, "result": result, "metadata": {"source": "worker_execution_bridge_service"}}
+
     return [
         (CapabilityDefinition(
             capability_id="worker.launcher.artifact.create",
@@ -83,4 +127,25 @@ def register_capabilities(repo_root: Path):
             handler="worker.launcher.artifact.list",
             description="List Worker Launcher handoff artifacts with optional project and target filters.",
         ), launch_artifact_list),
+        (CapabilityDefinition(
+            capability_id="worker.launcher.execute",
+            category="worker_launcher",
+            access_level="governed_read",
+            handler="worker.launcher.execute",
+            description="Worker Execution Bridge: engage the worker assigned to a launchable DevJob through Worker Admission and the Worker Launcher artifact, then launch via a launch provider or create a durable queued launch request. Governance-controlled; transitions the DevJob to in_progress on launch/queue. Returns state worker_launched|worker_queued|worker_launch_failed, per Sprint 21.5.",
+        ), launcher_execute),
+        (CapabilityDefinition(
+            capability_id="worker.launcher.execution.get",
+            category="worker_launcher",
+            access_level="governed_read",
+            handler="worker.launcher.execution.get",
+            description="Retrieve a Worker Execution Bridge record by ID, including launch state, worker session reference, and full traceability.",
+        ), execution_get),
+        (CapabilityDefinition(
+            capability_id="worker.launcher.execution.list",
+            category="worker_launcher",
+            access_level="governed_read",
+            handler="worker.launcher.execution.list",
+            description="List Worker Execution Bridge records with optional DevJob and launch-state filters.",
+        ), execution_list),
     ]

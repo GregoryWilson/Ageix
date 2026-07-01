@@ -110,3 +110,31 @@ def test_cli_directive_missing_delegation_is_reported(tmp_path: Path) -> None:
         "--conversation", "CONV-CLI0004", "--delegation", "CHAIRDLG-NOPE", "--yes",
     ])
     assert rc == 1
+
+
+def test_cli_worker_engage_queues_and_transitions(tmp_path: Path) -> None:
+    cli = _load_cli()
+    job_id, _ = _seed(tmp_path)
+    # The seeded DevJob is assigned to "lex"; engage it (no provider -> queued).
+    rc = _run(cli, [
+        "--repo", str(tmp_path), "worker", "engage",
+        "--devjob", job_id, "--directive-turn", "TURN-X", "--yes",
+    ])
+    assert rc == 0
+    from services.worker_execution_bridge_service import WorkerExecutionBridgeService
+    executions = WorkerExecutionBridgeService(tmp_path).list_executions(devjob_id=job_id)
+    assert executions["total_count"] == 1
+    assert DevJobRegistryService(tmp_path).get_job(job_id).status == "in_progress"
+
+
+def test_cli_directive_submit_with_engage_completes_chain(tmp_path: Path) -> None:
+    cli = _load_cli()
+    job_id, delegation_id = _seed(tmp_path)
+    rc = _run(cli, [
+        "--repo", str(tmp_path), "directive", "submit",
+        "--conversation", "CONV-CLI0005", "--delegation", delegation_id,
+        "--devjob", job_id, "--as", "lex", "--engage", "--yes",
+    ])
+    assert rc == 0
+    # Directive recorded AND worker engaged (queued) -> DevJob advanced.
+    assert DevJobRegistryService(tmp_path).get_job(job_id).status == "in_progress"
