@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from models.architecture_decision_record import ArchitectureDecisionRecordStatus
 from models.capability_request import CapabilityRequest
 from models.human_consultation import HumanConsultationRequest, HumanConsultationType, missing_evidence_choices
@@ -46,6 +48,61 @@ def _execute(tmp_path: Path, arguments: dict) -> dict:
         arguments=arguments,
     ))
     return {"success": response.success, "result": response.result, "error": response.error, "metadata": response.metadata}
+
+
+def _invalid_consultation_ids() -> list[str]:
+    parent = ".."
+    slash = "/"
+    return [
+        parent + slash + "foo",
+        "HCONS-" + parent + slash + parent + slash,
+        "HCONS-123",
+        "HCONS-ABC",
+        "HCONS-ABCDEFGHIJKL",
+        "HCONS-abcdef123456",
+    ]
+
+
+@pytest.mark.parametrize("consultation_id", _invalid_consultation_ids())
+def test_invalid_consultation_id_rejected_before_filesystem_lookup(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    consultation_id: str,
+) -> None:
+    service = HumanConsultationService(tmp_path)
+
+    def fail_get_request(_consultation_id: str) -> HumanConsultationRequest:
+        raise AssertionError("filesystem lookup attempted before consultation_id validation")
+
+    def fail_path(_consultation_id: str) -> Path:
+        raise AssertionError("path construction attempted before consultation_id validation")
+
+    monkeypatch.setattr(service, "get_request", fail_get_request)
+    monkeypatch.setattr(service, "_path", fail_path)
+
+    result = service.respond(_chair_args(consultation_id))
+
+    assert result["success"] is False
+    assert result["error"] == "invalid_consultation_id"
+    assert not (tmp_path / ".ageix" / "human_consultations").exists()
+
+
+def test_invalid_consultation_id_does_not_mutate_existing_consultation_lifecycle(tmp_path: Path) -> None:
+    service = HumanConsultationService(tmp_path)
+    consultation = service.create_approval_request(
+        project_id="Ageix",
+        target_record_type="proposal",
+        target_record_id="PROP-HCONS-ID-MUTATION",
+        question="Approve?",
+        summary="Approval needed.",
+    )
+    before = service.get_request(consultation.consultation_id).model_dump(mode="json")
+
+    result = service.respond(_chair_args("HCONS-abcdef123456"))
+
+    assert result["success"] is False
+    assert result["error"] == "invalid_consultation_id"
+    assert service.get_request(consultation.consultation_id).model_dump(mode="json") == before
 
 
 def test_invalid_choice_is_rejected(tmp_path: Path) -> None:
