@@ -89,7 +89,10 @@ class ConversationDirectiveService:
         )
 
         return {
-            "turn": turn.model_dump(),
+            # JSON-mode so the delegate identity (speaker_agent_role) and turn
+            # type serialize to their string values consistently — the directive
+            # is unambiguously recorded as authored by the delegate, not Greg.
+            "turn": turn.model_dump(mode="json"),
             "delegation": delegation.to_summary(),
             "chair_delegation_id": delegation.delegation_id,
         }
