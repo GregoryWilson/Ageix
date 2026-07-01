@@ -126,3 +126,4 @@ artifacts/
 # Ageix user feedback responses
 .ageix/user_feedback/*
 !.ageix/user_feedback/.gitkeep
+.ageix/validation_runs/
