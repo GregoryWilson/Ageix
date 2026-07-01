@@ -269,7 +269,7 @@ def _identity(arguments: dict[str, Any]) -> dict[str, Any]:
     return {
         "authenticated": bool(provided.get("authenticated", True)),
         "agent_id": str(arguments.get("agent_id") or provided.get("agent_id") or "chair"),
-        "agent_role": str(arguments.get("agent_role") or provided.get("agent_role") or "ageix_chair"),
+        "agent_role": str(arguments.get("agent_role") or provided.get("agent_role") or "ageix.chair"),
         "client_id": str(arguments.get("client_id") or provided.get("client_id") or "human_interface"),
         "provider": str(arguments.get("provider") or provided.get("provider") or "human_interface"),
         "session_id": str(arguments.get("session_id") or provided.get("session_id") or "human-interface"),
