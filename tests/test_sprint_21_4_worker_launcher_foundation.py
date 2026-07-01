@@ -18,12 +18,14 @@ CHAIR_ROLE = AgentRole.AGEIX_CHAIR
 WORKER_ID = "claude.code-worker-1"
 WORKER_ROLE = AgentRole.CLAUDE_CODE
 ADAPTER = "claude_code_browser"
+CHATGPT_WORKER_ID = "chatgpt.devworker-1"
+CHATGPT_WORKER_TYPE = "chatgpt_devworker"
+CHATGPT_ADAPTER = "chatgpt_devworker_manual"
 
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
-
 def _assigned_devjob(tmp_path: Path, *, worker_id: str = WORKER_ID) -> str:
     job = DevJobRegistryService(tmp_path).create_job(
         title="Launch target",
@@ -35,20 +37,42 @@ def _assigned_devjob(tmp_path: Path, *, worker_id: str = WORKER_ID) -> str:
     return job.job_id
 
 
-def _profile(admission: WorkerAdmissionService, *, worker_type: str = "claude_code", project_id: str = "Ageix") -> str:
+def _profile(
+    admission: WorkerAdmissionService,
+    *,
+    worker_type: str = "claude_code",
+    project_id: str = "Ageix",
+    name: str = "Claude Code Web Worker",
+    launch_adapter_hint: str = "claude_code_web",
+) -> str:
     return admission.create_profile(
-        name="Claude Code Web Worker",
+        name=name,
         worker_type=worker_type,
         permission_mode="constrained_auto",
         project_id=project_id,
         created_by=GOV_ACTOR,
-        launch_adapter_hint="claude_code_web",
+        launch_adapter_hint=launch_adapter_hint,
     ).profile_id
 
 
-def _ticket(admission: WorkerAdmissionService, tmp_path: Path, *, worker_id: str = WORKER_ID, worker_type: str = "claude_code", project_id: str = "Ageix"):
+def _ticket(
+    admission: WorkerAdmissionService,
+    tmp_path: Path,
+    *,
+    worker_id: str = WORKER_ID,
+    worker_type: str = "claude_code",
+    project_id: str = "Ageix",
+    name: str = "Claude Code Web Worker",
+    launch_adapter_hint: str = "claude_code_web",
+):
     job_id = _assigned_devjob(tmp_path, worker_id=worker_id)
-    profile_id = _profile(admission, worker_type=worker_type, project_id=project_id)
+    profile_id = _profile(
+        admission,
+        worker_type=worker_type,
+        project_id=project_id,
+        name=name,
+        launch_adapter_hint=launch_adapter_hint,
+    )
     ticket = admission.create_ticket(
         target_type="DEVJOB",
         target_id=job_id,
@@ -70,7 +94,6 @@ def _setup(tmp_path: Path):
 # ---------------------------------------------------------------------------
 # Happy path: Admission Ticket -> Launch Profile -> Launch Artifact
 # ---------------------------------------------------------------------------
-
 def test_create_launch_artifact_happy_path(tmp_path: Path) -> None:
     admission, launcher, ticket, profile_id, job_id = _setup(tmp_path)
     artifact = launcher.create_launch_artifact(
@@ -89,6 +112,38 @@ def test_create_launch_artifact_happy_path(tmp_path: Path) -> None:
     assert artifact["permission_mode"] == "constrained_auto"
     assert artifact["handoff_instructions"], "handoff instructions must be present"
     assert artifact["governed_artifact_id"], "must register a governed artifact"
+
+
+def test_create_chatgpt_devworker_launch_artifact(tmp_path: Path) -> None:
+    admission = WorkerAdmissionService(tmp_path)
+    launcher = WorkerLauncherService(tmp_path)
+    ticket, profile_id, job_id = _ticket(
+        admission,
+        tmp_path,
+        worker_id=CHATGPT_WORKER_ID,
+        worker_type=CHATGPT_WORKER_TYPE,
+        name="ChatGPT DevWorker",
+        launch_adapter_hint="chatgpt_manual",
+    )
+
+    artifact = launcher.create_launch_artifact(
+        admission_ticket_id=ticket.ticket_id,
+        adapter=CHATGPT_ADAPTER,
+        actor_id=GOV_ACTOR,
+        actor_role=CHAIR_ROLE,
+    )
+
+    assert artifact["launch_artifact_id"].startswith("WLAUNCH-")
+    assert artifact["project_id"] == "Ageix"
+    assert artifact["worker_profile_id"] == profile_id
+    assert artifact["adapter"] == CHATGPT_ADAPTER
+    assert artifact["target_id"] == job_id
+    assert artifact["authority_scope"]["worker_target"] == CHATGPT_WORKER_TYPE
+    assert artifact["launch_reference"]["worker_target"] == CHATGPT_WORKER_TYPE
+    assert artifact["launch_reference"]["required_connectors"] == ["GitHub", "AgeixAI"]
+    assert artifact["launch_reference"]["required_project_context"] == "Ageix"
+    assert any("project_id: Ageix" in step for step in artifact["handoff_instructions"])
+    assert any("role separation" in step.lower() for step in artifact["handoff_instructions"])
 
 
 def test_launch_artifact_does_not_imply_execution(tmp_path: Path) -> None:
@@ -146,7 +201,6 @@ def test_launch_artifact_carries_traceability(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Governed artifact mechanism reuse
 # ---------------------------------------------------------------------------
-
 def test_launch_artifact_registered_in_governed_artifact_registry(tmp_path: Path) -> None:
     _, launcher, ticket, _, job_id = _setup(tmp_path)
     artifact = launcher.create_launch_artifact(
@@ -160,6 +214,28 @@ def test_launch_artifact_registered_in_governed_artifact_registry(tmp_path: Path
     ref_ids = {r["reference_id"] for r in governed["references"]}
     assert ticket.ticket_id in ref_ids
     assert job_id in ref_ids
+
+
+def test_worker_type_recorded_in_governed_artifact_metadata(tmp_path: Path) -> None:
+    admission = WorkerAdmissionService(tmp_path)
+    launcher = WorkerLauncherService(tmp_path)
+    ticket, _, _ = _ticket(
+        admission,
+        tmp_path,
+        worker_id=CHATGPT_WORKER_ID,
+        worker_type=CHATGPT_WORKER_TYPE,
+        name="ChatGPT DevWorker",
+        launch_adapter_hint="chatgpt_manual",
+    )
+    artifact = launcher.create_launch_artifact(
+        admission_ticket_id=ticket.ticket_id,
+        adapter=CHATGPT_ADAPTER,
+        actor_id=GOV_ACTOR,
+        actor_role=CHAIR_ROLE,
+    )
+    governed = ArtifactRegistryService(tmp_path).get_artifact(artifact["governed_artifact_id"])
+    assert governed["summary"].startswith("Manual chatgpt_devworker launch handoff")
+    assert governed["metadata"]["worker_type"] == CHATGPT_WORKER_TYPE
 
 
 def test_get_and_list_launch_artifacts(tmp_path: Path) -> None:
@@ -179,7 +255,6 @@ def test_get_and_list_launch_artifacts(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Authority boundaries
 # ---------------------------------------------------------------------------
-
 def test_unauthorized_actor_cannot_create_launch_artifact(tmp_path: Path) -> None:
     _, launcher, ticket, _, _ = _setup(tmp_path)
     with pytest.raises(ValueError, match="worker_launcher_requires_governance"):
@@ -201,7 +276,6 @@ def test_greg_can_create_launch_artifact(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Denials
 # ---------------------------------------------------------------------------
-
 def test_unknown_adapter_denied(tmp_path: Path) -> None:
     _, launcher, ticket, _, _ = _setup(tmp_path)
     with pytest.raises(ValueError, match="worker_launcher_adapter_not_supported"):
@@ -256,14 +330,27 @@ def test_profile_adapter_mismatch_denied(tmp_path: Path) -> None:
         )
 
 
+def test_chatgpt_profile_adapter_mismatch_denied(tmp_path: Path) -> None:
+    admission = WorkerAdmissionService(tmp_path)
+    launcher = WorkerLauncherService(tmp_path)
+    ticket, _, _ = _ticket(admission, tmp_path, worker_type="claude_code")
+    with pytest.raises(ValueError, match="worker_launcher_profile_adapter_mismatch"):
+        launcher.create_launch_artifact(
+            admission_ticket_id=ticket.ticket_id, adapter=CHATGPT_ADAPTER,
+            actor_id=GOV_ACTOR, actor_role=CHAIR_ROLE,
+        )
+
+
 def test_profile_ticket_mismatch_denied(tmp_path: Path) -> None:
     admission, launcher, ticket, _, _ = _setup(tmp_path)
     other_profile = _profile(admission)  # a different profile id
     with pytest.raises(ValueError, match="worker_launcher_profile_ticket_mismatch"):
         launcher.create_launch_artifact(
-            admission_ticket_id=ticket.ticket_id, adapter=ADAPTER,
+            admission_ticket_id=ticket.ticket_id,
+            adapter=ADAPTER,
             worker_profile_id=other_profile,
-            actor_id=GOV_ACTOR, actor_role=CHAIR_ROLE,
+            actor_id=GOV_ACTOR,
+            actor_role=CHAIR_ROLE,
         )
 
 
@@ -271,9 +358,11 @@ def test_project_mismatch_denied(tmp_path: Path) -> None:
     admission, launcher, ticket, _, _ = _setup(tmp_path)
     with pytest.raises(ValueError, match="worker_launcher_project_mismatch"):
         launcher.create_launch_artifact(
-            admission_ticket_id=ticket.ticket_id, adapter=ADAPTER,
+            admission_ticket_id=ticket.ticket_id,
+            adapter=ADAPTER,
             project_id="SomeOtherProject",
-            actor_id=GOV_ACTOR, actor_role=CHAIR_ROLE,
+            actor_id=GOV_ACTOR,
+            actor_role=CHAIR_ROLE,
         )
 
 
@@ -282,23 +371,26 @@ def test_missing_target_devjob_denied(tmp_path: Path) -> None:
     DevJobRegistryService(tmp_path).delete_job(job_id)
     with pytest.raises(ValueError, match="worker_launcher_target_devjob_not_found"):
         launcher.create_launch_artifact(
-            admission_ticket_id=ticket.ticket_id, adapter=ADAPTER,
-            actor_id=GOV_ACTOR, actor_role=CHAIR_ROLE,
+            admission_ticket_id=ticket.ticket_id,
+            adapter=ADAPTER,
+            actor_id=GOV_ACTOR,
+            actor_role=CHAIR_ROLE,
         )
 
 
 # ---------------------------------------------------------------------------
 # Governance preservation: launcher does not touch DevJob / admission state
 # ---------------------------------------------------------------------------
-
 def test_launch_artifact_does_not_mutate_devjob_or_ticket(tmp_path: Path) -> None:
     admission, launcher, ticket, _, job_id = _setup(tmp_path)
     devjobs = DevJobRegistryService(tmp_path)
     job_before = devjobs.get_job(job_id)
 
     launcher.create_launch_artifact(
-        admission_ticket_id=ticket.ticket_id, adapter=ADAPTER,
-        actor_id=GOV_ACTOR, actor_role=CHAIR_ROLE,
+        admission_ticket_id=ticket.ticket_id,
+        adapter=ADAPTER,
+        actor_id=GOV_ACTOR,
+        actor_role=CHAIR_ROLE,
     )
 
     job_after = devjobs.get_job(job_id)
@@ -313,9 +405,11 @@ def test_launch_artifact_does_not_mutate_devjob_or_ticket(tmp_path: Path) -> Non
 def test_explicit_project_id_ageix_preserved(tmp_path: Path) -> None:
     _, launcher, ticket, _, _ = _setup(tmp_path)
     artifact = launcher.create_launch_artifact(
-        admission_ticket_id=ticket.ticket_id, adapter=ADAPTER,
+        admission_ticket_id=ticket.ticket_id,
+        adapter=ADAPTER,
         project_id="Ageix",
-        actor_id=GOV_ACTOR, actor_role=CHAIR_ROLE,
+        actor_id=GOV_ACTOR,
+        actor_role=CHAIR_ROLE,
     )
     assert artifact["project_id"] == "Ageix"
     assert artifact["traceability"]["authoritative_store"] == "ageix"
@@ -324,7 +418,6 @@ def test_explicit_project_id_ageix_preserved(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Adapter unit behavior
 # ---------------------------------------------------------------------------
-
 def test_claude_code_browser_adapter_handoff_is_non_authoritative() -> None:
     from models.worker_admission_ticket import WorkerAdmissionTicket
     from models.worker_launch_profile import WorkerLaunchProfile
@@ -344,10 +437,32 @@ def test_claude_code_browser_adapter_handoff_is_non_authoritative() -> None:
     assert any(ticket.ticket_id in step for step in handoff.handoff_instructions)
 
 
+def test_chatgpt_devworker_adapter_handoff_is_non_authoritative() -> None:
+    from models.worker_admission_ticket import WorkerAdmissionTicket
+    from models.worker_launch_profile import WorkerLaunchProfile
+    from models.worker_launch_request import WorkerLaunchRequest
+    from services.launcher_adapters import ChatGPTDevWorkerManualLauncherAdapter
+
+    ticket = WorkerAdmissionTicket(
+        target_id="DEVJOB-ABC123DEF456",
+        worker_profile_id="WLPROFILE-1",
+        worker_id=CHATGPT_WORKER_ID,
+    )
+    profile = WorkerLaunchProfile(name="ChatGPT DevWorker", worker_type=CHATGPT_WORKER_TYPE)
+    request = WorkerLaunchRequest(admission_ticket_id=ticket.ticket_id, adapter=CHATGPT_ADAPTER)
+
+    handoff = ChatGPTDevWorkerManualLauncherAdapter().build_handoff(ticket=ticket, profile=profile, request=request)
+    assert handoff.launch_reference["authoritative"] is False
+    assert handoff.launch_reference["handoff_mode"] == "manual"
+    assert handoff.launch_reference["required_connectors"] == ["GitHub", "AgeixAI"]
+    assert any("project_id: Ageix" in step for step in handoff.handoff_instructions)
+    assert any("role separation" in step.lower() for step in handoff.handoff_instructions)
+    assert any(ticket.ticket_id in step for step in handoff.handoff_instructions)
+
+
 # ---------------------------------------------------------------------------
 # Capability plugin (handlers invoked directly)
 # ---------------------------------------------------------------------------
-
 def _handlers(tmp_path: Path) -> dict[str, object]:
     return {definition.capability_id: handler for definition, handler in register_capabilities(tmp_path)}
 
