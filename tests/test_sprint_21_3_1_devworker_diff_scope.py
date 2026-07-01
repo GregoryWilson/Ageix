@@ -6,8 +6,12 @@ from pathlib import Path
 import pytest
 
 from models.agent_role import AgentRole
+from models.devjob import DevJob
 from services.devjob_registry_service import DevJobRegistryService
-from services.devworker_execution_service import DevWorkerExecutionService
+from services.devworker_execution_service import (
+    DevWorkerContext,
+    DevWorkerExecutionService,
+)
 
 WORKER_ID = "claude.code-devworker-1"
 ACTOR_ROLE = AgentRole.CLAUDE_CODE
@@ -82,8 +86,11 @@ def _make_assigned_job(
     job = registry.create_job(
         title="Test DevJob",
         objective="Implement feature.",
+        acceptance_criteria=["Tests pass."],
         allowed_paths=allowed_paths if allowed_paths is not None else ["src/"],
-        prohibited_paths=prohibited_paths or [],
+        # Default to a non-empty prohibited_paths so the DevJob satisfies the
+        # assignment invariant; explicit overrides (including []) are preserved.
+        prohibited_paths=prohibited_paths if prohibited_paths is not None else ["secrets/"],
         work_context_id=work_context_id,
         created_by="greg",
         status="assigned",
@@ -277,46 +284,35 @@ def test_in_scope_diff_succeeds(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 def test_empty_allowed_paths_current_behavior_permits_non_prohibited(tmp_path: Path) -> None:
-    # NOTE: This test documents CURRENT behavior — an empty allowed_paths list
-    # is treated as implicit whole-repo scope (any non-prohibited path is
-    # accepted). See the TODO in validate_path: a future policy should require
-    # explicit whole-repo authorization instead of implicit consent.
-    work_context_id = "WORKCTX-SCOPE0000006"
-    _write_workctx(tmp_path, work_context_id)
-    job_id = _make_assigned_job(tmp_path, work_context_id=work_context_id, allowed_paths=[])
-    svc = _service(tmp_path, _diff_for("anywhere/in/repo.py"))
-
-    result = svc.execute(
-        job_id,
-        worker_id=WORKER_ID,
-        actor_role=ACTOR_ROLE,
-        implementation_fn=lambda ctx: ["anywhere/in/repo.py"],
+    # NOTE: This test documents CURRENT scope-enforcement behavior — an empty
+    # allowed_paths list is treated as implicit whole-repo scope (any
+    # non-prohibited path is accepted). See the TODO in validate_path: a future
+    # policy should require explicit whole-repo authorization instead of
+    # implicit consent. Assignment governance forbids empty allowed_paths at
+    # create time, so this is exercised directly against validate_diff_scope
+    # with an open-scope DevWorkerContext rather than a governed DevJob.
+    ctx = DevWorkerContext(
+        job=DevJob(title="Open Scope", objective="x", status="assigned"),
+        workctx={}, guidance_context={}, evidence=[],
+        allowed_paths=[], prohibited_paths=["secrets/"],
     )
+    svc = DevWorkerExecutionService(tmp_path)
 
-    assert result.status == "submitted"
-    assert result.changed_files == ["anywhere/in/repo.py"]
+    actual = svc.validate_diff_scope(_diff_for("anywhere/in/repo.py"), ctx)
+    assert actual == ["anywhere/in/repo.py"]
 
 
 def test_empty_allowed_paths_still_enforces_prohibited(tmp_path: Path) -> None:
     # Even with implicit whole-repo scope, prohibited paths remain blocked.
-    work_context_id = "WORKCTX-SCOPE0000007"
-    _write_workctx(tmp_path, work_context_id)
-    job_id = _make_assigned_job(
-        tmp_path, work_context_id=work_context_id,
+    ctx = DevWorkerContext(
+        job=DevJob(title="Open Scope", objective="x", status="assigned"),
+        workctx={}, guidance_context={}, evidence=[],
         allowed_paths=[], prohibited_paths=["secrets/"],
     )
-    svc = _service(tmp_path, _diff_for("secrets/token.txt"))
+    svc = DevWorkerExecutionService(tmp_path)
 
-    result = svc.execute(
-        job_id,
-        worker_id=WORKER_ID,
-        actor_role=ACTOR_ROLE,
-        implementation_fn=lambda ctx: ["secrets/token.txt"],
-    )
-
-    assert result.status == "blocked"
-    assert result.error == "devworker_path_prohibited"
-    assert _no_patch_created(tmp_path)
+    with pytest.raises(ValueError, match="devworker_path_prohibited"):
+        svc.validate_diff_scope(_diff_for("secrets/token.txt"), ctx)
 
 
 # ---------------------------------------------------------------------------

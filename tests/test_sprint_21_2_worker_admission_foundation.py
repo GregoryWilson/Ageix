@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
@@ -22,11 +24,34 @@ WORKER_ROLE = AgentRole.CLAUDE_CODE
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
 
+def _seed_work_context(tmp_path: Path, work_context_id: str | None = None) -> str:
+    """Persist a minimal governed Work Context so admission-target DevJobs
+    satisfy the assignment/work-context governance requirements."""
+    work_context_id = work_context_id or f"WORKCTX-{uuid4().hex[:12].upper()}"
+    pkg_dir = tmp_path / ".ageix" / "architecture" / "work_context" / work_context_id
+    pkg_dir.mkdir(parents=True, exist_ok=True)
+    (pkg_dir / "package.json").write_text(
+        json.dumps({
+            "work_context_id": work_context_id,
+            "project_id": "Ageix",
+            "work_summary": "Admission test work context",
+            "guidance_context": {"summary_first": True, "packages": []},
+        }),
+        encoding="utf-8",
+    )
+    return work_context_id
+
+
 def _assigned_devjob(tmp_path: Path, *, worker_id: str = WORKER_ID) -> str:
+    work_context_id = _seed_work_context(tmp_path)
     registry = DevJobRegistryService(tmp_path)
     job = registry.create_job(
         title="Admission target",
         objective="Do the thing.",
+        acceptance_criteria=["complete the admission target"],
+        allowed_paths=["src/"],
+        prohibited_paths=["secrets/"],
+        work_context_id=work_context_id,
         created_by="greg",
         status="assigned",
         assigned_to=worker_id,
