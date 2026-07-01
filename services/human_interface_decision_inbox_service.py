@@ -431,10 +431,14 @@ class HumanInterfaceDecisionInboxService:
 
     def _find_record(self, records: list[dict[str, Any]], decision_id: str) -> dict[str, Any] | None:
         target = str(decision_id or "")
+
+        for record in records:
+            if str(record.get("record_id") or "") == target:
+                return record
+
         for record in records:
             source = dict(record.get("source") or {})
             candidates = {
-                str(record.get("record_id") or ""),
                 str(source.get("decision_id") or ""),
                 str(source.get("proposal_id") or ""),
                 str(source.get("adr_id") or ""),
@@ -442,6 +446,7 @@ class HumanInterfaceDecisionInboxService:
             }
             if target in candidates:
                 return record
+
         return None
 
     def _source_detail(self, record: dict[str, Any]) -> dict[str, Any]:
