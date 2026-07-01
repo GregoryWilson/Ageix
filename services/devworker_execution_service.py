@@ -7,6 +7,7 @@ from typing import Any, Callable
 
 from models.agent_role import AgentRole
 from models.devjob import DevJob
+from models.execution_warning import ExecutionWarning
 from models.worker_context import WorkerContext
 from services.devjob_lifecycle_service import DEVWORKER_ROLES
 from services.devjob_registry_service import DevJobRegistryService
@@ -25,19 +26,46 @@ class DevWorkerContext:
     evidence: list[dict[str, Any]]
     allowed_paths: list[str]
     prohibited_paths: list[str]
+    loaded_evidence_package_ids: list[str] = field(default_factory=list)
+    missing_evidence_package_ids: list[str] = field(default_factory=list)
+    warnings: list[ExecutionWarning] = field(default_factory=list)
 
 
 @dataclass
 class DevWorkerExecutionResult:
-    """Outcome record from a governed DevWorker execution. Reference-only."""
+    """Outcome record from a governed DevWorker execution. Reference-only.
+
+    Carries a structured, audit-friendly execution summary so that no missing,
+    skipped, partial, blocked, or warning condition degrades silently.
+    """
 
     status: str  # "submitted" | "blocked"
     job_id: str = ""
+    worker_id: str = ""
+    work_context_id: str | None = None
     patch_id: str | None = None
     artifact_ids: list[str] = field(default_factory=list)
     changed_files: list[str] = field(default_factory=list)
+    loaded_evidence_package_ids: list[str] = field(default_factory=list)
+    missing_evidence_package_ids: list[str] = field(default_factory=list)
+    warnings: list[dict[str, Any]] = field(default_factory=list)
     result: dict[str, Any] = field(default_factory=dict)
     error: str | None = None
+
+    def to_summary(self) -> dict[str, Any]:
+        """Return the structured execution summary. Not an EXEC-* artifact."""
+        return {
+            "status": self.status,
+            "worker_id": self.worker_id,
+            "job_id": self.job_id,
+            "work_context_id": self.work_context_id,
+            "loaded_evidence_package_ids": list(self.loaded_evidence_package_ids),
+            "missing_evidence_package_ids": list(self.missing_evidence_package_ids),
+            "changed_files": list(self.changed_files),
+            "patch_id": self.patch_id,
+            "warnings": list(self.warnings),
+            "blocked_reason": self.error,
+        }
 
 
 class DevWorkerExecutionService:
@@ -56,6 +84,11 @@ class DevWorkerExecutionService:
     This service does NOT create proposals, assign DevJobs, approve work,
     review work, waive validation, execute validation, apply patches,
     complete DevJobs, or bypass any existing governance boundary.
+
+    Auditability: every missing, skipped, partial, blocked, or warning
+    condition is captured as a structured ExecutionWarning and surfaced
+    through the execution summary, DevJob result metadata, and append-only
+    DevJob events. Nothing degrades silently.
     """
 
     def __init__(self, repo_root: str | Path = ".") -> None:
@@ -79,8 +112,13 @@ class DevWorkerExecutionService:
         """
         Load and verify the DevJob execution context.
 
-        Covers steps 1-6 of the required flow. Raises ValueError on any
-        authorization or context failure — no partial context is returned.
+        Covers steps 1-6 of the required flow. Fatal context problems (missing
+        DevJob, unauthorized worker, invalid assignment, missing required
+        WORKCTX) raise ValueError explicitly — no partial context is returned.
+
+        Non-fatal degradations (a referenced evidence package that is
+        unavailable) are recorded as structured warnings and tracked on the
+        returned context rather than being silently skipped.
         """
         # Step 1: Load DevJob
         try:
@@ -107,12 +145,29 @@ class DevWorkerExecutionService:
         # Step 4: Load Guidance Context (summary extracted from WORKCTX)
         guidance_context = dict(workctx.get("guidance_context") or {})
 
-        # Step 5: Load referenced Evidence Packages
+        # Step 5: Load referenced Evidence Packages.
+        # Missing evidence must never be skipped silently: record a structured
+        # warning and track it. Referenced evidence is advisory here — its
+        # absence does not fail execution (no existing contract marks it
+        # mandatory), but it is always surfaced.
         evidence: list[dict[str, Any]] = []
+        loaded_ids: list[str] = []
+        missing_ids: list[str] = []
+        warnings: list[ExecutionWarning] = []
         for pkg_id in job.evidence_package_ids:
             pkg_data = self._load_evidence_package(pkg_id)
             if pkg_data is not None:
                 evidence.append(pkg_data)
+                loaded_ids.append(pkg_id)
+            else:
+                missing_ids.append(pkg_id)
+                warnings.append(ExecutionWarning(
+                    code="evidence_package_missing",
+                    severity="warning",
+                    message=f"Referenced evidence package {pkg_id} was unavailable and could not be loaded.",
+                    related_object_id=pkg_id,
+                    metadata={"job_id": job.job_id, "work_context_id": job.work_context_id},
+                ))
 
         # Step 6: Load authorized repository scope
         allowed_paths = list(job.allowed_paths or [])
@@ -125,6 +180,9 @@ class DevWorkerExecutionService:
             evidence=evidence,
             allowed_paths=allowed_paths,
             prohibited_paths=prohibited_paths,
+            loaded_evidence_package_ids=loaded_ids,
+            missing_evidence_package_ids=missing_ids,
+            warnings=warnings,
         )
 
     # ------------------------------------------------------------------
@@ -138,7 +196,8 @@ class DevWorkerExecutionService:
         Prohibited paths take precedence over allowed paths. If allowed_paths
         is empty, all paths that are not prohibited are permitted.
 
-        Raises ValueError if the path is outside the authorized scope.
+        Raises ValueError explicitly if the path is outside the authorized
+        scope — a prohibited path violation is a fatal, non-silent condition.
         """
         for prohibited in context.prohibited_paths:
             norm = prohibited.rstrip("/")
@@ -199,6 +258,8 @@ class DevWorkerExecutionService:
                 "job_title": job.title,
                 "work_context_id": job.work_context_id,
                 "evidence_package_ids": list(job.evidence_package_ids),
+                "loaded_evidence_package_ids": list(context.loaded_evidence_package_ids),
+                "missing_evidence_package_ids": list(context.missing_evidence_package_ids),
                 "allowed_paths": list(job.allowed_paths),
             },
         )
@@ -219,14 +280,21 @@ class DevWorkerExecutionService:
         validation_run_id: str | None = None,
         result_summary: str = "",
         branch_name: str | None = None,
+        warnings: list[ExecutionWarning] | None = None,
     ) -> dict[str, Any]:
         """
         Submit result references for the DevJob (transitions to submitted).
+
+        Any warnings and the loaded/missing evidence lists are attached to the
+        submitted result as structured warnings and result metadata, so a
+        successful-with-warnings execution never hides its degradations.
 
         DevWorker may only move the job to submitted. It may not complete,
         approve, or review the job.
         """
         job = context.job
+        effective_warnings = list(warnings if warnings is not None else context.warnings)
+        warning_dicts = [w.to_dict() for w in effective_warnings]
         if job.status == "assigned":
             self._devjob_registry.transition_job(
                 job.job_id,
@@ -243,6 +311,13 @@ class DevWorkerExecutionService:
             validation_run_id=validation_run_id,
             changed_files=list(changed_files or []),
             branch_name=branch_name,
+            warnings=warning_dicts,
+            metadata={
+                "work_context_id": job.work_context_id,
+                "loaded_evidence_package_ids": list(context.loaded_evidence_package_ids),
+                "missing_evidence_package_ids": list(context.missing_evidence_package_ids),
+                "warning_count": len(warning_dicts),
+            },
             submitted_by=worker_id,
             actor_role=actor_role,
         )
@@ -269,9 +344,15 @@ class DevWorkerExecutionService:
 
         DevWorker stops after submitting result references. It does not
         complete the DevJob, review it, approve it, or apply the patch.
+
+        Blocked conditions are recorded as an append-only DevJob event so they
+        are visible through governed DevJob state even though no result is
+        submitted; successful-with-warnings conditions are attached to the
+        submitted result. Fatal context problems raise from load_context.
         """
-        # Steps 1-6: Load and verify context
+        # Steps 1-6: Load and verify context (fatal problems raise here)
         context = self.load_context(job_id, worker_id=worker_id, actor_role=actor_role)
+        warnings = list(context.warnings)
 
         # Step 7: Perform implementation (caller-provided)
         changed_files = list(implementation_fn(context) or [])
@@ -279,10 +360,13 @@ class DevWorkerExecutionService:
         # Step 8: Generate real git diff
         diff_content = self.generate_diff()
         if not diff_content.strip():
-            return DevWorkerExecutionResult(
-                status="blocked",
-                job_id=job_id,
-                error="devworker_no_changes_detected",
+            return self._block(
+                context,
+                worker_id=worker_id,
+                actor_role=actor_role,
+                reason="devworker_no_changes_detected",
+                changed_files=changed_files,
+                warnings=warnings,
             )
 
         # Step 9: Generate governed Patch Artifact
@@ -295,7 +379,7 @@ class DevWorkerExecutionService:
         patch_id = str(patch["patch_id"])
         artifact_ids = [str(patch["artifact_id"])] if patch.get("artifact_id") else []
 
-        # Step 10: Submit DevJob Result References
+        # Step 10: Submit DevJob Result References (warnings ride along)
         result = self.submit_result(
             context,
             patch_id,
@@ -304,20 +388,76 @@ class DevWorkerExecutionService:
             changed_files=changed_files,
             artifact_ids=artifact_ids,
             result_summary=f"DevWorker completed implementation for DevJob {job_id}.",
+            warnings=warnings,
         )
 
         return DevWorkerExecutionResult(
             status="submitted",
             job_id=job_id,
+            worker_id=worker_id,
+            work_context_id=context.job.work_context_id,
             patch_id=patch_id,
             artifact_ids=artifact_ids,
             changed_files=changed_files,
+            loaded_evidence_package_ids=list(context.loaded_evidence_package_ids),
+            missing_evidence_package_ids=list(context.missing_evidence_package_ids),
+            warnings=[w.to_dict() for w in warnings],
             result=result,
         )
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _block(
+        self,
+        context: DevWorkerContext,
+        *,
+        worker_id: str,
+        actor_role: AgentRole,
+        reason: str,
+        changed_files: list[str],
+        warnings: list[ExecutionWarning],
+    ) -> DevWorkerExecutionResult:
+        """Record a blocked execution as an append-only DevJob event and return
+        a blocked result carrying the structured summary. Does not change the
+        DevJob lifecycle state or authority."""
+        job = context.job
+        all_warnings = list(warnings)
+        all_warnings.append(ExecutionWarning(
+            code=reason,
+            severity="error",
+            message=f"DevWorker execution was blocked: {reason}.",
+            related_object_id=job.job_id,
+            metadata={"work_context_id": job.work_context_id},
+        ))
+        warning_dicts = [w.to_dict() for w in all_warnings]
+        self._devjob_registry.append_event(
+            job_id=job.job_id,
+            event_type="execution_blocked",
+            summary=f"DevWorker execution blocked: {reason}.",
+            reason=reason,
+            actor_id=worker_id,
+            actor_role=actor_role,
+            warnings=warning_dicts,
+            metadata={
+                "work_context_id": job.work_context_id,
+                "loaded_evidence_package_ids": list(context.loaded_evidence_package_ids),
+                "missing_evidence_package_ids": list(context.missing_evidence_package_ids),
+                "changed_files": list(changed_files),
+            },
+        )
+        return DevWorkerExecutionResult(
+            status="blocked",
+            job_id=job.job_id,
+            worker_id=worker_id,
+            work_context_id=job.work_context_id,
+            changed_files=list(changed_files),
+            loaded_evidence_package_ids=list(context.loaded_evidence_package_ids),
+            missing_evidence_package_ids=list(context.missing_evidence_package_ids),
+            warnings=warning_dicts,
+            error=reason,
+        )
 
     def _load_evidence_package(self, package_id: str) -> dict[str, Any] | None:
         """Load a single evidence package by ID. Returns None if not found."""

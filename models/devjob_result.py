@@ -25,6 +25,8 @@ class DevJobResult(BaseModel):
     artifact_ids: list[str] = Field(default_factory=list)
     validation_run_id: str | None = None
     validation_notes: str = ""
+    warnings: list[dict[str, Any]] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
     submitted_by: str = ""
     submitted_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -48,4 +50,6 @@ class DevJobResult(BaseModel):
             "changed_files": self.changed_files,
             "artifact_ids": self.artifact_ids,
             "validation_notes": self.validation_notes,
+            "warnings": self.warnings,
+            "metadata": self.metadata,
         }

@@ -8,6 +8,7 @@ from typing import Any
 
 from models.agent_role import AgentRole
 from models.devjob import DevJob, DevJobStatus
+from models.devjob_event import DevJobEvent, DevJobEventType
 from models.devjob_result import DevJobResult
 from services.devjob_lifecycle_service import transition
 
@@ -167,6 +168,8 @@ class DevJobRegistryService:
         artifact_ids: list[str] | None = None,
         validation_run_id: str | None = None,
         validation_notes: str = "",
+        warnings: list[dict[str, Any]] | None = None,
+        metadata: dict[str, Any] | None = None,
         submitted_by: str,
         actor_role: AgentRole,
     ) -> dict[str, Any]:
@@ -184,6 +187,8 @@ class DevJobRegistryService:
             artifact_ids=list(artifact_ids or []),
             validation_run_id=validation_run_id,
             validation_notes=str(validation_notes or ""),
+            warnings=list(warnings or []),
+            metadata=dict(metadata or {}),
             submitted_by=str(submitted_by),
         )
         transition(
@@ -212,6 +217,45 @@ class DevJobRegistryService:
             return []
         results = [json.loads(path.read_text(encoding="utf-8")) for path in sorted(results_dir.glob("*.json"))]
         return sorted(results, key=lambda item: item.get("submitted_at", ""), reverse=True)
+
+    def append_event(
+        self,
+        *,
+        job_id: str,
+        event_type: DevJobEventType,
+        summary: str = "",
+        reason: str | None = None,
+        actor_id: str = "",
+        actor_role: AgentRole | None = None,
+        warnings: list[dict[str, Any]] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Append an audit event to a DevJob without changing its lifecycle state.
+
+        Used to surface blocked, failed, or degraded execution conditions through
+        an existing, append-only DevJob surface. This never mutates authority or
+        advances the DevJob; it only records.
+        """
+        self._require_job(job_id)
+        event = DevJobEvent(
+            job_id=job_id,
+            event_type=event_type,
+            summary=str(summary or ""),
+            reason=reason,
+            actor_id=str(actor_id or ""),
+            actor_role=actor_role.value if actor_role is not None else None,
+            warnings=list(warnings or []),
+            metadata=dict(metadata or {}),
+        )
+        self._save_event(job_id, event)
+        return event.to_dict()
+
+    def list_events(self, job_id: str) -> list[dict[str, Any]]:
+        events_dir = self._job_dir(job_id) / "events"
+        if not events_dir.exists():
+            return []
+        events = [json.loads(path.read_text(encoding="utf-8")) for path in sorted(events_dir.glob("*.json"))]
+        return sorted(events, key=lambda item: item.get("recorded_at", ""))
 
     def delete_job(self, job_id: str) -> None:
         """Removes a DevJob's directory and its index entry.
@@ -263,6 +307,13 @@ class DevJobRegistryService:
         results_dir.mkdir(parents=True, exist_ok=True)
         path = results_dir / f"{result.result_id}.json"
         path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
+
+    def _save_event(self, job_id: str, event: DevJobEvent) -> None:
+        events_dir = self._job_dir(job_id) / "events"
+        events_dir.mkdir(parents=True, exist_ok=True)
+        # Prefix with the timestamp so directory ordering matches append order.
+        path = events_dir / f"{event.recorded_at.replace(':', '').replace('.', '')}_{event.event_id}.json"
+        path.write_text(event.model_dump_json(indent=2), encoding="utf-8")
 
     def _read_index(self) -> list[dict[str, Any]]:
         if not self.index_path.exists():

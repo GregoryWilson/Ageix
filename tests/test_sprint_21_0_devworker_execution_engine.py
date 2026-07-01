@@ -161,7 +161,7 @@ def test_load_context_loads_referenced_evidence_packages(tmp_path: Path) -> None
     assert ctx.evidence[0]["package_id"] == pkg_id
 
 
-def test_load_context_skips_missing_evidence_packages(tmp_path: Path) -> None:
+def test_load_context_does_not_silently_skip_missing_evidence(tmp_path: Path) -> None:
     work_context_id = "WORKCTX-TESTTEST0004"
     _write_workctx(tmp_path, work_context_id)
     job_id = _make_assigned_job(
@@ -173,7 +173,13 @@ def test_load_context_skips_missing_evidence_packages(tmp_path: Path) -> None:
     svc = DevWorkerExecutionService(tmp_path)
     ctx = svc.load_context(job_id, worker_id=WORKER_ID, actor_role=ACTOR_ROLE)
 
+    # Not silently skipped: the missing package is tracked and warned about.
     assert ctx.evidence == []
+    assert ctx.missing_evidence_package_ids == ["EVPKG-DOESNOTEXIST01"]
+    assert ctx.loaded_evidence_package_ids == []
+    assert len(ctx.warnings) == 1
+    assert ctx.warnings[0].code == "evidence_package_missing"
+    assert ctx.warnings[0].related_object_id == "EVPKG-DOESNOTEXIST01"
 
 
 # ---------------------------------------------------------------------------
