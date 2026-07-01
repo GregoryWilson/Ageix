@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -306,7 +307,13 @@ def test_successful_execution_with_warnings_still_submits_references(tmp_path: P
 # ---------------------------------------------------------------------------
 
 def test_missing_work_context_remains_fatal(tmp_path: Path) -> None:
-    job_id = _make_assigned_job(tmp_path, work_context_id="WORKCTX-NONEXIST0001")
+    # Assignment governance requires a resolvable Work Context at create time,
+    # so seed a valid one, create the assigned job, then remove the persisted
+    # package to exercise the execution-boundary "missing" guard.
+    work_context_id = "WORKCTX-NONEXIST0001"
+    _write_workctx(tmp_path, work_context_id)
+    job_id = _make_assigned_job(tmp_path, work_context_id=work_context_id)
+    shutil.rmtree(tmp_path / ".ageix" / "architecture" / "work_context" / work_context_id)
     svc = _make_service(tmp_path)
     with pytest.raises(ValueError, match="devworker_work_context_missing"):
         svc.execute(

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 from typing import Any
+
+from models.devjob import DevJob
 
 import pytest
 
@@ -246,23 +249,32 @@ def test_load_context_denies_unknown_job_id(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 def test_load_context_raises_when_job_has_no_work_context_id(tmp_path: Path) -> None:
+    # Assignment governance now requires a resolvable Work Context at create
+    # time, so a job with no work_context_id cannot be created assigned. To
+    # exercise the execution-boundary guard, create a valid assigned job and
+    # then clear its work_context_id at the persistence layer.
+    work_context_id = "WORKCTX-NOWORKCTX0001"
+    _write_workctx(tmp_path, work_context_id)
+    job_id = _make_assigned_job(tmp_path, work_context_id=work_context_id)
+
     registry = DevJobRegistryService(tmp_path)
-    job = registry.create_job(
-        title="No WORKCTX",
-        objective="x",
-        created_by="greg",
-        status="assigned",
-        assigned_to=WORKER_ID,
-        work_context_id=None,
-    )
+    job = registry.get_job(job_id)
+    job.work_context_id = None
+    registry._save_job(job)
 
     svc = DevWorkerExecutionService(tmp_path)
     with pytest.raises(ValueError, match="devworker_work_context_required"):
-        svc.load_context(job.job_id, worker_id=WORKER_ID, actor_role=ACTOR_ROLE)
+        svc.load_context(job_id, worker_id=WORKER_ID, actor_role=ACTOR_ROLE)
 
 
 def test_load_context_raises_when_work_context_file_missing(tmp_path: Path) -> None:
-    job_id = _make_assigned_job(tmp_path, work_context_id="WORKCTX-NOTEXIST00001")
+    # Create a valid assigned job with a resolvable Work Context, then remove
+    # the persisted package so the execution boundary must reject it.
+    work_context_id = "WORKCTX-VANISHES00001"
+    _write_workctx(tmp_path, work_context_id)
+    job_id = _make_assigned_job(tmp_path, work_context_id=work_context_id)
+
+    shutil.rmtree(tmp_path / ".ageix" / "architecture" / "work_context" / work_context_id)
 
     svc = DevWorkerExecutionService(tmp_path)
     with pytest.raises(ValueError, match="devworker_work_context_missing"):
@@ -320,21 +332,19 @@ def test_validate_path_denies_prohibited_even_when_allowed(tmp_path: Path) -> No
 
 
 def test_validate_path_empty_allowed_permits_all_non_prohibited(tmp_path: Path) -> None:
-    work_context_id = "WORKCTX-PATHTEST0004"
-    _write_workctx(tmp_path, work_context_id)
-    registry = DevJobRegistryService(tmp_path)
-    job = registry.create_job(
-        title="Open Scope",
-        objective="x",
-        work_context_id=work_context_id,
+    # Empty allowed_paths is an execution-scope policy, not an assignment-time
+    # scope (assignment governance requires a non-empty allowed scope). Exercise
+    # the "empty allowed = any non-prohibited path" rule directly against the
+    # path-enforcement layer using a DevWorkerContext with an open scope.
+    ctx = DevWorkerContext(
+        job=DevJob(title="Open Scope", objective="x", status="assigned"),
+        workctx={},
+        guidance_context={},
+        evidence=[],
         allowed_paths=[],
         prohibited_paths=["secrets/"],
-        created_by="greg",
-        status="assigned",
-        assigned_to=WORKER_ID,
     )
     svc = DevWorkerExecutionService(tmp_path)
-    ctx = svc.load_context(job.job_id, worker_id=WORKER_ID, actor_role=ACTOR_ROLE)
 
     svc.validate_path("app.py", ctx)
 
@@ -475,6 +485,16 @@ def test_devworker_cannot_complete_job(tmp_path: Path) -> None:
     # reviewer, not the DevWorker.
     registry = DevJobRegistryService(tmp_path)
     registry.transition_job(job_id, "reviewed", actor_id="greg", actor_role=AgentRole.UNKNOWN)
+
+    # Satisfy the completion gate (validation/waiver + git-sync reference) so
+    # that the transition reaches — and is stopped at — the authorization
+    # boundary rather than short-circuiting on an unmet completion requirement.
+    registry.record_validation_waiver(
+        job_id, reason="test waiver", actor_id="greg", actor_role=AgentRole.AGEIX_CHAIR,
+    )
+    registry.attach_sync(
+        job_id, branch="feature/thing", actor_id="greg", actor_role=AgentRole.AGEIX_CHAIR,
+    )
 
     with pytest.raises(ValueError, match="devjob_transition_requires_greg_or_governance"):
         registry.transition_job(job_id, "completed", actor_id=WORKER_ID, actor_role=ACTOR_ROLE)
