@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Ageix Human Interface Decision Inbox",
-    "version": "26.2.5",
-    "description": "Read-only Open WebUI-compatible registration surface for the Ageix Human Interface Decision Inbox. Ageix remains the system of record and authorization authority."
+    "title": "Ageix Human Interface Decision Surfaces",
+    "version": "26.4",
+    "description": "Open WebUI-compatible registration surface for the Ageix Human Interface Decision Inbox and governed decision action translation. Ageix remains the system of record and governance authority. Open WebUI remains shell only."
   },
   "servers": [
     {
@@ -85,6 +85,109 @@
           },
           "403": {
             "description": "Access denied by Ageix authorization or project-scope enforcement."
+          }
+        }
+      }
+    },
+    "/human-interface/decision-action": {
+      "post": {
+        "operationId": "execute_ageix_governed_decision_action",
+        "summary": "Execute a governed Ageix decision action",
+        "description": "Translates a Human Interface action request into the existing Ageix governed capability infrastructure. The adapter does not perform governance, create Open WebUI approval state, invoke Git, invoke workers, or mutate repository state directly.",
+        "tags": [
+          "human-interface"
+        ],
+        "parameters": [
+          {
+            "name": "X-Ageix-Session-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Ageix-Agent-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "chair"
+            }
+          },
+          {
+            "name": "X-Ageix-Agent-Role",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "ageix.chair"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "project_id",
+                  "target_record_id",
+                  "target_record_type",
+                  "action",
+                  "rationale"
+                ],
+                "properties": {
+                  "project_id": {
+                    "type": "string",
+                    "const": "Ageix"
+                  },
+                  "target_record_id": {
+                    "type": "string"
+                  },
+                  "target_record_type": {
+                    "type": "string",
+                    "enum": [
+                      "proposal",
+                      "pending_proposal",
+                      "architecture_decision",
+                      "architecture_decision_record",
+                      "pending_architecture_decision",
+                      "adr"
+                    ]
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "approve",
+                      "reject",
+                      "defer",
+                      "request_changes",
+                      "add_comment"
+                    ]
+                  },
+                  "rationale": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Governed decision action executed by Ageix capability infrastructure."
+          },
+          "400": {
+            "description": "Incomplete request, unsupported action, invalid target, governance rejection, or missing rationale."
+          },
+          "403": {
+            "description": "Authentication, capability authorization, or project authorization failure."
+          },
+          "503": {
+            "description": "Governed capability unavailable."
           }
         }
       }
