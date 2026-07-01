@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Ageix Human Interface Decision Inbox",
-    "version": "26.2.5",
-    "description": "Read-only Open WebUI-compatible registration surface for the Ageix Human Interface Decision Inbox. Ageix remains the system of record and authorization authority."
+    "title": "Ageix Human Interface Decision Surfaces",
+    "version": "26.3",
+    "description": "Read-only Open WebUI-compatible registration surface for the Ageix Human Interface Decision Inbox and Decision Detail views. Ageix remains the system of record and authorization authority. Governed action contracts are defined as non-executable metadata only for Sprint 26.3."
   },
   "servers": [
     {
@@ -50,41 +50,66 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "summary",
-                    "project_id",
-                    "read_only",
-                    "records"
-                  ],
-                  "properties": {
-                    "summary": {
-                      "type": "object"
-                    },
-                    "project_id": {
-                      "type": "string",
-                      "const": "Ageix"
-                    },
-                    "adapter": {
-                      "type": "string"
-                    },
-                    "read_only": {
-                      "type": "boolean",
-                      "const": true
-                    },
-                    "records": {
-                      "type": "array",
-                      "items": {
-                        "type": "object"
-                      }
-                    }
-                  }
+                  "$ref": "#/components/schemas/DecisionInboxResponse"
                 }
               }
             }
           },
           "403": {
             "description": "Access denied by Ageix authorization or project-scope enforcement."
+          }
+        }
+      }
+    },
+    "/human-interface/decision-detail/{decision_id}": {
+      "get": {
+        "operationId": "get_ageix_decision_detail",
+        "summary": "Read an Ageix Decision Detail record",
+        "description": "Returns read-only, summary-first, traceable detail for a selected Ageix decision inbox record. Governed action contracts are labels and disabled metadata only; this operation does not execute approval, rejection, deferral, request-change, rationale/comment, worker, validation, repository, notification, or Open WebUI-owned state changes.",
+        "tags": [
+          "human-interface"
+        ],
+        "parameters": [
+          {
+            "name": "decision_id",
+            "in": "path",
+            "required": true,
+            "description": "Ageix decision, proposal, artifact, validation, trace, or inbox record identifier to inspect.",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": true,
+            "description": "Explicit Ageix project context. Must be exactly Ageix.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Ageix"
+              ],
+              "default": "Ageix"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Read-only Decision Detail response from Ageix.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionDetailResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied by Ageix authorization or project-scope enforcement."
+          },
+          "404": {
+            "description": "The requested Ageix decision record was not found in the read-only decision inbox projection."
           }
         }
       }
@@ -96,6 +121,178 @@
         "type": "http",
         "scheme": "bearer",
         "description": "Ageix-issued or gateway-accepted bearer token. Open WebUI shell identity is not sufficient by itself."
+      }
+    },
+    "schemas": {
+      "DecisionInboxResponse": {
+        "type": "object",
+        "required": [
+          "summary",
+          "project_id",
+          "read_only",
+          "records"
+        ],
+        "properties": {
+          "summary": {
+            "type": "object"
+          },
+          "project_id": {
+            "type": "string",
+            "const": "Ageix"
+          },
+          "adapter": {
+            "type": "string"
+          },
+          "read_only": {
+            "type": "boolean",
+            "const": true
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "DecisionDetailResponse": {
+        "type": "object",
+        "required": [
+          "summary",
+          "project_id",
+          "decision_id",
+          "record_id",
+          "record_type",
+          "read_only",
+          "available_next_governed_action_labels",
+          "governed_action_contracts"
+        ],
+        "properties": {
+          "summary": {
+            "type": "object"
+          },
+          "project_id": {
+            "type": "string",
+            "const": "Ageix"
+          },
+          "decision_id": {
+            "type": "string"
+          },
+          "record_id": {
+            "type": "string"
+          },
+          "record_type": {
+            "type": "string"
+          },
+          "read_only": {
+            "type": "boolean",
+            "const": true
+          },
+          "evidence_links": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "validation_links": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "decision_trace_links": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "available_next_governed_action_labels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "approve",
+                "reject",
+                "defer",
+                "request_changes",
+                "add_comment/rationale"
+              ]
+            }
+          },
+          "rationale_requirement": {
+            "type": "object"
+          },
+          "authority_requirement": {
+            "type": "object"
+          },
+          "governed_action_contracts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GovernedActionContract"
+            }
+          }
+        }
+      },
+      "GovernedActionContract": {
+        "type": "object",
+        "description": "Sprint 26.3 non-executable contract metadata for future governed approval workflows. No OpenAPI operation is exposed for these actions in this sprint.",
+        "required": [
+          "action",
+          "project_id",
+          "target_record_id",
+          "target_record_type",
+          "required_fields",
+          "required_controls",
+          "sprint_26_3_executable"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject",
+              "defer",
+              "request_changes",
+              "add_comment/rationale"
+            ]
+          },
+          "project_id": {
+            "type": "string",
+            "const": "Ageix"
+          },
+          "target_record_id": {
+            "type": "string"
+          },
+          "target_record_type": {
+            "type": "string"
+          },
+          "required_fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "project_id",
+                "target_record_id",
+                "target_record_type",
+                "rationale"
+              ]
+            }
+          },
+          "required_controls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sprint_26_3_executable": {
+            "type": "boolean",
+            "const": false
+          },
+          "transport": {
+            "type": "string",
+            "const": "not_exposed_by_human_interface_adapter_in_sprint_26_3"
+          }
+        }
       }
     }
   }
