@@ -73,7 +73,7 @@ def decision_action(
         "agent_id": x_ageix_agent_id or "chair",
         "client_id": x_ageix_client_id or "human_interface",
         "provider": x_ageix_provider or "human_interface",
-        "agent_role": x_ageix_agent_role or "ageix_chair",
+        "agent_role": x_ageix_agent_role or "ageix.chair",
         "participant_id": x_ageix_participant_id,
         "project_id": payload.get("project_id"),
         "authority_granted": False,
