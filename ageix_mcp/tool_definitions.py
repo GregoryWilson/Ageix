@@ -1574,4 +1574,75 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
         },
     ),
 
+    # --- Temporary Chair delegation bridge (Sprint 25.4.5 / 25.4.5.1) --------
+    # Surfaces the delegated Chair-directive path on the MCP catalog so a
+    # non-Greg delegate (e.g. Lex) can actually reach it. conversation.turn.append
+    # remains Greg-only for DIRECTIVE turns; conversation.directive.submit is the
+    # governed delegated path. This whole group can be retired with the bridge.
+    MCPToolDefinition(
+        name="ageix.chair.delegation.create",
+        capability_id="chair.delegation.create",
+        category="chair_delegation",
+        description="Create a temporary, single-use Chair delegation authorizing a delegate to perform one narrowly-scoped Chair-only action. Requires explicit Chair approval (Greg or governance). Temporary bridge, Sprint 25.4.5.",
+        input_schema=_object_schema({
+            "delegate": _string("Identity being authorized (e.g. 'lex'). Acts as itself; never impersonates the Chair."),
+            "allowed_action": _string("The single Chair-only action to authorize (e.g. 'conversation.directive.submit')."),
+            "allowed_actions": _array("Alternative to allowed_action: list form (single action preferred for this bridge)."),
+            "reason": _string("Why the Chair is granting this delegation."),
+            "expires_in_minutes": _integer("Delegation lifetime in minutes (default 30)."),
+        }, ["delegate"]),
+        recommended_next_tools=("ageix.conversation.directive.submit", "ageix.chair.delegation.get"),
+        related_tools=("ageix.chair.delegation.list",),
+        documentation={
+            "use_when": ["Greg (Chair) needs to explicitly authorize another identity to perform one Chair-only action while no authenticated Human Interface exists."],
+            "do_not_use_when": ["Do not use for broad or persistent delegation, multi-action grants, or to bypass Chair authority."],
+            "authority": "Restricted to Greg or a governance role. Temporary bridge until the Human Interface is available.",
+            "intent_tags": ["chair_delegation", "temporary_bridge", "governance"],
+        },
+    ),
+    MCPToolDefinition(
+        name="ageix.chair.delegation.get",
+        capability_id="chair.delegation.get",
+        category="chair_delegation",
+        description="Retrieve a Chair delegation by ID, including status, expiry, and consumption/audit lineage.",
+        input_schema=_object_schema({
+            "delegation_id": _string("Delegation ID to retrieve."),
+        }, ["delegation_id"]),
+        related_tools=("ageix.chair.delegation.list",),
+    ),
+    MCPToolDefinition(
+        name="ageix.chair.delegation.list",
+        capability_id="chair.delegation.list",
+        category="chair_delegation",
+        description="List Chair delegations with optional delegate, status, and project filters.",
+        input_schema=_object_schema({
+            "delegate": _string("Filter by delegate identity."),
+            "status": _string("Filter by status.", enum=["active", "consumed", "expired", "revoked"]),
+            "limit": _integer("Maximum number of delegations to return."),
+            "offset": _integer("Zero-based offset."),
+        }),
+    ),
+    MCPToolDefinition(
+        name="ageix.conversation.directive.submit",
+        capability_id="conversation.directive.submit",
+        category="chair_delegation",
+        description="Submit a single Chair-only DIRECTIVE into a conversation under a valid Chair delegation. Verifies and consumes the delegation and records it in the audit trail; the delegate acts as itself (no impersonation). This is the delegated path — conversation.turn.append stays Greg-only for DIRECTIVE turns. Temporary bridge, Sprint 25.4.5.",
+        input_schema=_object_schema({
+            "conversation_id": _string("Conversation ID to append the directive to."),
+            "content": _string("Directive content."),
+            "delegation_id": _string("The Chair delegation authorizing this directive."),
+            "participant_id": _string("The acting delegate identity (e.g. 'lex'); must match the delegation's delegate."),
+            "confidence": {"type": "number", "description": "Confidence from 0.0 to 10.0."},
+            "directed_at": _string("Optional agent_role this directive is directed at."),
+            "model_id": _string("Underlying model identifier that produced this directive."),
+        }, ["conversation_id", "content", "delegation_id"]),
+        recommended_next_tools=("ageix.conversation.turn.list",),
+        related_tools=("ageix.chair.delegation.create", "ageix.chair.delegation.get"),
+        documentation={
+            "use_when": ["A non-Greg delegate (e.g. Lex) needs to submit a Chair-only DIRECTIVE authorized by a Chair delegation."],
+            "do_not_use_when": ["Do not use without a valid delegation. Greg posts directives directly via conversation.turn.append."],
+            "authority": "Requires a valid, unexpired, unconsumed Chair delegation matching the delegate and action. The delegate is recorded as author; Chair authority is preserved.",
+            "intent_tags": ["chair_delegation", "conversation_directive", "temporary_bridge"],
+        },
+    ),
 )
