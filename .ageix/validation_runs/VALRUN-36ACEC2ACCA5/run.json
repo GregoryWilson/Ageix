@@ -1,0 +1,27 @@
+{
+  "agent_id": "lex",
+  "arguments_supported": false,
+  "artifact_id": "ART-F1C2726C7C7B",
+  "command": [
+    "python",
+    "scripts/Smoke/smoke_19_0_repository_visibility.py"
+  ],
+  "command_summary": "python scripts/Smoke/smoke_19_0_repository_visibility.py",
+  "completed_at": "2026-07-01T02:21:49.193783+00:00",
+  "duration_seconds": 5.784,
+  "evidence_package_id": "EVPKG-530A8F2D276A",
+  "pid": 8342,
+  "profile_id": "SMOKE_19_0_REPOSITORY_VISIBILITY",
+  "profile_name": "Sprint 19.0 Repository Visibility Smoke",
+  "returncode": 0,
+  "risk": "low",
+  "run_id": "VALRUN-36ACEC2ACCA5",
+  "session_id": "lex-21x-validation-20260630",
+  "shell_execution": false,
+  "started_at": "2026-07-01T02:21:43.409631+00:00",
+  "status": "PASS",
+  "stderr_path": ".ageix/validation_runs/VALRUN-36ACEC2ACCA5/stderr.log",
+  "stdout_path": ".ageix/validation_runs/VALRUN-36ACEC2ACCA5/stdout.log",
+  "summary": "Validation run completed with status PASS.",
+  "timeout_seconds": 120
+}

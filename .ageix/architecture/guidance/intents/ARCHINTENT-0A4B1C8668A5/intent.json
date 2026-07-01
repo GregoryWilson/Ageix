@@ -1,0 +1,62 @@
+{
+  "adr_ids": [],
+  "approved_at": null,
+  "approved_by": null,
+  "architecture_ids": [
+    "ARCH-AGEIX-PROJECT",
+    "ARCH-AGEIX-WEBPLATFORM",
+    "ARCH-AGEIX-GOVERNANCEPLATFORM",
+    "ARCH-AGEIX-EVIDENCEPLATFORM",
+    "ARCH-AGEIX-VALIDATIONPLATFORM",
+    "ARCH-AGEIX-SESSIONPLATFORM"
+  ],
+  "created_at": "2026-07-01T17:25:21.964901+00:00",
+  "created_by": "lex",
+  "decision_trace_id": null,
+  "details": "Phase 26 should sequence UI work around governance-first surfaces: Human Interface Architecture, Open WebUI integration spike, read-only Decision Inbox, governed approval actions, manual job trigger MVP, notification foundation, and mobile interface stub. Conversation workflows can remain available where useful, but they must not obscure or bypass the governed workflow model.",
+  "evidence_package_ids": [
+    "EVPKG-298023C1EE14"
+  ],
+  "future_considerations": [
+    "Add richer conversation workflows after governance surfaces are proven.",
+    "Evaluate native mobile or PWA only after notification and approval-link patterns are validated.",
+    "Consider a dedicated Human Interface domain creation capability if architecture revision scope remains metadata-only."
+  ],
+  "intent_id": "ARCHINTENT-0A4B1C8668A5",
+  "intent_number": "INTENT-0008",
+  "metadata": {
+    "acceptance": [
+      "Decision Inbox is read-only, project-scoped, summary-first, and traceable.",
+      "Governed Approval Actions create or update governance trace and require rationale.",
+      "Manual Job Trigger exposes only registered job types and requires justification.",
+      "Notification events are advisory only.",
+      "Mobile has no separate authority model."
+    ],
+    "direct_intent_acceptance": false,
+    "mcp_origin_allowed": true,
+    "phase": "26",
+    "proposal_system_reused": true,
+    "session_id": "lex-20260701-phase26-formalization",
+    "sprint_sequence": {
+      "26.0": "Human Interface Architecture",
+      "26.1": "Open WebUI Integration Spike",
+      "26.2": "Decision Inbox MVP",
+      "26.3": "Governed Approval Actions",
+      "26.4": "Manual Job Trigger MVP",
+      "26.5": "Notification Foundation",
+      "26.6": "Mobile Interface Stub"
+    }
+  },
+  "principle_ids": [
+    "ARCHPRIN-2723697A4693"
+  ],
+  "project_id": "Ageix",
+  "proposal_id": "PROP-C25D372191A4",
+  "related_intent_ids": [],
+  "revision_ids": [],
+  "scope": "project",
+  "status": "proposed",
+  "summary": "Ageix human-facing interfaces should first make governed decisions, proposals, evidence, validation, audit, and manual workflow initiation visible and usable before optimizing general chat or conversation UX.",
+  "supersedes_intent_id": null,
+  "title": "Human Interface Should Expose Governance Workflows Before Conversation Workflows"
+}

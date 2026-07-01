@@ -1,0 +1,30 @@
+{
+  "architecture_id": "ARCH-AGEIX-PROJECT",
+  "created_at": "2026-07-01T17:25:36.470565+00:00",
+  "finding_ids": [],
+  "metadata": {
+    "github_file_read_status": "GitHub connector file reads blocked by developer-MCP restriction; evidence obtained through Ageix governed evidence broker instead.",
+    "governed_revision_required": false,
+    "phase": "26",
+    "project_context_required": "Ageix",
+    "reviewer": "lex",
+    "sprints": [
+      "26.0",
+      "26.1",
+      "26.2",
+      "26.3",
+      "26.4",
+      "26.5",
+      "26.6"
+    ]
+  },
+  "no_findings": false,
+  "project_id": "Ageix",
+  "rationale": "",
+  "review_id": "ARCHREV-2F16C935631A",
+  "reviewer_id": "lex",
+  "reviewer_role": "architect",
+  "status": "submitted",
+  "summary": "Phase 26 Human Interface Architecture validation plan for Open WebUI shell, Decision Inbox, governed approvals, manual job triggers, notification foundation, and mobile stub.",
+  "updated_at": "2026-07-01T17:25:36.470577+00:00"
+}

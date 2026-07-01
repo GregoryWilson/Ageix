@@ -1,0 +1,48 @@
+{
+  "adr_ids": [],
+  "approved_at": null,
+  "approved_by": null,
+  "architecture_ids": [
+    "ARCH-AGEIX-PROJECT",
+    "ARCH-AGEIX-WEBPLATFORM",
+    "ARCH-AGEIX-GOVERNANCEPLATFORM",
+    "ARCH-AGEIX-EVIDENCEPLATFORM",
+    "ARCH-AGEIX-VALIDATIONPLATFORM",
+    "ARCH-AGEIX-WORKERPLATFORM",
+    "ARCH-AGEIX-SECURITYPLATFORM"
+  ],
+  "created_at": "2026-07-01T17:25:08.274625+00:00",
+  "created_by": "lex",
+  "decision_trace_id": null,
+  "evidence_package_ids": [
+    "EVPKG-298023C1EE14"
+  ],
+  "metadata": {
+    "direct_principle_acceptance": false,
+    "mcp_origin_allowed": true,
+    "phase": "26",
+    "project_context_required": "Ageix",
+    "proposal_system_reused": true,
+    "session_id": "lex-20260701-phase26-formalization",
+    "sprint": "26.0",
+    "validation_rules": [
+      "Confirm no direct UI-to-worker mutation path exists.",
+      "Confirm all state-changing actions require project context Ageix.",
+      "Confirm mutations route through governed capability execution.",
+      "Confirm unauthorized users receive safe fallback behavior.",
+      "Confirm mobile stubs do not create parallel governance paths."
+    ]
+  },
+  "principle_id": "ARCHPRIN-2723697A4693",
+  "principle_number": "PRIN-0007",
+  "project_id": "Ageix",
+  "proposal_id": "PROP-9F9A7DCA4804",
+  "rationale": "Ageix governance depends on project context, capability authorization, Chair authority, audit records, evidence lineage, decision traces, validation results, and immutable history. Human interfaces are presentation and interaction surfaces, not independent authorities or systems of record.",
+  "related_principle_ids": [],
+  "revision_ids": [],
+  "scope": "project",
+  "statement": "Any Ageix human interface must route state-changing actions through governed Ageix capabilities. UI components may present, collect, and submit intent, but they must not directly mutate proposal, evidence, decision, validation, artifact, or worker state.",
+  "status": "proposed",
+  "supersedes_principle_id": null,
+  "title": "Human Interfaces Must Not Bypass Governance"
+}
