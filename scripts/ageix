@@ -1,0 +1,366 @@
+#!/usr/bin/env python3
+"""
+ageix — local authoritative Chair CLI (temporary bridge, Sprint 25.4.5.x)
+
+Run locally by Greg to capture an explicit, authoritative Chair approval and
+drive it through the governed Ageix capability path. Running this on your own
+machine IS the authoritative Chair boundary while no Human Interface exists.
+
+Everything goes through the same governed CapabilityExecutionService the MCP
+surface uses — nothing here bypasses governance or the audit trail. The tool
+adds an interactive "type APPROVE" confirmation so approval is explicit, and
+writes a durable local approval-capture record under .ageix/chair_approvals/.
+
+Examples
+--------
+Submit an authoritative Chair directive into a conversation, referencing the
+delegation and DevJob it approves:
+
+    ageix directive submit \
+        --conversation CONV-8C218B74A68B \
+        --delegation CHAIRDLG-XXXXXXXXXXXX \
+        --devjob DEVJOB-6567FA84E027
+
+Create (authoritatively approve) a delegation for a delegate:
+
+    ageix delegation create --delegate lex --action conversation.directive.submit \
+        --devjob DEVJOB-6567FA84E027 --reason "Approve Sprint 25.5 directive"
+
+Inspect a delegation:
+
+    ageix delegation get --delegation CHAIRDLG-XXXXXXXXXXXX
+
+Flags
+-----
+--as <identity>       Submit the directive as this delegate through the governed
+                      delegated path (consumes the delegation). Default: submit
+                      directly as Greg (Chair), the authoritative approval.
+--yes                 Skip the interactive approval prompt (non-interactive use).
+--repo <path>         Ageix repo root (defaults to this script's repository).
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from uuid import uuid4
+
+# Make the Ageix repo importable no matter where the CLI is launched from.
+_REPO_DEFAULT = Path(__file__).resolve().parent.parent
+if str(_REPO_DEFAULT) not in sys.path:
+    sys.path.insert(0, str(_REPO_DEFAULT))
+
+CHAIR_ACTOR = "greg"
+CHAIR_ROLE = "ageix.chair"
+DIRECTIVE_ACTION = "conversation.directive.submit"
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _fail(message: str, code: int = 1) -> "int":
+    print(f"error: {message}", file=sys.stderr)
+    return code
+
+
+def _resolve_repo(raw: str | None) -> Path:
+    repo = Path(raw).resolve() if raw else _REPO_DEFAULT
+    if not (repo / ".ageix").exists() and not (repo / "store.py").exists():
+        print(f"warning: {repo} does not look like an Ageix repo (no .ageix/ or store.py).",
+              file=sys.stderr)
+    return repo
+
+
+def _confirm(summary_lines: list[str], *, assume_yes: bool) -> bool:
+    print("\n".join(summary_lines))
+    if assume_yes:
+        print("\n(--yes supplied; recording approval without an interactive prompt.)")
+        return True
+    print("\nThis records YOUR explicit, authoritative Chair approval.")
+    try:
+        answer = input("Type 'APPROVE' to confirm (anything else cancels): ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return False
+    return answer == "APPROVE"
+
+
+def _capture_approval(repo: Path, payload: dict) -> Path:
+    """Write a durable local record of the explicit Chair approval."""
+    capture_dir = repo / ".ageix" / "chair_approvals"
+    capture_dir.mkdir(parents=True, exist_ok=True)
+    approval_id = f"CHAIRAPPROVAL-{uuid4().hex[:12].upper()}"
+    record = {"approval_id": approval_id, "captured_at": _now(), "approver": CHAIR_ACTOR, **payload}
+    path = capture_dir / f"{approval_id}.json"
+    path.write_text(json.dumps(record, indent=2, sort_keys=True), encoding="utf-8")
+    return path
+
+
+# ---------------------------------------------------------------------------
+# Governed execution helpers
+# ---------------------------------------------------------------------------
+
+def _execute(repo: Path, capability_id: str, agent_id: str, arguments: dict) -> dict:
+    from models.capability_request import CapabilityRequest
+    from services.capability_execution_service import CapabilityExecutionService
+
+    response = CapabilityExecutionService(repo).execute(CapabilityRequest(
+        capability_id=capability_id,
+        session_id=f"local-cli-{agent_id}",
+        agent_id=agent_id,
+        arguments=arguments,
+    ))
+    return {"success": response.success, "result": response.result, "error": response.error}
+
+
+def _load_delegation(repo: Path, delegation_id: str) -> dict | None:
+    from services.chair_delegation_service import ChairDelegationService
+    try:
+        return ChairDelegationService(repo).get_delegation(delegation_id).to_metadata()
+    except ValueError:
+        return None
+
+
+def _load_devjob(repo: Path, devjob_id: str) -> dict | None:
+    from services.devjob_registry_service import DevJobRegistryService
+    try:
+        return DevJobRegistryService(repo).get_job(devjob_id).to_summary()
+    except ValueError:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Commands
+# ---------------------------------------------------------------------------
+
+def cmd_directive_submit(args: argparse.Namespace) -> int:
+    repo = _resolve_repo(args.repo)
+    conversation_id = args.conversation
+    delegation_id = args.delegation
+    devjob_id = args.devjob
+
+    # Read-only context so the operator sees exactly what is being approved.
+    delegation = _load_delegation(repo, delegation_id) if delegation_id else None
+    if delegation_id and delegation is None:
+        return _fail(f"delegation {delegation_id} not found in {repo}")
+    devjob = _load_devjob(repo, devjob_id) if devjob_id else None
+    if devjob_id and devjob is None:
+        return _fail(f"devjob {devjob_id} not found in {repo}")
+
+    default_content = (
+        f"Chair approval and directive: proceed on {devjob_id or 'the referenced work'}"
+        + (f" under delegation {delegation_id}" if delegation_id else "")
+        + f" (conversation {conversation_id})."
+    )
+    content = args.content or default_content
+    delegated = bool(args.as_identity)
+
+    summary = [
+        "",
+        "=== Ageix Chair Directive — explicit approval ===",
+        f"  repo          : {repo}",
+        f"  conversation  : {conversation_id}",
+        f"  delegation    : {delegation_id or '(none)'}",
+        f"  devjob        : {devjob_id or '(none)'}",
+    ]
+    if delegation:
+        summary.append(
+            f"                  delegate={delegation['delegate']} action={delegation['allowed_actions']} "
+            f"status={delegation['status']} expires_at={delegation['expires_at']}"
+        )
+    if devjob:
+        summary.append(f"                  devjob='{devjob['title']}' status={devjob['status']}")
+    if delegated:
+        summary.append(f"  submit as     : {args.as_identity} (delegated path — consumes the delegation)")
+    else:
+        summary.append(f"  submit as     : {CHAIR_ACTOR} (authoritative Chair directive)")
+    summary.append(f"  directive     : {content}")
+
+    if not _confirm(summary, assume_yes=args.yes):
+        print("Cancelled. No approval recorded.")
+        return 2
+
+    # Execute through the governed capability path.
+    if delegated:
+        if not delegation_id:
+            return _fail("--as <delegate> requires --delegation")
+        if delegation and args.as_identity != delegation["delegate"]:
+            return _fail(
+                f"--as '{args.as_identity}' does not match delegation delegate '{delegation['delegate']}'"
+            )
+        result = _execute(repo, "conversation.directive.submit", args.as_identity, {
+            "client_id": f"ageix-connector-{args.as_identity}",
+            "agent_role": args.as_identity,
+            "participant_id": args.as_identity,
+            "conversation_id": conversation_id,
+            "content": content,
+            "delegation_id": delegation_id,
+            "model_id": args.as_identity,
+            "project_id": args.project,
+            "confidence": args.confidence,
+        })
+    else:
+        # Authoritative Chair directive posted directly by Greg.
+        result = _execute(repo, "conversation.turn.append", CHAIR_ACTOR, {
+            "client_id": "ageix-local-cli",
+            "agent_role": CHAIR_ROLE,
+            "participant_id": CHAIR_ACTOR,
+            "conversation_id": conversation_id,
+            "turn_type": "DIRECTIVE",
+            "content": content,
+            "confidence": args.confidence,
+            "model_id": CHAIR_ACTOR,
+        })
+
+    if not result["success"]:
+        return _fail(f"directive submission denied by governance: {result['error']}")
+
+    turn = result["result"].get("turn", result["result"])
+    turn_id = turn.get("turn_id")
+    capture = _capture_approval(repo, {
+        "action": "directive.submit",
+        "conversation_id": conversation_id,
+        "delegation_id": delegation_id,
+        "devjob_id": devjob_id,
+        "submitted_as": args.as_identity or CHAIR_ACTOR,
+        "delegated": delegated,
+        "directive_content": content,
+        "resulting_turn_id": turn_id,
+        "capability_id": "conversation.directive.submit" if delegated else "conversation.turn.append",
+    })
+
+    print("\nApproved and recorded.")
+    print(f"  directive turn : {turn_id}")
+    if delegated:
+        print(f"  delegation     : {delegation_id} (consumed)")
+    print(f"  approval record: {capture.relative_to(repo)}")
+    print(f"  audit trail    : .ageix/instance/capability_audit.json")
+    return 0
+
+
+def cmd_delegation_create(args: argparse.Namespace) -> int:
+    repo = _resolve_repo(args.repo)
+    devjob = _load_devjob(repo, args.devjob) if args.devjob else None
+    if args.devjob and devjob is None:
+        return _fail(f"devjob {args.devjob} not found in {repo}")
+
+    summary = [
+        "",
+        "=== Ageix Chair Delegation — explicit approval ===",
+        f"  repo       : {repo}",
+        f"  delegate   : {args.delegate}",
+        f"  action     : {args.action}",
+        f"  devjob     : {args.devjob or '(none)'}",
+        f"  conversation: {args.conversation or '(none)'}",
+        f"  ttl (min)  : {args.ttl}",
+        f"  reason     : {args.reason or '(none)'}",
+    ]
+    if not _confirm(summary, assume_yes=args.yes):
+        print("Cancelled. No delegation created.")
+        return 2
+
+    metadata = {}
+    if args.devjob:
+        metadata["devjob_id"] = args.devjob
+    if args.conversation:
+        metadata["conversation_id"] = args.conversation
+
+    result = _execute(repo, "chair.delegation.create", CHAIR_ACTOR, {
+        "actor_id": CHAIR_ACTOR,
+        "agent_role": CHAIR_ROLE,
+        "delegate": args.delegate,
+        "allowed_action": args.action,
+        "project_id": args.project,
+        "reason": args.reason or "",
+        "expires_in_minutes": args.ttl,
+        "metadata": metadata,
+    })
+    if not result["success"]:
+        return _fail(f"delegation creation denied by governance: {result['error']}")
+
+    delegation = result["result"]
+    delegation_id = delegation["delegation_id"]
+    capture = _capture_approval(repo, {
+        "action": "delegation.create",
+        "delegation_id": delegation_id,
+        "delegate": args.delegate,
+        "allowed_action": args.action,
+        "devjob_id": args.devjob,
+        "conversation_id": args.conversation,
+        "reason": args.reason or "",
+    })
+    print("\nApproved and recorded.")
+    print(f"  delegation     : {delegation_id} (status={delegation['status']}, expires_at={delegation['expires_at']})")
+    print(f"  approval record: {capture.relative_to(repo)}")
+    print(f"  next           : ageix directive submit --conversation <CONV> --delegation {delegation_id}"
+          + (f" --devjob {args.devjob}" if args.devjob else "") + " --as " + args.delegate)
+    return 0
+
+
+def cmd_delegation_get(args: argparse.Namespace) -> int:
+    repo = _resolve_repo(args.repo)
+    delegation = _load_delegation(repo, args.delegation)
+    if delegation is None:
+        return _fail(f"delegation {args.delegation} not found in {repo}")
+    print(json.dumps(delegation, indent=2, sort_keys=True))
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Argument parsing
+# ---------------------------------------------------------------------------
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="ageix", description="Local authoritative Chair CLI for Ageix.")
+    parser.add_argument("--repo", help="Ageix repo root (defaults to this script's repository).")
+    groups = parser.add_subparsers(dest="group", required=True)
+
+    # ageix directive submit
+    directive = groups.add_parser("directive", help="Chair directive actions.")
+    d_sub = directive.add_subparsers(dest="action", required=True)
+    submit = d_sub.add_parser("submit", help="Submit a Chair-only directive into a conversation.")
+    submit.add_argument("--conversation", required=True, help="Target conversation ID (CONV-...).")
+    submit.add_argument("--delegation", help="Delegation ID this directive approves/uses (CHAIRDLG-...).")
+    submit.add_argument("--devjob", help="DevJob ID the directive approves (DEVJOB-...).")
+    submit.add_argument("--content", help="Directive text (default: a standard approval directive).")
+    submit.add_argument("--as", dest="as_identity",
+                        help="Submit as this delegate via the governed delegated path (consumes the delegation). "
+                             "Default: submit directly as Greg (Chair).")
+    submit.add_argument("--project", default="Ageix", help="Project ID (default: Ageix).")
+    submit.add_argument("--confidence", type=float, default=10.0, help="Turn confidence 0.0-10.0 (default 10.0).")
+    submit.add_argument("--yes", action="store_true", help="Skip the interactive approval prompt.")
+    submit.set_defaults(func=cmd_directive_submit)
+
+    # ageix delegation create/get
+    delegation = groups.add_parser("delegation", help="Chair delegation actions.")
+    g_sub = delegation.add_subparsers(dest="action", required=True)
+    create = g_sub.add_parser("create", help="Authoritatively create (approve) a delegation.")
+    create.add_argument("--delegate", required=True, help="Identity being authorized (e.g. lex).")
+    create.add_argument("--action", default=DIRECTIVE_ACTION,
+                        help=f"Single Chair-only action to authorize (default: {DIRECTIVE_ACTION}).")
+    create.add_argument("--devjob", help="DevJob this delegation relates to (recorded in metadata).")
+    create.add_argument("--conversation", help="Conversation this delegation relates to (recorded in metadata).")
+    create.add_argument("--reason", help="Why the Chair is granting this delegation.")
+    create.add_argument("--ttl", type=int, default=30, help="Delegation lifetime in minutes (default 30).")
+    create.add_argument("--project", default="Ageix", help="Project ID (default: Ageix).")
+    create.add_argument("--yes", action="store_true", help="Skip the interactive approval prompt.")
+    create.set_defaults(func=cmd_delegation_create)
+
+    get = g_sub.add_parser("get", help="Show a delegation.")
+    get.add_argument("--delegation", required=True, help="Delegation ID (CHAIRDLG-...).")
+    get.set_defaults(func=cmd_delegation_get)
+
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    return int(args.func(args) or 0)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
