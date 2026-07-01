@@ -13,6 +13,7 @@ from models.human_consultation import (
     HumanConsultationTargetRecordType,
     HumanConsultationType,
     approval_choices,
+    is_valid_human_consultation_id,
 )
 from services.capability_execution_service import CapabilityExecutionService
 
@@ -39,6 +40,8 @@ class HumanConsultationService:
         self.root = self.repo_root / self.STORE_ROOT
 
     def create_request(self, request: HumanConsultationRequest) -> HumanConsultationRequest:
+        if not self._is_valid_consultation_id(request.consultation_id):
+            raise ValueError("invalid_consultation_id")
         now = self._now()
         if not request.created_at:
             request.created_at = now
@@ -71,9 +74,12 @@ class HumanConsultationService:
         return self.create_request(request)
 
     def get_request(self, consultation_id: str) -> HumanConsultationRequest:
-        path = self._path(consultation_id)
+        clean_consultation_id = str(consultation_id or "").strip()
+        if not self._is_valid_consultation_id(clean_consultation_id):
+            raise ValueError("invalid_consultation_id")
+        path = self._path(clean_consultation_id)
         if not path.exists():
-            raise FileNotFoundError(consultation_id)
+            raise FileNotFoundError(clean_consultation_id)
         return HumanConsultationRequest(**json.loads(path.read_text(encoding="utf-8")))
 
     def list_requests(self, *, project_id: str | None = None, status: str | None = None) -> list[HumanConsultationRequest]:
@@ -198,6 +204,8 @@ class HumanConsultationService:
             return self._failure("project_scope_denied", clean)
         if not clean["consultation_id"]:
             return self._failure("consultation_id_required", clean)
+        if not self._is_valid_consultation_id(clean["consultation_id"]):
+            return self._failure("invalid_consultation_id", clean)
         if not clean["selected_choice_id"]:
             return self._failure("selected_choice_id_required", clean)
         return clean
@@ -243,12 +251,17 @@ class HumanConsultationService:
         }
 
     def _write(self, request: HumanConsultationRequest) -> None:
+        if not self._is_valid_consultation_id(request.consultation_id):
+            raise ValueError("invalid_consultation_id")
         path = self._path(request.consultation_id)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(request.model_dump(mode="json"), indent=2, sort_keys=True), encoding="utf-8")
 
     def _path(self, consultation_id: str) -> Path:
-        return self.root / str(consultation_id) / "consultation.json"
+        clean_consultation_id = str(consultation_id or "").strip()
+        if not self._is_valid_consultation_id(clean_consultation_id):
+            raise ValueError("invalid_consultation_id")
+        return self.root / clean_consultation_id / "consultation.json"
 
     def _failure(
         self,
@@ -281,6 +294,9 @@ class HumanConsultationService:
             "error": error,
             "metadata": {"source": "human_consultation_service"},
         }
+
+    def _is_valid_consultation_id(self, consultation_id: str) -> bool:
+        return is_valid_human_consultation_id(consultation_id)
 
     def _now(self) -> str:
         return datetime.now(timezone.utc).isoformat()
