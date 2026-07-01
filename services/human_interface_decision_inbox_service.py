@@ -46,17 +46,6 @@ class HumanInterfaceDecisionInboxService:
         "under_review",
     }
     PENDING_ADR_STATUSES = {"draft", "proposed"}
-    FORBIDDEN_MUTATION_FIELDS = [
-        "approval_url",
-        "approve_url",
-        "reject_url",
-        "defer_url",
-        "request_changes_url",
-        "mutation_payload",
-        "worker_trigger",
-        "repository_write",
-        "approval_state",
-    ]
 
     def __init__(self, repo_root: str | Path = ".") -> None:
         self.repo_root = Path(repo_root).resolve()
@@ -109,7 +98,6 @@ class HumanInterfaceDecisionInboxService:
             "governing_architecture_files": list(self.GOVERNING_ARCHITECTURE_FILES),
             "records": records,
             "source_status": source_status,
-            "prohibited_mutation_fields": list(self.FORBIDDEN_MUTATION_FIELDS),
         }
 
     def _access_denied(self, project_id: str | None) -> dict[str, Any]:
