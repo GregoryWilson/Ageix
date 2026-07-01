@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+import re
+
+import pytest
+from pydantic import ValidationError
+
 from models.human_consultation import (
+    HUMAN_CONSULTATION_ID_PATTERN,
     HumanConsultationRequest,
     HumanConsultationTargetRecordType,
     HumanConsultationType,
@@ -20,7 +26,7 @@ def test_human_consultation_request_includes_constrained_choices() -> None:
         trace_ids=["TRACE-1"],
     )
 
-    assert request.consultation_id.startswith("HCONS-")
+    assert re.fullmatch(HUMAN_CONSULTATION_ID_PATTERN, request.consultation_id)
     assert request.project_id == "Ageix"
     assert request.consultation_type == HumanConsultationType.APPROVAL
     assert request.context.target_record_type == HumanConsultationTargetRecordType.PROPOSAL
@@ -44,6 +50,29 @@ def test_other_choice_requires_freeform_text_and_rationale() -> None:
     assert other is not None
     assert other.requires_text is True
     assert other.requires_rationale is True
+
+
+@pytest.mark.parametrize(
+    "consultation_id",
+    [
+        "../foo",
+        "HCONS-../../",
+        "HCONS-123",
+        "HCONS-ABC",
+        "HCONS-ABCDEFGHIJKL",
+        "HCONS-abcdef123456",
+    ],
+)
+def test_human_consultation_request_rejects_invalid_consultation_ids(consultation_id: str) -> None:
+    with pytest.raises(ValidationError):
+        HumanConsultationRequest(
+            consultation_id=consultation_id,
+            project_id="Ageix",
+            consultation_type=HumanConsultationType.MISSING_CONTEXT,
+            question="What context should be used?",
+            summary="Missing context decision needed.",
+            choices=missing_context_choices(),
+        )
 
 
 def test_missing_evidence_and_context_consultations_are_representable() -> None:
