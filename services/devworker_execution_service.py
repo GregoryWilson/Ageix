@@ -203,6 +203,10 @@ class DevWorkerExecutionService:
             norm = prohibited.rstrip("/")
             if path == prohibited or path.startswith(norm + "/"):
                 raise ValueError(f"devworker_path_prohibited:{path}")
+        # TODO(worker-admission/scope): empty allowed_paths currently means
+        # "any non-prohibited path is permitted" (implicit whole-repo scope).
+        # A future policy should require an explicit whole-repo authorization
+        # token on the DevJob rather than treating an empty list as consent.
         if not context.allowed_paths:
             return
         for allowed in context.allowed_paths:
@@ -225,6 +229,78 @@ class DevWorkerExecutionService:
             return self._git.diff("HEAD")
         except RuntimeError:
             return self._git.diff()
+
+    # ------------------------------------------------------------------
+    # Diff scope enforcement (Sprint 21.3.1)
+    #
+    # The actual git diff — not worker-declared changed_files — is authoritative
+    # for whether the generated patch is within authorized DevJob scope.
+    # ------------------------------------------------------------------
+
+    def extract_diff_paths(self, diff_content: str) -> list[str]:
+        """
+        Parse the actual changed repository paths from a unified git diff.
+
+        Handles modified, added, deleted, and renamed files, and treats
+        `/dev/null` (add/delete side) safely. Paths are returned repo-relative
+        with the leading ``a/``/``b/`` markers stripped, de-duplicated, in first
+        seen order. For renames, both the old and new path are returned so that
+        each side is independently scope-checked.
+        """
+        paths: list[str] = []
+        seen: set[str] = set()
+
+        def _add(raw: str) -> None:
+            candidate = raw.strip()
+            if not candidate or candidate == "/dev/null":
+                return
+            if candidate.startswith(("a/", "b/")):
+                candidate = candidate[2:]
+            # git quotes paths containing unusual characters.
+            if len(candidate) >= 2 and candidate[0] == '"' and candidate[-1] == '"':
+                candidate = candidate[1:-1]
+            # `--- a/path\ttimestamp` style trailers.
+            candidate = candidate.split("\t", 1)[0].strip()
+            if candidate and candidate != "/dev/null" and candidate not in seen:
+                seen.add(candidate)
+                paths.append(candidate)
+
+        for line in diff_content.splitlines():
+            if line.startswith("--- "):
+                _add(line[4:])
+            elif line.startswith("+++ "):
+                _add(line[4:])
+            elif line.startswith("rename from "):
+                _add(line[len("rename from "):])
+            elif line.startswith("rename to "):
+                _add(line[len("rename to "):])
+
+        # Fallback for diffs that carry no ---/+++ or rename lines (e.g. pure
+        # mode changes): derive both sides from the `diff --git a/X b/Y` header.
+        if not paths:
+            for line in diff_content.splitlines():
+                if line.startswith("diff --git ") and " b/" in line:
+                    rest = line[len("diff --git "):]
+                    a_part, b_part = rest.split(" b/", 1)
+                    _add(a_part)
+                    _add("b/" + b_part)
+
+        return paths
+
+    def validate_diff_scope(self, diff_content: str, context: DevWorkerContext) -> list[str]:
+        """
+        Independently scope-validate the actual paths present in the diff.
+
+        Applies the existing DevJob path scope rules (`validate_path`) to every
+        real changed path. Raises ValueError with an explicit reason if any
+        actual path is prohibited or outside `allowed_paths`. Returns the list
+        of actual changed paths on success — these are authoritative for patch
+        scope, regardless of what the implementation declared.
+        """
+        actual_paths = self.extract_diff_paths(diff_content)
+        for path in actual_paths:
+            self.validate_path(path, context)
+        return actual_paths
 
     # ------------------------------------------------------------------
     # Step 9: Governed patch artifact
@@ -281,6 +357,7 @@ class DevWorkerExecutionService:
         result_summary: str = "",
         branch_name: str | None = None,
         warnings: list[ExecutionWarning] | None = None,
+        extra_metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Submit result references for the DevJob (transitions to submitted).
@@ -317,6 +394,7 @@ class DevWorkerExecutionService:
                 "loaded_evidence_package_ids": list(context.loaded_evidence_package_ids),
                 "missing_evidence_package_ids": list(context.missing_evidence_package_ids),
                 "warning_count": len(warning_dicts),
+                **dict(extra_metadata or {}),
             },
             submitted_by=worker_id,
             actor_role=actor_role,
@@ -369,6 +447,64 @@ class DevWorkerExecutionService:
                 warnings=warnings,
             )
 
+        # Step 8b (Sprint 21.3.1): Independently scope-validate the ACTUAL diff
+        # paths before any governed artifact is created. Worker-declared
+        # changed_files are NOT authoritative — the real diff is. A path
+        # outside allowed_paths or inside prohibited_paths blocks execution
+        # here, before create_patch_artifact() and submit_result().
+        try:
+            actual_paths = self.validate_diff_scope(diff_content, context)
+        except ValueError as exc:
+            code, _, offending = str(exc).partition(":")
+            return self._block(
+                context,
+                worker_id=worker_id,
+                actor_role=actor_role,
+                reason=code or "devworker_diff_path_out_of_scope",
+                changed_files=changed_files,
+                warnings=warnings,
+                extra_metadata={
+                    "offending_path": offending,
+                    "actual_diff_paths": self.extract_diff_paths(diff_content),
+                    "declared_changed_files": list(changed_files),
+                },
+            )
+
+        # Reconcile declared changed_files against the authoritative diff paths.
+        declared = set(changed_files)
+        actual_set = set(actual_paths)
+        omitted = sorted(actual_set - declared)
+        if omitted:
+            # Declared list hides real changes: block — the worker's metadata
+            # cannot be trusted to describe the patch it produced.
+            return self._block(
+                context,
+                worker_id=worker_id,
+                actor_role=actor_role,
+                reason="devworker_changed_files_mismatch",
+                changed_files=changed_files,
+                warnings=warnings,
+                extra_metadata={
+                    "omitted_paths": omitted,
+                    "actual_diff_paths": list(actual_paths),
+                    "declared_changed_files": list(changed_files),
+                },
+            )
+        extra_declared = sorted(declared - actual_set)
+        if extra_declared:
+            # Declared extra paths that never appear in the diff are advisory:
+            # surface a warning but proceed; the actual diff remains authoritative.
+            warnings.append(ExecutionWarning(
+                code="devworker_changed_files_extra",
+                severity="warning",
+                message=(
+                    f"Declared changed_files include {len(extra_declared)} path(s) "
+                    "not present in the actual diff; actual diff paths are authoritative."
+                ),
+                related_object_id=job_id,
+                metadata={"extra_paths": extra_declared, "actual_diff_paths": list(actual_paths)},
+            ))
+
         # Step 9: Generate governed Patch Artifact
         worker_ctx = WorkerContext(
             worker="DevWorkerExecutionService",
@@ -379,16 +515,19 @@ class DevWorkerExecutionService:
         patch_id = str(patch["patch_id"])
         artifact_ids = [str(patch["artifact_id"])] if patch.get("artifact_id") else []
 
-        # Step 10: Submit DevJob Result References (warnings ride along)
+        # Step 10: Submit DevJob Result References (warnings ride along).
+        # Actual diff paths are the authoritative changed_files; the worker's
+        # declared list is retained only as metadata.
         result = self.submit_result(
             context,
             patch_id,
             worker_id=worker_id,
             actor_role=actor_role,
-            changed_files=changed_files,
+            changed_files=list(actual_paths),
             artifact_ids=artifact_ids,
             result_summary=f"DevWorker completed implementation for DevJob {job_id}.",
             warnings=warnings,
+            extra_metadata={"worker_declared_changed_files": list(changed_files)},
         )
 
         return DevWorkerExecutionResult(
@@ -398,7 +537,7 @@ class DevWorkerExecutionService:
             work_context_id=context.job.work_context_id,
             patch_id=patch_id,
             artifact_ids=artifact_ids,
-            changed_files=changed_files,
+            changed_files=list(actual_paths),
             loaded_evidence_package_ids=list(context.loaded_evidence_package_ids),
             missing_evidence_package_ids=list(context.missing_evidence_package_ids),
             warnings=[w.to_dict() for w in warnings],
@@ -418,18 +557,20 @@ class DevWorkerExecutionService:
         reason: str,
         changed_files: list[str],
         warnings: list[ExecutionWarning],
+        extra_metadata: dict[str, Any] | None = None,
     ) -> DevWorkerExecutionResult:
         """Record a blocked execution as an append-only DevJob event and return
         a blocked result carrying the structured summary. Does not change the
         DevJob lifecycle state or authority."""
         job = context.job
+        detail = dict(extra_metadata or {})
         all_warnings = list(warnings)
         all_warnings.append(ExecutionWarning(
             code=reason,
             severity="error",
             message=f"DevWorker execution was blocked: {reason}.",
             related_object_id=job.job_id,
-            metadata={"work_context_id": job.work_context_id},
+            metadata={"work_context_id": job.work_context_id, **detail},
         ))
         warning_dicts = [w.to_dict() for w in all_warnings]
         self._devjob_registry.append_event(
@@ -445,6 +586,7 @@ class DevWorkerExecutionService:
                 "loaded_evidence_package_ids": list(context.loaded_evidence_package_ids),
                 "missing_evidence_package_ids": list(context.missing_evidence_package_ids),
                 "changed_files": list(changed_files),
+                **detail,
             },
         )
         return DevWorkerExecutionResult(
