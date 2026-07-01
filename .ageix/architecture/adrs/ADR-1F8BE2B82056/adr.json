@@ -1,0 +1,88 @@
+{
+  "adr_id": "ADR-1F8BE2B82056",
+  "adr_number": "ADR-0014",
+  "alternatives_considered": [
+    "Treat Claude Code URL generation as a Claude-specific utility. Rejected because it would not generalize to shared conversations, local workers, ChatGPT, or Human Interaction workflows.",
+    "Embed full DevJob or conversation state directly in launch prompts or URLs. Rejected because launch transports must not become authoritative or carry excessive context.",
+    "Run workers only from MCP inbound calls. Rejected because MCP is primarily client-initiated and does not solve external worker bootstrap, browser launch, or command-line admission patterns.",
+    "Make unattended execution the default. Rejected because faster execution must still preserve ambiguity handling, scope checks, and governed stop conditions."
+  ],
+  "approved_at": null,
+  "approved_by": null,
+  "architecture_ids": [
+    "ARCH-AGEIX-WORKERPLATFORM",
+    "ARCH-AGEIX-WORKERPLATFORM-FUTUREWORKERS"
+  ],
+  "consequences": [
+    "WorkerAdmission becomes the reusable abstraction for DevJob execution launch, shared conversation admission, and future human or agent invitations.",
+    "Launcher adapters remain transport-specific implementation details.",
+    "Admission tickets should be scoped, traceable, short-lived, and bound to target workflow context where practical.",
+    "Bootstrap prompts must be minimal and non-authoritative.",
+    "Permission modes must distinguish supervised, constrained-auto, and sandbox-auto behavior.",
+    "Sandbox-auto is only valid when an approved sandbox policy permits it, and workers must still block on ambiguity, missing evidence, unsafe instructions, or scope conflict."
+  ],
+  "context": "Ageix needs a governed way to admit external and local workers into workflows such as DevJob execution, shared conversations, and future human interaction. Browser URLs, command-line launchers, and bootstrap prompts can start a worker session, but they must remain transport mechanisms only. Ageix remains the source of truth for identity, scope, authority, DevJob state, conversation state, and workflow state.",
+  "created_at": "2026-07-01T00:54:32.891052+00:00",
+  "created_by": "lex",
+  "decision": "Introduce WorkerAdmission as the stable Worker Platform architecture concept. WorkerAdmission governs scoped, traceable, time-limited admission into Ageix workflows. Launch profiles, launcher adapters, admission tickets, permission modes, and bootstrap prompts are implementation concepts under WorkerAdmission. Launch URLs and command-line prompts are not authoritative; admitted workers must retrieve governed context from Ageix through MCP or equivalent governed interfaces before acting.",
+  "decision_trace_id": null,
+  "evidence_package_ids": [],
+  "future_considerations": [
+    "Add a WorkerAdmission architecture node under Ageix.WorkerPlatform when registry revision syntax is available or implemented.",
+    "Implement WorkerLaunchProfile, WorkerAdmissionTicket, LauncherAdapter, BootstrapPrompt, and PermissionMode as governed concepts.",
+    "Reuse WorkerAdmission for shared conversation invitations and future INTERACTION-* human or agent workflows.",
+    "Consider immutable launch and admission records for auditability.",
+    "Evaluate Claude Code web URL launch and Claude Code CLI launch as concrete adapters after the generic admission model exists."
+  ],
+  "metadata": {
+    "admission_targets": [
+      "DEVJOB-*",
+      "CONV-*",
+      "INTERACTION-*"
+    ],
+    "direct_adr_acceptance": false,
+    "future_launch_adapters": [
+      "claude_code_web",
+      "claude_code_cli",
+      "chatgpt",
+      "cursor",
+      "vscode",
+      "local_worker"
+    ],
+    "mcp_origin_allowed": true,
+    "permission_modes": [
+      "supervised",
+      "constrained_auto",
+      "sandbox_auto"
+    ],
+    "proposal_system_reused": true,
+    "proposed_architecture_component": {
+      "architecture_id": "ARCH-AGEIX-WORKERPLATFORM-WORKERADMISSION",
+      "name": "Worker Admission",
+      "node_key": "WorkerAdmission",
+      "parent_id": "ARCH-AGEIX-WORKERPLATFORM",
+      "path": "Ageix.WorkerPlatform.WorkerAdmission"
+    },
+    "session_id": "lex-2026-06-30-worker-admission-arch",
+    "source": "Lex and Greg architecture discussion"
+  },
+  "project_id": "Ageix",
+  "proposal_id": "PROP-30F699A8F291",
+  "rationale": "This preserves Ageix governance while enabling practical integration with Claude Code web, Claude Code CLI, future ChatGPT launch mechanisms, Cursor, VS Code, local workers, and shared conversation participants. It avoids building tool-specific launch behavior into core architecture and keeps DevJob, Conversation, Human Interaction, and future worker flows reusable under the same admission model.",
+  "related_adr_ids": [
+    "ADR-AGEIX-GOVERNANCE-FIRST",
+    "ADR-AGEIX-WORKCTX",
+    "ADR-AGEIX-MCP-REGISTRY",
+    "ADR-AGEIX-TRUST-BOUNDARY",
+    "ADR-AGEIX-OAUTH-JWT"
+  ],
+  "revision_ids": [],
+  "status": "proposed",
+  "supersedes_adr_id": null,
+  "title": "Worker Admission Architecture",
+  "tradeoffs": [
+    "Adds another architecture concept before implementation, but prevents launch adapter code from becoming a platform shortcut.",
+    "Keeps initial launcher implementation more constrained, at the cost of designing admission tickets and launch profiles first.",
+    "Does not solve mobile notifications or Human Interaction delivery directly, but creates a reusable admission pattern for those future workflows."
+  ]
+}
