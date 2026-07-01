@@ -1,0 +1,81 @@
+{
+  "allowed_scope": [
+    "description",
+    "metadata",
+    "relationships",
+    "hierarchy_placement",
+    "evidence_links",
+    "decision_links",
+    "review_metadata"
+  ],
+  "architecture_id": "ARCH-AGEIX-PROJECT",
+  "challenge_id": null,
+  "created_at": "2026-07-01T17:24:32.736747+00:00",
+  "linked_proposal_id": "PROP-B47CB8E77A71",
+  "metadata": {
+    "artifact_kind": "architecture_node_proposal",
+    "direct_registry_mutation": false,
+    "evidence_package_ids": [
+      "EVPKG-298023C1EE14"
+    ],
+    "phase": "26",
+    "proposal_system_reused": true,
+    "requires_followup_node_creation_capability": true,
+    "session_id": "lex-20260701-phase26-formalization"
+  },
+  "objective": "Record Phase 26 Human Interface domain proposal on the Ageix architecture baseline.",
+  "project_id": "Ageix",
+  "proposed_changes": {
+    "evidence_links": [
+      "EVPKG-298023C1EE14"
+    ],
+    "metadata": {
+      "phase_26_domain_proposal": {
+        "boundaries": [
+          "No direct UI-to-worker mutation path.",
+          "No direct mutation of proposal, evidence, decision, validation, artifact, or worker state.",
+          "Open WebUI is not the Ageix system of record.",
+          "Mobile remains downstream of governed web/API model.",
+          "No dependency on unfinished intent engine for Phase 26 MVP."
+        ],
+        "description": "Human-facing Ageix interface domain for governed decision review, approvals, feedback, manual workflow initiation, notifications, and future mobile entry points. The domain exposes governance workflows before conversation workflows and must route all state-changing actions through governed Ageix capabilities.",
+        "name": "Human Interface",
+        "node_key": "HumanInterface",
+        "node_type": "domain",
+        "path": "Ageix.HumanInterface",
+        "proposed_architecture_id": "ARCH-AGEIX-HUMANINTERFACE",
+        "related_architecture_ids": [
+          "ARCH-AGEIX-WEBPLATFORM",
+          "ARCH-AGEIX-GOVERNANCEPLATFORM",
+          "ARCH-AGEIX-EVIDENCEPLATFORM",
+          "ARCH-AGEIX-VALIDATIONPLATFORM",
+          "ARCH-AGEIX-WORKERPLATFORM",
+          "ARCH-AGEIX-SECURITYPLATFORM",
+          "ARCH-AGEIX-SESSIONPLATFORM"
+        ],
+        "responsibilities": [
+          "Expose project-scoped decision and proposal status to humans in summary-first form.",
+          "Collect Chair rationale for approval, rejection, deferral, or requested changes.",
+          "Initiate only registered, governed Ageix workflows through capability patterns.",
+          "Present evidence, validation, decision trace, and audit links without absorbing source-of-truth responsibility.",
+          "Prepare notification and mobile entry points as downstream surfaces of the governed web/API model."
+        ],
+        "status": "proposed",
+        "supporting_evidence_package_ids": [
+          "EVPKG-298023C1EE14"
+        ]
+      },
+      "phase_26_sprint_plan": {
+        "26.0": "Human Interface Architecture",
+        "26.1": "Open WebUI Integration Spike",
+        "26.2": "Decision Inbox MVP",
+        "26.3": "Governed Approval Actions",
+        "26.4": "Manual Job Trigger MVP",
+        "26.5": "Notification Foundation",
+        "26.6": "Mobile Interface Stub"
+      }
+    }
+  },
+  "revision_id": "ARCHREVPROP-B2A5E2D22EFD",
+  "submitted_by": "lex"
+}

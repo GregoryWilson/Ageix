@@ -1,0 +1,69 @@
+{
+  "adr_id": "ADR-1CE374A025B2",
+  "adr_number": "ADR-0017",
+  "alternatives_considered": [
+    "Build a custom Ageix UI from scratch before proving the governance workflows.",
+    "Expose only chat-based interaction and defer structured decision surfaces.",
+    "Use Open WebUI as a system of record rather than an interface shell.",
+    "Wait for a complete intent engine before starting UI integration."
+  ],
+  "approved_at": null,
+  "approved_by": null,
+  "architecture_ids": [
+    "ARCH-AGEIX-PROJECT",
+    "ARCH-AGEIX-WEBPLATFORM",
+    "ARCH-AGEIX-GOVERNANCEPLATFORM",
+    "ARCH-AGEIX-SECURITYPLATFORM",
+    "ARCH-AGEIX-SESSIONPLATFORM"
+  ],
+  "consequences": [
+    "Faster UI start for Phase 26.",
+    "Lower reinvention cost for generic UI infrastructure.",
+    "Requires a clean Ageix adapter layer.",
+    "Open WebUI must not become the Ageix system of record.",
+    "All state-changing UI actions must route through governed Ageix capabilities.",
+    "The integration spike must validate auth/session boundaries and customization approach before deeper coupling."
+  ],
+  "context": "Ageix Phase 26 introduces human-facing workflows for governed decision review, approvals, feedback, manual workflow initiation, notifications, and future mobile entry points. Ageix already has governed capability execution, project-scoped evidence packages, architecture ADR/principle proposal flows, decision traceability, validation profiles, worker boundaries, and summary-first architecture context. The human interface must reuse those patterns rather than becoming a parallel system of record.",
+  "created_at": "2026-07-01T17:24:48.425237+00:00",
+  "created_by": "lex",
+  "decision": "Ageix Phase 26 will use Open WebUI as the initial human interface framework for governed decision review, approvals, feedback, and manual workflow initiation. Ageix-specific governance remains inside Ageix, not inside Open WebUI.",
+  "decision_trace_id": null,
+  "evidence_package_ids": [
+    "EVPKG-298023C1EE14"
+  ],
+  "future_considerations": [
+    "A native app or PWA can be evaluated after notification and lightweight approval-link patterns are proven.",
+    "Mobile must remain downstream of the governed web/API model.",
+    "Conversation workflows can be expanded after governance workflows are exposed clearly."
+  ],
+  "metadata": {
+    "acceptance": [
+      "Open WebUI acts as shell only.",
+      "Ageix remains system of record.",
+      "No direct UI-to-worker mutation path.",
+      "All mutations route through governed capabilities."
+    ],
+    "decision_scope": "human_interface_shell",
+    "direct_adr_acceptance": false,
+    "mcp_origin_allowed": true,
+    "phase": "26",
+    "project_context_required": "Ageix",
+    "proposal_system_reused": true,
+    "session_id": "lex-20260701-phase26-formalization",
+    "sprint": "26.0"
+  },
+  "project_id": "Ageix",
+  "proposal_id": "PROP-0C00EA3ABCA9",
+  "rationale": "Open WebUI provides an existing extensible interface shell and avoids rebuilding generic UI infrastructure. Using it as a shell accelerates the UI start while preserving Ageix as the authority for proposals, evidence, decisions, validation, artifacts, workers, audit, and governance.",
+  "related_adr_ids": [],
+  "revision_ids": [],
+  "status": "proposed",
+  "supersedes_adr_id": null,
+  "title": "Use Open WebUI as the Initial Ageix Human Interface Shell",
+  "tradeoffs": [
+    "Open WebUI may constrain UX patterns compared with a custom interface.",
+    "Adapter discipline is required to avoid accidental governance bypass.",
+    "Initial UI surfaces should prioritize governance workflows over general conversation convenience."
+  ]
+}

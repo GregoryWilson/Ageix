@@ -1,0 +1,30 @@
+{
+  "agent_id": "lex",
+  "arguments_supported": false,
+  "artifact_id": null,
+  "command": [
+    "python",
+    "-m",
+    "pytest",
+    "tests",
+    "-q"
+  ],
+  "command_summary": "python -m pytest tests -q",
+  "completed_at": null,
+  "duration_seconds": null,
+  "evidence_package_id": null,
+  "pid": 22325,
+  "profile_id": "REGRESSION_CORE",
+  "profile_name": "Core Pytest Regression",
+  "returncode": null,
+  "risk": "medium",
+  "run_id": "VALRUN-7C08EAC1A895",
+  "session_id": "chatgpt-2026-07-01-regression-check",
+  "shell_execution": false,
+  "started_at": "2026-07-01T16:40:09.007840+00:00",
+  "status": "RUNNING",
+  "stderr_path": ".ageix/validation_runs/VALRUN-7C08EAC1A895/stderr.log",
+  "stdout_path": ".ageix/validation_runs/VALRUN-7C08EAC1A895/stdout.log",
+  "summary": "Validation profile REGRESSION_CORE started.",
+  "timeout_seconds": 1800
+}

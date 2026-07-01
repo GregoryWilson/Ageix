@@ -1,0 +1,30 @@
+{
+  "agent_id": "lex",
+  "arguments_supported": false,
+  "artifact_id": "ART-625E5E8A9AAF",
+  "command": [
+    "python",
+    "-m",
+    "pytest",
+    "tests",
+    "-q"
+  ],
+  "command_summary": "python -m pytest tests -q",
+  "completed_at": "2026-07-01T02:22:32.263297+00:00",
+  "duration_seconds": 107.185,
+  "evidence_package_id": "EVPKG-80547308984D",
+  "pid": 8335,
+  "profile_id": "REGRESSION_CORE",
+  "profile_name": "Core Pytest Regression",
+  "returncode": 0,
+  "risk": "medium",
+  "run_id": "VALRUN-DE969D0B6259",
+  "session_id": "lex-21x-validation-20260630",
+  "shell_execution": false,
+  "started_at": "2026-07-01T02:20:45.078270+00:00",
+  "status": "PASS",
+  "stderr_path": ".ageix/validation_runs/VALRUN-DE969D0B6259/stderr.log",
+  "stdout_path": ".ageix/validation_runs/VALRUN-DE969D0B6259/stdout.log",
+  "summary": "Validation run completed with status PASS.",
+  "timeout_seconds": 1800
+}
