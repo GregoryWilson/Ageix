@@ -13,6 +13,8 @@ DevJobStatus = Literal[
     "submitted",
     "reviewed",
     "completed",
+    "blocked",
+    "declined",
     "cancelled",
 ]
 

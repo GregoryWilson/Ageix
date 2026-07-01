@@ -1574,6 +1574,94 @@ MCP_TOOL_DEFINITIONS: tuple[MCPToolDefinition, ...] = (
         },
     ),
 
+    # --- DevJob lifecycle hardening (INTENT-0007 Phase 2) --------------------
+    # Governed lifecycle operations, using the append-only DevJob event API.
+    MCPToolDefinition(
+        name="ageix.devjob.assign",
+        capability_id="devjob.assign",
+        category="devjob",
+        description="Move a draft DevJob to assigned, requiring acceptance criteria, allowed/prohibited paths, an assigned worker, and an authorized assigner. A Work Context is optional at assignment and required only at the DevWorker execution boundary.",
+        input_schema=_object_schema({
+            "job_id": _string("DevJob ID to assign."),
+            "work_context_id": _string("Optional WORKCTX-* reference (not required at assignment)."),
+            "acceptance_criteria": _array("Acceptance criteria for the assignment."),
+            "allowed_paths": _array("Repository paths the worker may modify."),
+            "prohibited_paths": _array("Repository paths the worker must not modify."),
+            "instructions": _array("Optional implementation instructions."),
+            "assigned_to": _string("Worker identity to assign the DevJob to."),
+            "note": _string("Optional assignment note."),
+        }, ["job_id"]),
+        recommended_next_tools=("ageix.devjob.get", "ageix.devjob.transition"),
+    ),
+    MCPToolDefinition(
+        name="ageix.devjob.transition",
+        capability_id="devjob.transition",
+        category="devjob",
+        description="Move a DevJob to an allowed lifecycle status (in_progress, blocked, declined, reviewed, completed, cancelled), enforcing authorization, reason requirements, and the completion gate.",
+        input_schema=_object_schema({
+            "job_id": _string("DevJob ID to transition."),
+            "target_status": _string("Target status.", enum=["in_progress", "blocked", "declined", "reviewed", "completed", "cancelled"]),
+            "note": _string("Reason/note (required for blocked and declined)."),
+        }, ["job_id", "target_status"]),
+        recommended_next_tools=("ageix.devjob.event.list",),
+    ),
+    MCPToolDefinition(
+        name="ageix.devjob.event.list",
+        capability_id="devjob.event.list",
+        category="devjob",
+        description="List a DevJob's append-only governed events (scope_revision, validation_waiver, git_sync_attached, review_submitted, and worker execution states) in chronological order.",
+        input_schema=_object_schema({"job_id": _string("DevJob ID to list events for.")}, ["job_id"]),
+    ),
+    MCPToolDefinition(
+        name="ageix.devjob.review.submit",
+        capability_id="devjob.review.submit",
+        category="devjob",
+        description="Submit a formal review decision (approved or changes_requested) for a submitted DevJob, moving it to reviewed or declined.",
+        input_schema=_object_schema({
+            "job_id": _string("Submitted DevJob ID to review."),
+            "decision": _string("Review decision.", enum=["approved", "changes_requested"]),
+            "reviewer_notes": _string("Reviewer notes (required to decline a submission)."),
+        }, ["job_id", "decision"]),
+    ),
+    MCPToolDefinition(
+        name="ageix.devjob.sync.attach",
+        capability_id="devjob.sync.attach",
+        category="devjob",
+        description="Record a git synchronization reference (branch, PR, or commit SHA) on a DevJob by reference only; never mutates the target repository.",
+        input_schema=_object_schema({
+            "job_id": _string("DevJob ID to attach a sync reference to."),
+            "branch": _string("Branch name, by reference only."),
+            "pr_reference": _string("Pull request reference, by reference only."),
+            "commit_sha": _string("Commit SHA, by reference only."),
+            "note": _string("Optional note."),
+        }, ["job_id"]),
+    ),
+    MCPToolDefinition(
+        name="ageix.devjob.scope.revise",
+        capability_id="devjob.scope.revise",
+        category="devjob",
+        description="Record an evidence-gated revision to a DevJob's scope (instructions, acceptance criteria, allowed/prohibited paths) as an append-only event rather than an in-place edit.",
+        input_schema=_object_schema({
+            "job_id": _string("DevJob ID to revise scope for."),
+            "reason": _string("Reason for the scope revision."),
+            "evidence_package_ids": _array("Evidence package IDs supporting the revision (required)."),
+            "instructions": _array("Revised instructions."),
+            "acceptance_criteria": _array("Revised acceptance criteria."),
+            "allowed_paths": _array("Revised allowed paths."),
+            "prohibited_paths": _array("Revised prohibited paths."),
+        }, ["job_id", "reason", "evidence_package_ids"]),
+    ),
+    MCPToolDefinition(
+        name="ageix.devjob.validation.waiver",
+        capability_id="devjob.validation.waiver",
+        category="devjob",
+        description="Record a governed waiver of the validation-attached completion requirement for a DevJob; restricted to Greg/governance and requires a reason.",
+        input_schema=_object_schema({
+            "job_id": _string("DevJob ID to record a validation waiver for."),
+            "reason": _string("Reason for waiving the validation completion requirement."),
+        }, ["job_id", "reason"]),
+    ),
+
     # --- Temporary Chair delegation bridge (Sprint 25.4.5 / 25.4.5.1) --------
     # Surfaces the delegated Chair-directive path on the MCP catalog so a
     # non-Greg delegate (e.g. Lex) can actually reach it. conversation.turn.append

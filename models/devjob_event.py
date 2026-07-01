@@ -15,6 +15,13 @@ DevJobEventType = Literal[
     "worker_launched",
     "worker_queued",
     "worker_launch_failed",
+    # Governed non-transition DevJob events from the lifecycle hardening. These
+    # record scope, review, git-sync, and validation-waiver actions through the
+    # same append-only event surface (Sprint 21.1/21.5 event API).
+    "scope_revision",
+    "review_submitted",
+    "git_sync_attached",
+    "validation_waiver",
 ]
 
 

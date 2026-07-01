@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +11,14 @@ from models.agent_role import AgentRole
 from models.devjob import DevJob, DevJobStatus
 from models.devjob_event import DevJobEvent, DevJobEventType
 from models.devjob_result import DevJobResult
-from services.devjob_lifecycle_service import transition
+from services.devjob_lifecycle_service import (
+    ALLOWED_TRANSITIONS,
+    GOVERNANCE_ROLES,
+    authorize_transition,
+    is_greg,
+    transition,
+    validate_assignment_fields,
+)
 
 
 class DevJobRegistryService:
@@ -151,9 +159,182 @@ class DevJobRegistryService:
         note: str = "",
     ) -> DevJob:
         job = self._require_job(job_id)
+        if target_status == "completed":
+            # Authorize before evaluating completion requirements so an
+            # unauthorized actor is rejected on authority, not on the gate.
+            if target_status not in ALLOWED_TRANSITIONS.get(job.status, set()):
+                raise ValueError(f"invalid_devjob_state_transition_{job.status}_to_{target_status}")
+            authorize_transition(job, target_status, actor_id=actor_id, actor_role=actor_role)
+            self._validate_completion_requirements(job)
         transition(job, target_status, actor_id=actor_id, actor_role=actor_role, note=note)
         self._save_job(job)
         return job
+
+    def assign_job(
+        self,
+        job_id: str,
+        *,
+        work_context_id: str | None = None,
+        acceptance_criteria: list[str] | None = None,
+        allowed_paths: list[str] | None = None,
+        prohibited_paths: list[str] | None = None,
+        instructions: list[str] | None = None,
+        assigned_to: str | None = None,
+        actor_id: str | None,
+        actor_role: AgentRole,
+        note: str = "",
+    ) -> DevJob:
+        """Moves a draft DevJob to assigned, per INTENT-0007 Phase 2.
+
+        Requires non-empty acceptance criteria, allowed paths, prohibited paths,
+        and an assigned worker. A Work Context is optional at assignment and is
+        required only at the DevWorker execution/load-context boundary.
+        """
+        job = self._require_job(job_id)
+        if job.status != "draft":
+            raise ValueError("devjob_assign_requires_draft_status")
+        if work_context_id is not None:
+            job.work_context_id = work_context_id
+        if acceptance_criteria is not None:
+            job.acceptance_criteria = list(acceptance_criteria)
+        if allowed_paths is not None:
+            job.allowed_paths = list(allowed_paths)
+        if prohibited_paths is not None:
+            job.prohibited_paths = list(prohibited_paths)
+        if instructions is not None:
+            job.instructions = list(instructions)
+        if assigned_to is not None:
+            job.assigned_to = assigned_to
+        validate_assignment_fields(job)
+        transition(job, "assigned", actor_id=actor_id, actor_role=actor_role, note=note or "devjob_assigned")
+        self._save_job(job)
+        return job
+
+    def revise_scope(
+        self,
+        job_id: str,
+        *,
+        reason: str,
+        evidence_package_ids: list[str],
+        instructions: list[str] | None = None,
+        acceptance_criteria: list[str] | None = None,
+        allowed_paths: list[str] | None = None,
+        prohibited_paths: list[str] | None = None,
+        actor_id: str | None,
+        actor_role: AgentRole,
+    ) -> DevJob:
+        """Records an evidence-gated scope revision. Core identity fields are
+        never touched; the prior values are preserved in the append-only event
+        log (via the Sprint 21.1/21.5 event API) rather than edited away."""
+        job = self._require_job(job_id)
+        if job.status not in ("assigned", "in_progress", "blocked"):
+            raise ValueError("devjob_scope_revision_not_applicable_from_status")
+        if not str(reason or "").strip():
+            raise ValueError("devjob_scope_revision_requires_reason")
+        if not evidence_package_ids:
+            raise ValueError("devjob_scope_revision_requires_evidence")
+        if not (is_greg(actor_id) or actor_role in GOVERNANCE_ROLES or actor_id == job.created_by):
+            raise ValueError("devjob_scope_revision_requires_creator_or_governance")
+
+        proposed = {
+            "instructions": instructions,
+            "acceptance_criteria": acceptance_criteria,
+            "allowed_paths": allowed_paths,
+            "prohibited_paths": prohibited_paths,
+        }
+        changed_fields = {key: list(value) for key, value in proposed.items() if value is not None}
+        if not changed_fields:
+            raise ValueError("devjob_scope_revision_requires_at_least_one_field")
+        before = {key: list(getattr(job, key)) for key in changed_fields}
+        for key, value in changed_fields.items():
+            setattr(job, key, value)
+        job.evidence_package_ids = list(dict.fromkeys([*job.evidence_package_ids, *evidence_package_ids]))
+        job.updated_at = self._now()
+        self._save_job(job)
+        self.append_event(
+            job_id=job.job_id, event_type="scope_revision", reason=str(reason),
+            actor_id=str(actor_id or ""), actor_role=actor_role,
+            metadata={
+                "evidence_package_ids": list(evidence_package_ids),
+                "before": before, "after": changed_fields,
+            },
+        )
+        return self._require_job(job.job_id)
+
+    def submit_review(
+        self,
+        job_id: str,
+        *,
+        decision: str,
+        reviewer_notes: str = "",
+        actor_id: str | None,
+        actor_role: AgentRole,
+    ) -> DevJob:
+        """Formal review over a submitted DevJob. Approval -> reviewed; declining
+        a submission requires reviewer_notes and sends the job to declined."""
+        job = self._require_job(job_id)
+        if decision not in ("approved", "changes_requested"):
+            raise ValueError("devjob_review_invalid_decision")
+        target_status: DevJobStatus = "reviewed" if decision == "approved" else "declined"
+        transition(job, target_status, actor_id=actor_id, actor_role=actor_role, note=reviewer_notes)
+        self._save_job(job)
+        self.append_event(
+            job_id=job.job_id, event_type="review_submitted", reason=str(reviewer_notes or ""),
+            actor_id=str(actor_id or ""), actor_role=actor_role,
+            metadata={"decision": decision, "reviewer_notes": str(reviewer_notes or "")},
+        )
+        return self._require_job(job.job_id)
+
+    def attach_sync(
+        self,
+        job_id: str,
+        *,
+        branch: str | None = None,
+        pr_reference: str | None = None,
+        commit_sha: str | None = None,
+        note: str = "",
+        actor_id: str | None,
+        actor_role: AgentRole,
+    ) -> DevJob:
+        """Records a git synchronization reference by reference only. Never
+        touches the target repository."""
+        job = self._require_job(job_id)
+        if not (branch or pr_reference or commit_sha):
+            raise ValueError("devjob_sync_attach_requires_reference")
+        is_assigned_devworker = actor_role.value == AgentRole.CLAUDE_CODE.value and actor_id == job.assigned_to
+        if not (is_greg(actor_id) or actor_role in GOVERNANCE_ROLES or is_assigned_devworker):
+            raise ValueError("devjob_sync_attach_requires_assigned_devworker_or_governance")
+        self.append_event(
+            job_id=job.job_id, event_type="git_sync_attached", reason=str(note or ""),
+            actor_id=str(actor_id or ""), actor_role=actor_role,
+            metadata={"branch": branch, "pr_reference": pr_reference, "commit_sha": commit_sha},
+        )
+        job.updated_at = self._now()
+        self._save_job(job)
+        return self._require_job(job.job_id)
+
+    def record_validation_waiver(
+        self,
+        job_id: str,
+        *,
+        reason: str,
+        actor_id: str | None,
+        actor_role: AgentRole,
+    ) -> DevJob:
+        """Records a governed waiver of the validation-attached completion gate.
+        Restricted to Greg/governance; does not run or skip validation itself."""
+        job = self._require_job(job_id)
+        if not str(reason or "").strip():
+            raise ValueError("devjob_validation_waiver_requires_reason")
+        if not (is_greg(actor_id) or actor_role in GOVERNANCE_ROLES):
+            raise ValueError("devjob_validation_waiver_requires_governance")
+        self.append_event(
+            job_id=job.job_id, event_type="validation_waiver", reason=str(reason),
+            actor_id=str(actor_id or ""), actor_role=actor_role,
+        )
+        job.updated_at = self._now()
+        self._save_job(job)
+        return self._require_job(job.job_id)
 
     def submit_result(
         self,
@@ -271,6 +452,27 @@ class DevJobRegistryService:
         job_dir = self._job_dir(job_id)
         if job_dir.exists():
             shutil.rmtree(job_dir)
+
+    def _validate_completion_requirements(self, job: DevJob) -> None:
+        """Enforces the completion gate: validation attached (or a governed
+        waiver) and a git synchronization reference recorded. Reviewed-status is
+        already enforced by ALLOWED_TRANSITIONS. Governed events are read from
+        the append-only event store (Sprint 21.1/21.5 event API)."""
+        results = self.list_results(job.job_id)
+        events = self.list_events(job.job_id)
+        has_validation = any(result.get("validation_run_id") for result in results)
+        has_waiver = any(event.get("event_type") == "validation_waiver" for event in events)
+        if not (has_validation or has_waiver):
+            raise ValueError("devjob_completion_requires_validation_or_waiver")
+        has_git_sync = any(
+            result.get("branch_name") or result.get("public_branch_or_pr") for result in results
+        ) or any(event.get("event_type") == "git_sync_attached" for event in events)
+        if not has_git_sync:
+            raise ValueError("devjob_completion_requires_git_sync_reference")
+
+    @staticmethod
+    def _now() -> str:
+        return datetime.now(timezone.utc).isoformat()
 
     def _job_dir(self, job_id: str) -> Path:
         return self.devjob_root / job_id

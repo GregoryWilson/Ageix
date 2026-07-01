@@ -158,9 +158,16 @@ def test_only_greg_or_governance_can_complete_job(tmp_path: Path) -> None:
         status="assigned", assigned_to="claude.code-worker-1",
     )
     registry.transition_job(job.job_id, "in_progress", actor_id="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE)
-    registry.submit_result(job_id=job.job_id, submitted_by="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE)
+    # Submit a result carrying validation + git-sync references so the
+    # completion gate is satisfied (lifecycle hardening).
+    registry.submit_result(
+        job_id=job.job_id, submitted_by="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE,
+        validation_run_id="VALRUN-XYZ", branch_name="feature/thing",
+    )
     registry.transition_job(job.job_id, "reviewed", actor_id="greg", actor_role=AgentRole.UNKNOWN)
 
+    # Authority is checked before the completion gate: an unauthorized actor is
+    # rejected on authority regardless of the gate.
     with pytest.raises(ValueError, match="devjob_transition_requires_greg_or_governance"):
         registry.transition_job(job.job_id, "completed", actor_id="claude.code-worker-1", actor_role=AgentRole.CLAUDE_CODE)
 
