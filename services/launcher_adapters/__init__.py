@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from services.launcher_adapters.base import LauncherAdapter, LauncherHandoff
+from services.launcher_adapters.chatgpt_devworker_manual import ChatGPTDevWorkerManualLauncherAdapter
 from services.launcher_adapters.claude_code_browser import ClaudeCodeBrowserLauncherAdapter
 
 # Registry of governed manual-handoff adapters, keyed by adapter key. Adapters
@@ -8,7 +9,10 @@ from services.launcher_adapters.claude_code_browser import ClaudeCodeBrowserLaun
 # never execute, manage, or observe a worker process.
 LAUNCHER_ADAPTERS: dict[str, LauncherAdapter] = {
     adapter.adapter_key: adapter
-    for adapter in (ClaudeCodeBrowserLauncherAdapter(),)
+    for adapter in (
+        ClaudeCodeBrowserLauncherAdapter(),
+        ChatGPTDevWorkerManualLauncherAdapter(),
+    )
 }
 
 
@@ -23,6 +27,7 @@ __all__ = [
     "LauncherAdapter",
     "LauncherHandoff",
     "ClaudeCodeBrowserLauncherAdapter",
+    "ChatGPTDevWorkerManualLauncherAdapter",
     "LAUNCHER_ADAPTERS",
     "get_adapter",
 ]
