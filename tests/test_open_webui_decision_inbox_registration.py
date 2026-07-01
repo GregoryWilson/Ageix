@@ -10,6 +10,7 @@ from human_interface_gateway import app
 
 REGISTRATION_ARTIFACT = Path("open_webui/decision_inbox_openapi.json")
 DECISION_INBOX_PATH = "/human-interface/decision-inbox"
+DECISION_DETAIL_PATH = "/human-interface/decision-detail/{decision_id}"
 MUTATING_METHODS = {"post", "put", "patch", "delete"}
 PROHIBITED_EXECUTABLE_FRAGMENTS = {
     "approve_url",
@@ -39,6 +40,18 @@ def test_fastapi_openapi_exposes_decision_inbox_as_get_only() -> None:
     assert MUTATING_METHODS.isdisjoint(path_item)
 
 
+def test_fastapi_openapi_exposes_decision_detail_as_get_only() -> None:
+    client = TestClient(app)
+
+    response = client.get("/openapi.json")
+
+    assert response.status_code == 200
+    openapi = response.json()
+    path_item = openapi["paths"][DECISION_DETAIL_PATH]
+    assert "get" in path_item
+    assert MUTATING_METHODS.isdisjoint(path_item)
+
+
 def test_registration_artifact_is_open_webui_compatible_and_read_only() -> None:
     artifact = _registration_artifact()
 
@@ -57,8 +70,47 @@ def test_registration_artifact_is_open_webui_compatible_and_read_only() -> None:
     assert artifact["components"]["securitySchemes"]["BearerAuth"]["scheme"] == "bearer"
 
 
+def test_registration_artifact_exposes_decision_detail_get_only_and_non_executable_contracts() -> None:
+    artifact = _registration_artifact()
+
+    path_item = artifact["paths"][DECISION_DETAIL_PATH]
+    assert set(path_item) == {"get"}
+    operation = path_item["get"]
+    assert operation["operationId"] == "get_ageix_decision_detail"
+    serialized_operation = json.dumps(operation).lower()
+    for fragment in PROHIBITED_EXECUTABLE_FRAGMENTS:
+        assert fragment not in serialized_operation
+
+    contracts = artifact["components"]["schemas"]["GovernedActionContract"]
+    assert contracts["properties"]["sprint_26_3_executable"]["const"] is False
+    assert contracts["properties"]["project_id"]["const"] == "Ageix"
+    assert "rationale" in contracts["properties"]["required_fields"]["items"]["enum"]
+    assert set(contracts["properties"]["action"]["enum"]) == {
+        "approve",
+        "reject",
+        "defer",
+        "request_changes",
+        "add_comment/rationale",
+    }
+
+
 def test_registration_artifact_requires_explicit_ageix_project_context() -> None:
     operation = _registration_artifact()["paths"][DECISION_INBOX_PATH]["get"]
+
+    project_parameters = [
+        parameter
+        for parameter in operation["parameters"]
+        if parameter["name"] == "project_id" and parameter["in"] == "query"
+    ]
+
+    assert len(project_parameters) == 1
+    project_parameter = project_parameters[0]
+    assert project_parameter["required"] is True
+    assert project_parameter["schema"]["enum"] == ["Ageix"]
+
+
+def test_registration_artifact_decision_detail_requires_explicit_ageix_project_context() -> None:
+    operation = _registration_artifact()["paths"][DECISION_DETAIL_PATH]["get"]
 
     project_parameters = [
         parameter
@@ -76,8 +128,26 @@ def test_open_webui_compatible_request_path_preserves_ageix_denials() -> None:
     client = TestClient(app)
 
     missing_auth = client.get(f"{DECISION_INBOX_PATH}?project_id=Ageix")
-    missing_project = client.get(DECISION_INBOX_PATH, headers={"Authorization": "Bearer test"})
-    wrong_project = client.get(f"{DECISION_INBOX_PATH}?project_id=Other", headers={"Authorization": "Bearer test"})
+    missing_project = client.get(DECISION_INBOX_PATH, headers={"Authorization": "Token test"})
+    wrong_project = client.get(f"{DECISION_INBOX_PATH}?project_id=Other", headers={"Authorization": "Token test"})
+
+    assert missing_auth.status_code == 403
+    assert missing_auth.json()["error"] == "authorization_required"
+    assert missing_project.status_code == 403
+    assert missing_project.json()["error"] == "project_id_required"
+    assert wrong_project.status_code == 403
+    assert wrong_project.json()["error"] == "project_scope_denied"
+
+
+def test_open_webui_compatible_detail_request_path_preserves_ageix_denials() -> None:
+    client = TestClient(app)
+
+    missing_auth = client.get("/human-interface/decision-detail/PROP-123?project_id=Ageix")
+    missing_project = client.get("/human-interface/decision-detail/PROP-123", headers={"Authorization": "Token test"})
+    wrong_project = client.get(
+        "/human-interface/decision-detail/PROP-123?project_id=Other",
+        headers={"Authorization": "Token test"},
+    )
 
     assert missing_auth.status_code == 403
     assert missing_auth.json()["error"] == "authorization_required"
@@ -90,7 +160,7 @@ def test_open_webui_compatible_request_path_preserves_ageix_denials() -> None:
 def test_open_webui_compatible_authorized_read_remains_read_only() -> None:
     client = TestClient(app)
 
-    response = client.get(f"{DECISION_INBOX_PATH}?project_id=Ageix", headers={"Authorization": "Bearer test"})
+    response = client.get(f"{DECISION_INBOX_PATH}?project_id=Ageix", headers={"Authorization": "Token test"})
 
     assert response.status_code == 200
     payload = response.json()
