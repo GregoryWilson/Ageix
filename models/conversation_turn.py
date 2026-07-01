@@ -37,4 +37,8 @@ class ConversationTurn(BaseModel):
     directed_at: str | None = None
     confidence: float = Field(ge=0.0, le=10.0)
     content: str
+    # Set only when a Chair-only DIRECTIVE was posted under a temporary Chair
+    # delegation (Sprint 25.4.5). Records the authorizing delegation for audit;
+    # the speaker identity above still reflects the actual (non-Chair) delegate.
+    chair_delegation_id: str | None = None
     timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())

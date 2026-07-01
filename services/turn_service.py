@@ -35,12 +35,28 @@ class TurnService:
         content: str,
         directed_at: str | None = None,
         participant_id: str | None = None,
+        chair_delegation_id: str | None = None,
     ) -> ConversationTurn:
         role = speaker_agent_role if isinstance(speaker_agent_role, AgentRole) else AgentRole.parse(speaker_agent_role)
         resolved_turn_type = turn_type if isinstance(turn_type, TurnType) else TurnType(str(turn_type))
 
         if resolved_turn_type is TurnType.DIRECTIVE and participant_id != "greg":
-            raise ValueError("directive_turns_restricted_to_greg")
+            # Chair-only DIRECTIVE turns are restricted to Greg. A non-Chair
+            # identity may post one ONLY under an explicit, valid Chair
+            # delegation (temporary bridge, Sprint 25.4.5). The delegation is
+            # re-verified here so this restriction cannot be bypassed by passing
+            # a bare delegation id — no consumption happens in this low-level
+            # append path; the delegating service consumes after a successful
+            # append.
+            if not chair_delegation_id:
+                raise ValueError("directive_turns_restricted_to_greg")
+            from services.chair_delegation_service import ChairDelegationService
+
+            ChairDelegationService(self.repo_root).verify(
+                chair_delegation_id,
+                delegate=str(participant_id or ""),
+                action="conversation.directive.submit",
+            )
 
         pending = self.participants.pending_obligation_count_for_role(conversation_id, role)
         if pending and resolved_turn_type.value not in DIRECTED_QUESTION_RESPONSE_TYPES:
@@ -58,6 +74,7 @@ class TurnService:
             directed_at=directed_at,
             confidence=confidence,
             content=content,
+            chair_delegation_id=chair_delegation_id,
         )
 
         data = self._load()

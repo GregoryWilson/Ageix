@@ -1,0 +1,36 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Any, Literal
+from uuid import uuid4
+
+from pydantic import BaseModel, Field
+
+DevJobEventType = Literal[
+    "execution_blocked",
+    "execution_failed",
+    "execution_warning",
+]
+
+
+class DevJobEvent(BaseModel):
+    """An append-only audit event attached to a DevJob.
+
+    Used to surface blocked, failed, or degraded DevWorker execution conditions
+    through an existing DevJob surface without changing lifecycle state or
+    authority. Events are never mutated once written.
+    """
+
+    event_id: str = Field(default_factory=lambda: f"DEVJOBEVENT-{uuid4().hex[:12].upper()}")
+    job_id: str = Field(min_length=1)
+    event_type: DevJobEventType
+    summary: str = ""
+    reason: str | None = None
+    actor_id: str = ""
+    actor_role: str | None = None
+    warnings: list[dict[str, Any]] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    recorded_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+    def to_dict(self) -> dict[str, Any]:
+        return self.model_dump(mode="json")
