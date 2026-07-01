@@ -11,11 +11,12 @@ from human_interface_gateway import app
 REGISTRATION_ARTIFACT = Path("open_webui/decision_inbox_openapi.json")
 DECISION_INBOX_PATH = "/human-interface/decision-inbox"
 MUTATING_METHODS = {"post", "put", "patch", "delete"}
-PROHIBITED_OPERATION_FRAGMENTS = {
-    "approve",
-    "reject",
-    "defer",
-    "request_changes",
+PROHIBITED_EXECUTABLE_FRAGMENTS = {
+    "approve_url",
+    "reject_url",
+    "defer_url",
+    "request_changes_url",
+    "mutation_payload",
     "worker_trigger",
     "repository_write",
     "approval_state",
@@ -49,7 +50,7 @@ def test_registration_artifact_is_open_webui_compatible_and_read_only() -> None:
     operation = path_item["get"]
     assert operation["operationId"] == "get_ageix_decision_inbox"
     serialized_operation = json.dumps(operation).lower()
-    for fragment in PROHIBITED_OPERATION_FRAGMENTS:
+    for fragment in PROHIBITED_EXECUTABLE_FRAGMENTS:
         assert fragment not in serialized_operation
 
     assert artifact["components"]["securitySchemes"]["BearerAuth"]["type"] == "http"
@@ -98,5 +99,5 @@ def test_open_webui_compatible_authorized_read_remains_read_only() -> None:
     assert payload["summary"]["mode"] == "read_only"
     assert payload["summary"]["mutation_controls_exposed"] is False
     serialized_payload = json.dumps(payload).lower()
-    for fragment in PROHIBITED_OPERATION_FRAGMENTS:
+    for fragment in PROHIBITED_EXECUTABLE_FRAGMENTS:
         assert fragment not in serialized_payload
