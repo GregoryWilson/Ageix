@@ -1,10 +1,22 @@
 from __future__ import annotations
 
+import re
 from enum import Enum
 from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
+
+
+HUMAN_CONSULTATION_ID_PATTERN = r"^HCONS-[A-F0-9]{12}$"
+
+
+def generate_human_consultation_id() -> str:
+    return f"HCONS-{uuid4().hex[:12].upper()}"
+
+
+def is_valid_human_consultation_id(consultation_id: str) -> bool:
+    return bool(re.fullmatch(HUMAN_CONSULTATION_ID_PATTERN, str(consultation_id or "")))
 
 
 class HumanConsultationType(str, Enum):
@@ -48,7 +60,7 @@ class HumanConsultationChoice(BaseModel):
 
 
 class HumanConsultationRequest(BaseModel):
-    consultation_id: str = Field(default_factory=lambda: f"HCONS-{uuid4().hex[:12].upper()}")
+    consultation_id: str = Field(default_factory=generate_human_consultation_id, pattern=HUMAN_CONSULTATION_ID_PATTERN)
     project_id: str = Field(min_length=1)
     consultation_type: HumanConsultationType
     question: str = Field(min_length=1)
