@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
@@ -24,10 +26,34 @@ ADAPTER = "claude_code_browser"
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
 
+def _seed_work_context(tmp_path: Path, work_context_id: str | None = None) -> str:
+    """Persist a minimal governed Work Context so DevJobs created for launcher
+    tests are execution-ready (the Work Context is required at the DevWorker
+    execution boundary)."""
+    work_context_id = work_context_id or f"WORKCTX-{uuid4().hex[:12].upper()}"
+    pkg_dir = tmp_path / ".ageix" / "architecture" / "work_context" / work_context_id
+    pkg_dir.mkdir(parents=True, exist_ok=True)
+    (pkg_dir / "package.json").write_text(
+        json.dumps({
+            "work_context_id": work_context_id,
+            "project_id": "Ageix",
+            "work_summary": "Launcher test work context",
+            "guidance_context": {"summary_first": True, "packages": []},
+        }),
+        encoding="utf-8",
+    )
+    return work_context_id
+
+
 def _assigned_devjob(tmp_path: Path, *, worker_id: str = WORKER_ID) -> str:
+    work_context_id = _seed_work_context(tmp_path)
     job = DevJobRegistryService(tmp_path).create_job(
         title="Launch target",
         objective="Do the thing.",
+        acceptance_criteria=["complete the launch target"],
+        allowed_paths=["src/"],
+        prohibited_paths=["secrets/"],
+        work_context_id=work_context_id,
         created_by="greg",
         status="assigned",
         assigned_to=worker_id,

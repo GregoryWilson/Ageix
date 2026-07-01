@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
@@ -16,6 +18,23 @@ from services.worker_execution_bridge_service import WorkerExecutionBridgeServic
 WORKER = "claude-code-worker-1"
 GOV_ACTOR = "greg"
 CHAIR_ROLE = AgentRole.AGEIX_CHAIR
+
+
+def _seed_work_context(tmp_path: Path) -> str:
+    """Persist a minimal governed Work Context so bridge-target DevJobs are
+    execution-ready (Work Context is required at the execution boundary)."""
+    work_context_id = f"WORKCTX-{uuid4().hex[:12].upper()}"
+    pkg_dir = tmp_path / ".ageix" / "architecture" / "work_context" / work_context_id
+    pkg_dir.mkdir(parents=True, exist_ok=True)
+    (pkg_dir / "package.json").write_text(
+        json.dumps({
+            "work_context_id": work_context_id, "project_id": "Ageix",
+            "work_summary": "Bridge test work context",
+            "guidance_context": {"summary_first": True, "packages": []},
+        }),
+        encoding="utf-8",
+    )
+    return work_context_id
 
 
 # ---------------------------------------------------------------------------
@@ -48,7 +67,11 @@ class _FailingProvider(LaunchProvider):
 def _job(tmp_path: Path, *, status: str = "assigned", assigned_to: str | None = WORKER) -> str:
     kwargs = dict(title="Bridge target", objective="Do it", created_by="greg")
     if status == "assigned":
-        job = DevJobRegistryService(tmp_path).create_job(status="assigned", assigned_to=assigned_to, **kwargs)
+        job = DevJobRegistryService(tmp_path).create_job(
+            status="assigned", assigned_to=assigned_to,
+            acceptance_criteria=["do it"], allowed_paths=["src/"], prohibited_paths=["secrets/"],
+            work_context_id=_seed_work_context(tmp_path), **kwargs,
+        )
     else:
         job = DevJobRegistryService(tmp_path).create_job(**kwargs)  # draft, unassigned
     return job.job_id
