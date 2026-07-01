@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
@@ -12,6 +13,21 @@ from services.devjob_registry_service import DevJobRegistryService
 from services.turn_service import TurnService
 
 _CLI_PATH = Path(__file__).resolve().parent.parent / "scripts" / "ageix"
+
+
+def _seed_work_context(tmp_path: Path) -> str:
+    work_context_id = f"WORKCTX-{uuid4().hex[:12].upper()}"
+    pkg_dir = tmp_path / ".ageix" / "architecture" / "work_context" / work_context_id
+    pkg_dir.mkdir(parents=True, exist_ok=True)
+    (pkg_dir / "package.json").write_text(
+        json.dumps({
+            "work_context_id": work_context_id, "project_id": "Ageix",
+            "work_summary": "CLI test work context",
+            "guidance_context": {"summary_first": True, "packages": []},
+        }),
+        encoding="utf-8",
+    )
+    return work_context_id
 
 
 def _load_cli():
@@ -28,7 +44,9 @@ def _load_cli():
 def _seed(tmp_path: Path):
     (tmp_path / ".ageix").mkdir(parents=True, exist_ok=True)
     job = DevJobRegistryService(tmp_path).create_job(
-        title="Sprint 25.5 work", objective="Do it", created_by="greg",
+        title="Sprint 25.5 work", objective="Do it",
+        acceptance_criteria=["do it"], allowed_paths=["src/"], prohibited_paths=["secrets/"],
+        work_context_id=_seed_work_context(tmp_path), created_by="greg",
         status="assigned", assigned_to="lex",
     )
     delegation = ChairDelegationService(tmp_path).create_delegation(
