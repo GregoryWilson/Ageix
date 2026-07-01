@@ -37,6 +37,7 @@ Behavior:
 
 - Validates `project_id` against `Ageix`.
 - Requires `consultation_id`.
+- Rejects malformed consultation IDs before consultation filesystem lookup.
 - Rejects unknown consultations.
 - Rejects invalid choices.
 - Enforces per-choice `requires_rationale`.
@@ -50,7 +51,7 @@ Behavior:
 
 ### `HumanConsultationRequest`
 
-Prefix: `HCONS-*`
+Canonical consultation ID format: `^HCONS-[A-F0-9]{12}$`
 
 Fields implemented:
 
@@ -82,6 +83,32 @@ Initial choice helpers implemented:
 - Missing evidence choices: representable without execution logic
 - Missing context choices: representable without execution logic
 
+## Consultation ID validation hardening
+
+Security review finding addressed:
+
+- `HumanConsultationRequest.consultation_id` now enforces the canonical Ageix consultation ID format: `^HCONS-[A-F0-9]{12}$`.
+- A shared `is_valid_human_consultation_id()` helper backs service-side validation.
+- `HumanConsultationService.respond()` rejects malformed IDs with `invalid_consultation_id` during common argument validation.
+- `HumanConsultationService.create_request()` rejects invalid request IDs before writes.
+- `HumanConsultationService.get_request()` rejects invalid request IDs before filesystem resolution or reads.
+- `HumanConsultationService._write()` rejects invalid request IDs before directory creation or file writes.
+- `HumanConsultationService._path()` performs a final guard before resolving the consultation file location.
+
+Filesystem boundary evidence:
+
+- Invalid IDs return `invalid_consultation_id` before request lookup.
+- Invalid IDs do not create consultation directories.
+- Invalid IDs do not write consultation files.
+- Invalid IDs do not mutate existing consultation lifecycle state.
+- Path-manipulation inputs and lowercase hex IDs are rejected before filesystem resolution.
+
+New test evidence:
+
+- `tests/test_human_consultation_request_model.py` validates model-level rejection of malformed consultation IDs, lowercase hex IDs, and path-manipulation IDs.
+- `tests/test_human_consultation_response_capability.py` validates service/capability rejection of malformed consultation IDs, lowercase hex IDs, and path-manipulation IDs.
+- Service boundary tests monkeypatch request lookup and path resolution to fail if reached, verifying invalid IDs are rejected before filesystem lookup or path resolution.
+
 ## Decision Inbox read-only evidence
 
 `HumanInterfaceDecisionInboxService` remains a read-only projection service.
@@ -90,7 +117,7 @@ Evidence:
 
 - `get_decision_inbox()` composes records and returns a projection only.
 - Pending proposal and ADR records include Ageix-generated `consultation_metadata` and constrained choices.
-- Pending persisted `HCONS-*` records are surfaced as read-only inbox records.
+- Pending persisted consultation records are surfaced as read-only inbox records.
 - The service does not call `CapabilityExecutionService`.
 - The service does not call Git.
 - The service does not write proposal, ADR, evidence, validation, architecture, decision trace, or consultation state during inbox reads.
@@ -105,7 +132,7 @@ Evidence:
 
 - No `open_webui/*` files were changed.
 - `human_interface_adapter.py` was not changed.
-- Consultation state is stored by Ageix under `.ageix/human_consultations/HCONS-*/consultation.json` through `HumanConsultationService`.
+- Consultation state is stored by Ageix under the human consultations store through `HumanConsultationService`.
 - Response execution is exposed through governed Ageix capability infrastructure.
 - Approval-style execution delegates to Sprint 26.5 target-specific capabilities.
 
@@ -136,7 +163,7 @@ pytest \
 
 Result: NOT RUN by this DevWorker session.
 
-Reason: this implementation was delivered through the GitHub connector without an executable local checkout of the PR branch available to the session. The approved AgeixAI validation profile available to this session targets the server checkout and does not provide a branch-selectable focused command for this PR branch.
+Reason: this implementation was delivered through the GitHub connector without an executable local checkout of the PR branch available to the session. An attempted AgeixAI validation profile query for project `Ageix` was blocked by platform safety checks, so no branch-selectable validation run was available in this session.
 
 ## Pass/fail result
 
