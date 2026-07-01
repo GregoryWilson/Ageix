@@ -7,6 +7,7 @@ from typing import Any
 
 from services.architecture_decision_record_service import ArchitectureDecisionRecordService
 from services.evidence_package_index_service import EvidencePackageIndexService
+from services.human_consultation_service import HumanConsultationService
 from services.proposal_service import ProposalService
 
 
@@ -28,6 +29,8 @@ class HumanInterfaceDecisionInboxService:
         "PRIN-0007",
         "INTENT-0008",
         "ARCHREV-2F16C935631A",
+        "ARCHFIND-A8A100EB0C79",
+        "ARCH-AGEIX-GOVERNANCEPLATFORM-CONSULTATIONFRAMEWORK",
     ]
     GOVERNING_ARCHITECTURE_FILES = [
         ".ageix/architecture/human_interface_architecture.json",
@@ -49,6 +52,7 @@ class HumanInterfaceDecisionInboxService:
 
     def __init__(self, repo_root: str | Path = ".") -> None:
         self.repo_root = Path(repo_root).resolve()
+        self.human_consultations = HumanConsultationService(self.repo_root)
 
     def get_decision_inbox(self, project_id: str | None) -> dict[str, Any]:
         if project_id != self.REQUIRED_PROJECT_ID:
@@ -64,6 +68,10 @@ class HumanInterfaceDecisionInboxService:
         adrs, adr_status = self._pending_architecture_decisions(project_id)
         records.extend(adrs)
         source_status["pending_architecture_decisions"] = adr_status
+
+        consultations, consultation_status = self._pending_human_consultations(project_id)
+        records.extend(consultations)
+        source_status["pending_human_consultations"] = consultation_status
 
         validations, validation_status = self._validation_results(project_id)
         records.extend(validations)
@@ -89,6 +97,8 @@ class HumanInterfaceDecisionInboxService:
                 "source_count": len(source_status),
                 "status_label": "decision_inbox_available",
                 "mutation_controls_exposed": False,
+                "consultation_choices_available": True,
+                "consultation_state_owner": "Ageix",
             },
             "project_id": project_id,
             "adapter": "human_interface_decision_inbox",
@@ -129,19 +139,24 @@ class HumanInterfaceDecisionInboxService:
             status = str(payload.get("status") or "")
             if status not in self.PENDING_PROPOSAL_STATUSES:
                 continue
+            proposal_id = payload.get("proposal_id")
             records.append({
                 "record_type": "pending_proposal",
-                "record_id": payload.get("proposal_id"),
+                "record_id": proposal_id,
                 "summary": payload.get("objective") or "Governed proposal awaiting decision review.",
                 "status_label": status,
-                "next_governed_action_label": "review_through_existing_governance_path",
+                "next_governed_action_label": "respond_to_ageix_human_consultation_choice",
                 "trace_ids": [],
                 "evidence_links": list(payload.get("linked_evidence") or []),
                 "governing_artifact_ids": list(self.GOVERNING_ARTIFACT_IDS),
+                "consultation_metadata": self.human_consultations.decision_choices_for_record(
+                    target_record_type="proposal",
+                    target_record_id=str(proposal_id or ""),
+                ),
                 "source": {
                     "system_of_record": "Ageix",
                     "store": ".ageix/manifests/proposals",
-                    "proposal_id": payload.get("proposal_id"),
+                    "proposal_id": proposal_id,
                 },
                 "created_at": payload.get("created_at"),
                 "updated_at": payload.get("updated_at"),
@@ -159,24 +174,69 @@ class HumanInterfaceDecisionInboxService:
             status = str(adr.get("status") or "")
             if status not in self.PENDING_ADR_STATUSES:
                 continue
+            adr_id = adr.get("adr_id")
             records.append({
                 "record_type": "pending_architecture_decision",
-                "record_id": adr.get("adr_id"),
+                "record_id": adr_id,
                 "summary": adr.get("title") or adr.get("decision") or "Architecture decision awaiting governance.",
                 "status_label": status,
-                "next_governed_action_label": "review_adr_proposal_through_existing_governance_path",
+                "next_governed_action_label": "respond_to_ageix_human_consultation_choice",
                 "trace_ids": [adr.get("decision_trace_id")] if adr.get("decision_trace_id") else [],
                 "evidence_links": list(adr.get("evidence_package_ids") or []),
                 "governing_artifact_ids": list(self.GOVERNING_ARTIFACT_IDS),
+                "consultation_metadata": self.human_consultations.decision_choices_for_record(
+                    target_record_type="adr",
+                    target_record_id=str(adr_id or ""),
+                ),
                 "source": {
                     "system_of_record": "Ageix",
                     "store": ".ageix/architecture/adrs",
-                    "adr_id": adr.get("adr_id"),
+                    "adr_id": adr_id,
                     "proposal_id": adr.get("proposal_id"),
                 },
                 "created_at": adr.get("created_at"),
                 "updated_at": adr.get("approved_at") or adr.get("created_at"),
                 "sort_timestamp": adr.get("approved_at") or adr.get("created_at") or "",
+            })
+        return records, {"status": "available", "count": len(records)}
+
+    def _pending_human_consultations(self, project_id: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        try:
+            requests = self.human_consultations.list_requests(project_id=project_id, status="pending")
+        except Exception as exc:
+            return [], self._source_error(exc)
+        records = []
+        for request in requests[:50]:
+            payload = request.model_dump(mode="json")
+            context = payload.get("context") or {}
+            records.append({
+                "record_type": "pending_human_consultation",
+                "record_id": payload.get("consultation_id"),
+                "summary": payload.get("summary") or payload.get("question") or "Human consultation awaiting Chair choice.",
+                "status_label": payload.get("status") or "pending",
+                "next_governed_action_label": "submit_constrained_choice_via_human_consultation_respond",
+                "trace_ids": list(context.get("trace_ids") or []),
+                "evidence_links": list(context.get("evidence_links") or []),
+                "governing_artifact_ids": list(self.GOVERNING_ARTIFACT_IDS),
+                "consultation_metadata": {
+                    "consultation_id": payload.get("consultation_id"),
+                    "consultation_type": payload.get("consultation_type"),
+                    "question": payload.get("question"),
+                    "choices": list(payload.get("choices") or []),
+                    "system_of_record": "Ageix",
+                    "state_owner": "Ageix",
+                    "mutation_controls_exposed": False,
+                },
+                "source": {
+                    "system_of_record": "Ageix",
+                    "store": ".ageix/human_consultations",
+                    "consultation_id": payload.get("consultation_id"),
+                    "target_record_type": context.get("target_record_type"),
+                    "target_record_id": context.get("target_record_id"),
+                },
+                "created_at": payload.get("created_at"),
+                "updated_at": payload.get("updated_at"),
+                "sort_timestamp": payload.get("updated_at") or payload.get("created_at") or "",
             })
         return records, {"status": "available", "count": len(records)}
 
