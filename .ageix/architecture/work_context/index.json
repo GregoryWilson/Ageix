@@ -1,0 +1,14 @@
+{
+  "count": 1,
+  "packages": [
+    {
+      "created_at": "2026-07-01T02:47:04.148253+00:00",
+      "project_id": "Ageix",
+      "resolved_architecture_ids": [
+        "ARCH-AGEIX-MCPPLATFORM"
+      ],
+      "work_context_id": "WORKCTX-EEA84B3BDA59",
+      "work_summary": "Sprint 25.5 final MCP platform hardening and publication. Scope: capability catalog audit, governance hardening, MCP response consistency, runtime/repository cleanup, governed MCP catalog publication, and final validation for transition to the Ageix Human Interface phase.: resolved 1 architecture node(s) (MCP Platform) with 12 direct impacted node(s)."
+    }
+  ]
+}

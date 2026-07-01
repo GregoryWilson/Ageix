@@ -1,0 +1,87 @@
+{
+  "job_id": "DEVJOB-6567FA84E027",
+  "title": "Sprint 25.5 MCP Publication Hardening",
+  "objective": "Finalize and publish the governed Ageix MCP platform without expanding platform scope. Harden the exposed MCP catalog, governance behavior, response consistency, runtime/source-control hygiene, and produce a governed published catalog baseline with validation evidence before moving to the Ageix Human Interface phase.",
+  "instructions": [
+    "Inspect all exposed MCP capabilities and the implementation-backed capability registry before making changes. Treat repository evidence and Ageix capability discovery as the source of truth.",
+    "Audit the public MCP catalog for duplicate, obsolete, misleading, or inconsistent registrations. Improve descriptions, categories, workflow hints, related tool references, schema descriptions, examples, summary/detail conventions, pagination fields, and identifier naming only where needed for publication readiness.",
+    "Do not rename stable capability IDs or remove exposed capabilities unless repository evidence clearly proves the registration is obsolete and safe to hide or remove. Reserved placeholder capabilities may remain if clearly labeled as reserved/experimental and not misleading.",
+    "Verify governed execution paths preserve project context, authorization decisions, audit behavior, agent identity, session context, and traceability references across artifacts, validation, proposals, decisions, evidence, patches, repository summaries, conversations, and DevJobs.",
+    "Normalize MCP-facing response and error behavior only where compatibility-preserving. Error responses should make clear what failed, why it failed, whether retry is appropriate, and what corrective action is expected.",
+    "Review runtime/source-control hygiene. Correct the known .gitignore typo .agiex/config/auth.json to .ageix/config/auth.json if still present. Ensure runtime/generated validation outputs are ignored when they are not intended source artifacts. Do not delete historical governance artifacts.",
+    "Produce a governed MCP catalog publication artifact/snapshot after hardening. The artifact must include version/build metadata, capability inventory, publication summary, and traceability to validation evidence and repository commit/reference. Do not introduce a new catalog publication worker.",
+    "Run appropriate validation: capability discovery, governance-focused tests, architecture baseline validation, MCP discovery/transport, authentication/authorization, artifact/evidence/validation workflows, conversation and multi-agent workflows, and full regression. Full regression must pass before final closure recommendation.",
+    "Submit the DevJob result by reference only with changed files, branch/PR/commit reference, published catalog artifact ID/path, validation run IDs or evidence, known non-blocking issues, and explicit readiness recommendation for the Ageix Human Interface phase."
+  ],
+  "acceptance_criteria": [
+    "Capability discovery succeeds and returns a parseable, stable catalog after changes.",
+    "No duplicate active registrations remain unless intentionally documented as aliases or legacy compatibility entries.",
+    "Catalog metadata is materially consistent: capability IDs, tool names, categories, descriptions, workflow hints, related tools, project/session argument conventions, pagination fields, and summary/detail patterns are coherent.",
+    "All governed execution paths reviewed for project context, authorization visibility, audit behavior, identity/session propagation, and traceable references; any confirmed bypasses or inconsistent authority checks are fixed without weakening governance.",
+    "Response envelopes and error semantics are consistent enough for MCP clients and LLMs to reason over, with compatibility preserved unless old behavior was erroneous.",
+    "Runtime/generated artifacts are ignored appropriately; git status after implementation shows only intentional changes; architecture/ADR/revision artifacts intended to be tracked remain tracked.",
+    "A governed MCP catalog publication snapshot/artifact exists and reflects the exposed surface after hardening.",
+    "Validation evidence exists for discovery, governance, architecture baseline, MCP transport, auth/authorization, artifact/evidence/validation workflows, conversation/multi-agent workflows, and full regression.",
+    "Full regression passes before closure recommendation, or any failure is documented as blocking with no readiness recommendation.",
+    "Final result includes changed files, validation summary, publication artifact ID/path, commit recommendation, known non-blocking issues, and readiness statement for the Ageix Human Interface phase."
+  ],
+  "allowed_paths": [
+    "ageix_mcp/**",
+    "ageix/**",
+    "tests/**",
+    "scripts/Smoke/**",
+    "scripts/**",
+    ".gitignore",
+    ".ageix/architecture/**",
+    ".ageix/adr/**",
+    ".ageix/artifacts/**",
+    ".ageix/catalog/**",
+    ".ageix/validation/**",
+    "docs/**"
+  ],
+  "prohibited_paths": [
+    ".ageix/evidence_packages/**",
+    ".ageix/decision_traces/**",
+    ".ageix/proposals/**",
+    ".ageix/config/auth.json",
+    ".env",
+    ".env.*",
+    "venv/**",
+    ".venv/**",
+    "**/*.patch",
+    "**/*.zip"
+  ],
+  "repo_target": "GregoryWilson/Ageix",
+  "branch_hint": "sprint-25.5-mcp-publication-hardening",
+  "evidence_package_ids": [],
+  "work_context_id": "WORKCTX-EEA84B3BDA59",
+  "validation_profile_ids": [
+    "capability_discovery",
+    "governance",
+    "architecture_baseline",
+    "mcp_transport",
+    "auth_authorization",
+    "artifact_evidence_validation_workflows",
+    "conversation_multi_agent",
+    "full_regression"
+  ],
+  "conversation_id": null,
+  "handoff_id": null,
+  "origin": "manual_greg_request",
+  "status": "assigned",
+  "created_by": "lex",
+  "assigned_to": "claude-code",
+  "created_at": "2026-07-01T02:47:34.943174+00:00",
+  "updated_at": "2026-07-01T02:47:34.943187+00:00",
+  "lifecycle_history": [
+    {
+      "from_status": null,
+      "to_status": "assigned",
+      "actor_id": "lex",
+      "actor_role": null,
+      "note": "devjob_created",
+      "transitioned_at": "2026-07-01T02:47:34.943174+00:00"
+    }
+  ],
+  "events": []
+}

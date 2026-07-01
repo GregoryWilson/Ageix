@@ -1,0 +1,1524 @@
+{
+  "active_intent": [
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-INTENT-0001",
+      "details": "The project should preserve local control, inspectable state, and practical self-hosting while allowing external model collaboration through MCP.",
+      "evidence_package_ids": [],
+      "future_considerations": [
+        "Expand service-to-file and test-to-service mappings after canonical architecture baseline is stable."
+      ],
+      "intent_id": "ARCHINTENT-AGEIX-LOCAL-FIRST",
+      "intent_number": "INTENT-0001",
+      "principle_ids": [
+        "ARCHPRIN-AGEIX-DETERMINISTIC-FIRST",
+        "ARCHPRIN-AGEIX-EVIDENCE-FIRST",
+        "ARCHPRIN-AGEIX-GOVERNANCE-FIRST",
+        "ARCHPRIN-AGEIX-IMMUTABLE-HISTORY",
+        "ARCHPRIN-AGEIX-SECURE-BOUNDARIES",
+        "ARCHPRIN-AGEIX-SUMMARY-FIRST"
+      ],
+      "proposal_id": "PROP-BASELINE-INTENT-0001",
+      "revision_ids": [],
+      "scope": "project",
+      "scope_distance": 0,
+      "summary": "Ageix should run primarily under local ownership while exposing carefully governed public integration points.",
+      "title": "Local-first AI gateway"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-INTENT-0004",
+      "details": "This lets MCP, workers, and future UI layers compose safe operations without hardwiring every flow.",
+      "evidence_package_ids": [],
+      "future_considerations": [
+        "Expand service-to-file and test-to-service mappings after canonical architecture baseline is stable."
+      ],
+      "intent_id": "ARCHINTENT-AGEIX-COMPOSABLE-CAPABILITIES",
+      "intent_number": "INTENT-0004",
+      "principle_ids": [
+        "ARCHPRIN-AGEIX-DETERMINISTIC-FIRST",
+        "ARCHPRIN-AGEIX-EVIDENCE-FIRST",
+        "ARCHPRIN-AGEIX-GOVERNANCE-FIRST",
+        "ARCHPRIN-AGEIX-IMMUTABLE-HISTORY",
+        "ARCHPRIN-AGEIX-SECURE-BOUNDARIES",
+        "ARCHPRIN-AGEIX-SUMMARY-FIRST"
+      ],
+      "proposal_id": "PROP-BASELINE-INTENT-0004",
+      "revision_ids": [],
+      "scope": "project",
+      "scope_distance": 0,
+      "summary": "Ageix capabilities should be discoverable, metadata-rich, governed, and independently extensible.",
+      "title": "Composable capability architecture"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-INTENT-0002",
+      "details": "Chair, proposals, consultations, validation, and capability boundaries should keep collaboration safe and auditable.",
+      "evidence_package_ids": [],
+      "future_considerations": [
+        "Expand service-to-file and test-to-service mappings after canonical architecture baseline is stable."
+      ],
+      "intent_id": "ARCHINTENT-AGEIX-GOVERNED-MULTI-AGENT",
+      "intent_number": "INTENT-0002",
+      "principle_ids": [
+        "ARCHPRIN-AGEIX-DETERMINISTIC-FIRST",
+        "ARCHPRIN-AGEIX-EVIDENCE-FIRST",
+        "ARCHPRIN-AGEIX-GOVERNANCE-FIRST",
+        "ARCHPRIN-AGEIX-IMMUTABLE-HISTORY",
+        "ARCHPRIN-AGEIX-SECURE-BOUNDARIES",
+        "ARCHPRIN-AGEIX-SUMMARY-FIRST"
+      ],
+      "proposal_id": "PROP-BASELINE-INTENT-0002",
+      "revision_ids": [],
+      "scope": "project",
+      "scope_distance": 1,
+      "summary": "Ageix should allow multiple agents and advisors to contribute without granting unchecked authority.",
+      "title": "Governed multi-agent collaboration"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-INTENT-0003",
+      "details": "This enables historical explanation and avoids repeating context collection.",
+      "evidence_package_ids": [],
+      "future_considerations": [
+        "Expand service-to-file and test-to-service mappings after canonical architecture baseline is stable."
+      ],
+      "intent_id": "ARCHINTENT-AGEIX-EVIDENCE-DRIVEN",
+      "intent_number": "INTENT-0003",
+      "principle_ids": [
+        "ARCHPRIN-AGEIX-DETERMINISTIC-FIRST",
+        "ARCHPRIN-AGEIX-EVIDENCE-FIRST",
+        "ARCHPRIN-AGEIX-GOVERNANCE-FIRST",
+        "ARCHPRIN-AGEIX-IMMUTABLE-HISTORY",
+        "ARCHPRIN-AGEIX-SECURE-BOUNDARIES",
+        "ARCHPRIN-AGEIX-SUMMARY-FIRST"
+      ],
+      "proposal_id": "PROP-BASELINE-INTENT-0003",
+      "revision_ids": [],
+      "scope": "project",
+      "scope_distance": 1,
+      "summary": "Ageix should ground decisions and reviews in reusable evidence packages and decision traces.",
+      "title": "Evidence-driven decisions"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-INTENT-0005",
+      "details": "Future workers should understand where work belongs and what must be preserved before acting.",
+      "evidence_package_ids": [],
+      "future_considerations": [
+        "Expand service-to-file and test-to-service mappings after canonical architecture baseline is stable."
+      ],
+      "intent_id": "ARCHINTENT-AGEIX-SELF-DESCRIBING",
+      "intent_number": "INTENT-0005",
+      "principle_ids": [
+        "ARCHPRIN-AGEIX-DETERMINISTIC-FIRST",
+        "ARCHPRIN-AGEIX-EVIDENCE-FIRST",
+        "ARCHPRIN-AGEIX-GOVERNANCE-FIRST",
+        "ARCHPRIN-AGEIX-IMMUTABLE-HISTORY",
+        "ARCHPRIN-AGEIX-SECURE-BOUNDARIES",
+        "ARCHPRIN-AGEIX-SUMMARY-FIRST"
+      ],
+      "proposal_id": "PROP-BASELINE-INTENT-0005",
+      "revision_ids": [],
+      "scope": "project",
+      "scope_distance": 1,
+      "summary": "Ageix should document its own domains, components, services, relationships, principles, intent, and ADRs as governed architecture artifacts.",
+      "title": "Self-describing architecture"
+    }
+  ],
+  "active_revision_summary": null,
+  "affected_nodes": [
+    {
+      "architecture_id": "ARCH-AGEIX-MCPPLATFORM",
+      "description": "Exposes governed Ageix capabilities to external model clients through discoverable, permissioned, summary-first tools. It preserves governance while enabling ChatGPT and future clients to retrieve and execute approved capabilities.",
+      "name": "MCP Platform",
+      "node_type": "domain",
+      "parent_id": "ARCH-AGEIX-PROJECT",
+      "path": "Ageix.MCPPlatform",
+      "project_id": "Ageix"
+    },
+    {
+      "architecture_id": "ARCH-AGEIX-PROJECT",
+      "description": "Ageix is a local-first governed AI gateway for safe multi-agent software work. It coordinates proposals, evidence, architecture context, validation, MCP exposure, and external model collaboration while preserving human authority and deterministic governance boundaries.",
+      "name": "Ageix",
+      "node_type": "project",
+      "parent_id": null,
+      "path": "Ageix",
+      "project_id": "Ageix"
+    }
+  ],
+  "architecture_id": "ARCH-AGEIX-MCPPLATFORM",
+  "architecture_node_summary": {
+    "architecture_id": "ARCH-AGEIX-MCPPLATFORM",
+    "description": "Exposes governed Ageix capabilities to external model clients through discoverable, permissioned, summary-first tools. It preserves governance while enabling ChatGPT and future clients to retrieve and execute approved capabilities.",
+    "name": "MCP Platform",
+    "node_type": "domain",
+    "parent_id": "ARCH-AGEIX-PROJECT",
+    "path": "Ageix.MCPPlatform",
+    "project_id": "Ageix"
+  },
+  "architecture_scope": {
+    "architecture_id": "ARCH-AGEIX-MCPPLATFORM",
+    "name": "MCP Platform",
+    "node_type": "domain",
+    "path": "Ageix.MCPPlatform"
+  },
+  "brief_summary": "Guidance context for MCP Platform (Ageix.MCPPlatform): principles=6, intents=5, adrs=13, conflicts=0.",
+  "conflicts": [],
+  "constraints": [
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-PRIN-0005",
+      "evidence_package_ids": [],
+      "principle_id": "ARCHPRIN-AGEIX-SECURE-BOUNDARIES",
+      "principle_number": "PRIN-0005",
+      "proposal_id": "PROP-BASELINE-PRIN-0005",
+      "rationale": "Trusted clients can still misuse access, so boundaries must be enforced in layers.",
+      "revision_ids": [],
+      "scope": "project",
+      "scope_distance": 0,
+      "statement": "External MCP clients must authenticate, authorize, and remain constrained by capability governance and trust boundaries.",
+      "summary": "External MCP clients must authenticate, authorize, and remain constrained by capability governance and trust boundaries.",
+      "title": "Secure external boundaries"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-PRIN-0006",
+      "evidence_package_ids": [],
+      "principle_id": "ARCHPRIN-AGEIX-SUMMARY-FIRST",
+      "principle_number": "PRIN-0006",
+      "proposal_id": "PROP-BASELINE-PRIN-0006",
+      "rationale": "This keeps external model context useful without oversized payloads.",
+      "revision_ids": [],
+      "scope": "project",
+      "scope_distance": 0,
+      "statement": "MCP and worker-facing context should be concise by default with explicit drill-down paths for detail.",
+      "summary": "MCP and worker-facing context should be concise by default with explicit drill-down paths for detail.",
+      "title": "Summary-first retrieval"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-PRIN-0001",
+      "evidence_package_ids": [],
+      "principle_id": "ARCHPRIN-AGEIX-GOVERNANCE-FIRST",
+      "principle_number": "PRIN-0001",
+      "proposal_id": "PROP-BASELINE-PRIN-0001",
+      "rationale": "Prevents autonomous or external actors from bypassing human authority.",
+      "revision_ids": [],
+      "scope": "project",
+      "scope_distance": 1,
+      "statement": "Ageix must route meaningful work through governed proposals, approval controls, and traceable authority before execution occurs.",
+      "summary": "Ageix must route meaningful work through governed proposals, approval controls, and traceable authority before execution occurs.",
+      "title": "Governance before execution"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-PRIN-0002",
+      "evidence_package_ids": [],
+      "principle_id": "ARCHPRIN-AGEIX-EVIDENCE-FIRST",
+      "principle_number": "PRIN-0002",
+      "proposal_id": "PROP-BASELINE-PRIN-0002",
+      "rationale": "Evidence gives decisions a stable factual basis and preserves explainability.",
+      "revision_ids": [],
+      "scope": "project",
+      "scope_distance": 1,
+      "statement": "Architectural and implementation decisions should be supported by scoped evidence packages where available.",
+      "summary": "Architectural and implementation decisions should be supported by scoped evidence packages where available.",
+      "title": "Evidence before decisions"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-PRIN-0003",
+      "evidence_package_ids": [],
+      "principle_id": "ARCHPRIN-AGEIX-DETERMINISTIC-FIRST",
+      "principle_number": "PRIN-0003",
+      "proposal_id": "PROP-BASELINE-PRIN-0003",
+      "rationale": "This keeps governance testable and allows intelligence to be layered later.",
+      "revision_ids": [],
+      "scope": "project",
+      "scope_distance": 1,
+      "statement": "Ageix should prefer deterministic, inspectable resolution before semantic inference or model judgment.",
+      "summary": "Ageix should prefer deterministic, inspectable resolution before semantic inference or model judgment.",
+      "title": "Deterministic before intelligent"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-PRIN-0004",
+      "evidence_package_ids": [],
+      "principle_id": "ARCHPRIN-AGEIX-IMMUTABLE-HISTORY",
+      "principle_number": "PRIN-0004",
+      "proposal_id": "PROP-BASELINE-PRIN-0004",
+      "rationale": "Historical explainability requires snapshots that do not silently change.",
+      "revision_ids": [],
+      "scope": "project",
+      "scope_distance": 1,
+      "statement": "Accepted evidence packages, ADRs, guidance contexts, work contexts, and decision traces should preserve historical state.",
+      "summary": "Accepted evidence packages, ADRs, guidance contexts, work contexts, and decision traces should preserve historical state.",
+      "title": "Immutable historical artifacts"
+    }
+  ],
+  "created_at": "2026-07-01T02:47:04.141818+00:00",
+  "created_by": "lex",
+  "decision_context": [
+    {
+      "adr_id": "ADR-AGEIX-GOVERNANCE-FIRST",
+      "adr_number": "ADR-0001",
+      "architecture_ids": [
+        "ARCH-AGEIX-PROJECT",
+        "ARCH-AGEIX-GOVERNANCEPLATFORM"
+      ],
+      "decision": "All meaningful execution must preserve governance and approval boundaries.",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0001",
+      "evidence_package_ids": [],
+      "future_considerations": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "proposal_id": "PROP-BASELINE-ADR-0001",
+      "rationale": "Seeded from known Ageix sprint history to establish the canonical project architecture baseline.",
+      "revision_ids": [],
+      "status": "accepted",
+      "title": "Governance before execution"
+    },
+    {
+      "adr_id": "ADR-AGEIX-CONSULTATION",
+      "adr_number": "ADR-0002",
+      "architecture_ids": [
+        "ARCH-AGEIX-GOVERNANCEPLATFORM-CONSULTATIONFRAMEWORK",
+        "ARCH-AGEIX-GOVERNANCEPLATFORM"
+      ],
+      "decision": "Advisors may inform decisions but cannot directly mutate governed state.",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0002",
+      "evidence_package_ids": [],
+      "future_considerations": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "proposal_id": "PROP-BASELINE-ADR-0002",
+      "rationale": "Seeded from known Ageix sprint history to establish the canonical project architecture baseline.",
+      "revision_ids": [],
+      "status": "accepted",
+      "title": "Consultation framework"
+    },
+    {
+      "adr_id": "ADR-AGEIX-EVIDENCE-PACKAGES",
+      "adr_number": "ADR-0003",
+      "architecture_ids": [
+        "ARCH-AGEIX-EVIDENCEPLATFORM-EVIDENCEPACKAGES",
+        "ARCH-AGEIX-EVIDENCEPLATFORM"
+      ],
+      "decision": "Evidence packages preserve provenance, summaries, and traceability across decisions.",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0003",
+      "evidence_package_ids": [],
+      "future_considerations": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "proposal_id": "PROP-BASELINE-ADR-0003",
+      "rationale": "Seeded from known Ageix sprint history to establish the canonical project architecture baseline.",
+      "revision_ids": [],
+      "status": "accepted",
+      "title": "Evidence package architecture"
+    },
+    {
+      "adr_id": "ADR-AGEIX-EVIDENCE-FRESHNESS",
+      "adr_number": "ADR-0004",
+      "architecture_ids": [
+        "ARCH-AGEIX-EVIDENCEPLATFORM-FRESHNESSEVALUATION",
+        "ARCH-AGEIX-EVIDENCEPLATFORM"
+      ],
+      "decision": "Evidence consumers should know when package context may be stale.",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0004",
+      "evidence_package_ids": [],
+      "future_considerations": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "proposal_id": "PROP-BASELINE-ADR-0004",
+      "rationale": "Seeded from known Ageix sprint history to establish the canonical project architecture baseline.",
+      "revision_ids": [],
+      "status": "accepted",
+      "title": "Evidence freshness model"
+    },
+    {
+      "adr_id": "ADR-AGEIX-MCP-REGISTRY",
+      "adr_number": "ADR-0005",
+      "architecture_ids": [
+        "ARCH-AGEIX-MCPPLATFORM-CAPABILITYREGISTRY",
+        "ARCH-AGEIX-MCPPLATFORM"
+      ],
+      "decision": "Discovery metadata must not grant authority to execute.",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0005",
+      "evidence_package_ids": [],
+      "future_considerations": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "proposal_id": "PROP-BASELINE-ADR-0005",
+      "rationale": "Seeded from known Ageix sprint history to establish the canonical project architecture baseline.",
+      "revision_ids": [],
+      "status": "accepted",
+      "title": "MCP capability registry"
+    },
+    {
+      "adr_id": "ADR-AGEIX-MCP-DISCOVERY",
+      "adr_number": "ADR-0006",
+      "architecture_ids": [
+        "ARCH-AGEIX-MCPPLATFORM-DISCOVERY",
+        "ARCH-AGEIX-MCPPLATFORM"
+      ],
+      "decision": "External model clients need usable discovery as the capability catalog grows.",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0006",
+      "evidence_package_ids": [],
+      "future_considerations": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "proposal_id": "PROP-BASELINE-ADR-0006",
+      "rationale": "Seeded from known Ageix sprint history to establish the canonical project architecture baseline.",
+      "revision_ids": [],
+      "status": "accepted",
+      "title": "MCP discovery ergonomics"
+    },
+    {
+      "adr_id": "ADR-AGEIX-TRUST-BOUNDARY",
+      "adr_number": "ADR-0007",
+      "architecture_ids": [
+        "ARCH-AGEIX-SECURITYPLATFORM-TRUSTBOUNDARIES",
+        "ARCH-AGEIX-SECURITYPLATFORM"
+      ],
+      "decision": "Trusted models can still abuse access, so governance must defend against misuse.",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0007",
+      "evidence_package_ids": [],
+      "future_considerations": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "proposal_id": "PROP-BASELINE-ADR-0007",
+      "rationale": "Seeded from known Ageix sprint history to establish the canonical project architecture baseline.",
+      "revision_ids": [],
+      "status": "accepted",
+      "title": "MCP trust boundary"
+    },
+    {
+      "adr_id": "ADR-AGEIX-OAUTH-JWT",
+      "adr_number": "ADR-0008",
+      "architecture_ids": [
+        "ARCH-AGEIX-SECURITYPLATFORM-OAUTHJWTIDENTITY",
+        "ARCH-AGEIX-SECURITYPLATFORM"
+      ],
+      "decision": "Agent identity must come from trusted tokens, not caller-supplied headers.",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0008",
+      "evidence_package_ids": [],
+      "future_considerations": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "proposal_id": "PROP-BASELINE-ADR-0008",
+      "rationale": "Seeded from known Ageix sprint history to establish the canonical project architecture baseline.",
+      "revision_ids": [],
+      "status": "accepted",
+      "title": "OAuth/JWT identity model"
+    },
+    {
+      "adr_id": "ADR-AGEIX-ARCH-REGISTRY",
+      "adr_number": "ADR-0009",
+      "architecture_ids": [
+        "ARCH-AGEIX-ARCHITECTUREPLATFORM-ARCHITECTUREREGISTRY",
+        "ARCH-AGEIX-ARCHITECTUREPLATFORM-ARCHITECTUREHIERARCHY"
+      ],
+      "decision": "Architecture context should be retrieved without reading the full repository.",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0009",
+      "evidence_package_ids": [],
+      "future_considerations": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "proposal_id": "PROP-BASELINE-ADR-0009",
+      "rationale": "Seeded from known Ageix sprint history to establish the canonical project architecture baseline.",
+      "revision_ids": [],
+      "status": "accepted",
+      "title": "Architecture registry"
+    },
+    {
+      "adr_id": "ADR-AGEIX-ARCH-GUIDANCE",
+      "adr_number": "ADR-0010",
+      "architecture_ids": [
+        "ARCH-AGEIX-ARCHITECTUREPLATFORM-ARCHITECTUREGUIDANCE",
+        "ARCH-AGEIX-ARCHITECTUREPLATFORM"
+      ],
+      "decision": "Future work should preserve architectural rules and direction.",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0010",
+      "evidence_package_ids": [],
+      "future_considerations": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "proposal_id": "PROP-BASELINE-ADR-0010",
+      "rationale": "Seeded from known Ageix sprint history to establish the canonical project architecture baseline.",
+      "revision_ids": [],
+      "status": "accepted",
+      "title": "Architecture guidance model"
+    },
+    {
+      "adr_id": "ADR-AGEIX-GUIDECTX",
+      "adr_number": "ADR-0011",
+      "architecture_ids": [
+        "ARCH-AGEIX-ARCHITECTUREPLATFORM-GUIDANCECONTEXT",
+        "ARCH-AGEIX-ARCHITECTUREPLATFORM"
+      ],
+      "decision": "External consumers need scoped guidance with lineage and traceability.",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0011",
+      "evidence_package_ids": [],
+      "future_considerations": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "proposal_id": "PROP-BASELINE-ADR-0011",
+      "rationale": "Seeded from known Ageix sprint history to establish the canonical project architecture baseline.",
+      "revision_ids": [],
+      "status": "accepted",
+      "title": "Guidance context packages"
+    },
+    {
+      "adr_id": "ADR-AGEIX-WORKCTX",
+      "adr_number": "ADR-0012",
+      "architecture_ids": [
+        "ARCH-AGEIX-ARCHITECTUREPLATFORM-WORKCONTEXT",
+        "ARCH-AGEIX-WORKERPLATFORM"
+      ],
+      "decision": "Workers should know affected scope, guidance, and direct impacts before execution.",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0012",
+      "evidence_package_ids": [],
+      "future_considerations": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "proposal_id": "PROP-BASELINE-ADR-0012",
+      "rationale": "Seeded from known Ageix sprint history to establish the canonical project architecture baseline.",
+      "revision_ids": [],
+      "status": "accepted",
+      "title": "Work context packages"
+    },
+    {
+      "adr_id": "ADR-AGEIX-SELF-ARCH",
+      "adr_number": "ADR-0013",
+      "architecture_ids": [
+        "ARCH-AGEIX-PROJECT",
+        "ARCH-AGEIX-ARCHITECTUREPLATFORM"
+      ],
+      "decision": "Self-description validates the platform and provides design truth for future work.",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0013",
+      "evidence_package_ids": [],
+      "future_considerations": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "proposal_id": "PROP-BASELINE-ADR-0013",
+      "rationale": "Seeded from known Ageix sprint history to establish the canonical project architecture baseline.",
+      "revision_ids": [],
+      "status": "accepted",
+      "title": "Canonical Ageix architecture baseline"
+    }
+  ],
+  "detail_available": true,
+  "detail_path": {
+    "arguments": {
+      "architecture_id": "ARCH-AGEIX-MCPPLATFORM",
+      "persist": false
+    },
+    "tool": "architecture.guidance.context"
+  },
+  "future_direction": [
+    {
+      "items": [
+        "Expand service-to-file and test-to-service mappings after canonical architecture baseline is stable."
+      ],
+      "source_id": "ARCHINTENT-AGEIX-LOCAL-FIRST",
+      "source_type": "intent",
+      "summary": "Ageix should run primarily under local ownership while exposing carefully governed public integration points."
+    },
+    {
+      "items": [
+        "Expand service-to-file and test-to-service mappings after canonical architecture baseline is stable."
+      ],
+      "source_id": "ARCHINTENT-AGEIX-COMPOSABLE-CAPABILITIES",
+      "source_type": "intent",
+      "summary": "Ageix capabilities should be discoverable, metadata-rich, governed, and independently extensible."
+    },
+    {
+      "items": [
+        "Expand service-to-file and test-to-service mappings after canonical architecture baseline is stable."
+      ],
+      "source_id": "ARCHINTENT-AGEIX-GOVERNED-MULTI-AGENT",
+      "source_type": "intent",
+      "summary": "Ageix should allow multiple agents and advisors to contribute without granting unchecked authority."
+    },
+    {
+      "items": [
+        "Expand service-to-file and test-to-service mappings after canonical architecture baseline is stable."
+      ],
+      "source_id": "ARCHINTENT-AGEIX-EVIDENCE-DRIVEN",
+      "source_type": "intent",
+      "summary": "Ageix should ground decisions and reviews in reusable evidence packages and decision traces."
+    },
+    {
+      "items": [
+        "Expand service-to-file and test-to-service mappings after canonical architecture baseline is stable."
+      ],
+      "source_id": "ARCHINTENT-AGEIX-SELF-DESCRIBING",
+      "source_type": "intent",
+      "summary": "Ageix should document its own domains, components, services, relationships, principles, intent, and ADRs as governed architecture artifacts."
+    },
+    {
+      "items": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "source_id": "ADR-AGEIX-GOVERNANCE-FIRST",
+      "source_type": "adr",
+      "summary": "Governance before execution"
+    },
+    {
+      "items": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "source_id": "ADR-AGEIX-CONSULTATION",
+      "source_type": "adr",
+      "summary": "Consultation framework"
+    },
+    {
+      "items": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "source_id": "ADR-AGEIX-EVIDENCE-PACKAGES",
+      "source_type": "adr",
+      "summary": "Evidence package architecture"
+    },
+    {
+      "items": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "source_id": "ADR-AGEIX-EVIDENCE-FRESHNESS",
+      "source_type": "adr",
+      "summary": "Evidence freshness model"
+    },
+    {
+      "items": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "source_id": "ADR-AGEIX-MCP-REGISTRY",
+      "source_type": "adr",
+      "summary": "MCP capability registry"
+    },
+    {
+      "items": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "source_id": "ADR-AGEIX-MCP-DISCOVERY",
+      "source_type": "adr",
+      "summary": "MCP discovery ergonomics"
+    },
+    {
+      "items": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "source_id": "ADR-AGEIX-TRUST-BOUNDARY",
+      "source_type": "adr",
+      "summary": "MCP trust boundary"
+    },
+    {
+      "items": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "source_id": "ADR-AGEIX-OAUTH-JWT",
+      "source_type": "adr",
+      "summary": "OAuth/JWT identity model"
+    },
+    {
+      "items": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "source_id": "ADR-AGEIX-ARCH-REGISTRY",
+      "source_type": "adr",
+      "summary": "Architecture registry"
+    },
+    {
+      "items": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "source_id": "ADR-AGEIX-ARCH-GUIDANCE",
+      "source_type": "adr",
+      "summary": "Architecture guidance model"
+    },
+    {
+      "items": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "source_id": "ADR-AGEIX-GUIDECTX",
+      "source_type": "adr",
+      "summary": "Guidance context packages"
+    },
+    {
+      "items": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "source_id": "ADR-AGEIX-WORKCTX",
+      "source_type": "adr",
+      "summary": "Work context packages"
+    },
+    {
+      "items": [
+        "Expand with additional ADRs as full repository documentation matures."
+      ],
+      "source_id": "ADR-AGEIX-SELF-ARCH",
+      "source_type": "adr",
+      "summary": "Canonical Ageix architecture baseline"
+    }
+  ],
+  "generated_on_demand": false,
+  "governance_lineage": {
+    "decision_trace_ids": [
+      "TRACE-BASELINE-PRIN-0005",
+      "TRACE-BASELINE-PRIN-0006",
+      "TRACE-BASELINE-PRIN-0001",
+      "TRACE-BASELINE-PRIN-0002",
+      "TRACE-BASELINE-PRIN-0003",
+      "TRACE-BASELINE-PRIN-0004",
+      "TRACE-BASELINE-INTENT-0001",
+      "TRACE-BASELINE-INTENT-0004",
+      "TRACE-BASELINE-INTENT-0002",
+      "TRACE-BASELINE-INTENT-0003",
+      "TRACE-BASELINE-INTENT-0005",
+      "TRACE-BASELINE-ADR-0001",
+      "TRACE-BASELINE-ADR-0002",
+      "TRACE-BASELINE-ADR-0003",
+      "TRACE-BASELINE-ADR-0004",
+      "TRACE-BASELINE-ADR-0005",
+      "TRACE-BASELINE-ADR-0006",
+      "TRACE-BASELINE-ADR-0007",
+      "TRACE-BASELINE-ADR-0008",
+      "TRACE-BASELINE-ADR-0009",
+      "TRACE-BASELINE-ADR-0010",
+      "TRACE-BASELINE-ADR-0011",
+      "TRACE-BASELINE-ADR-0012",
+      "TRACE-BASELINE-ADR-0013"
+    ],
+    "evidence_package_ids": [],
+    "proposal_ids": [
+      "PROP-BASELINE-PRIN-0005",
+      "PROP-BASELINE-PRIN-0006",
+      "PROP-BASELINE-PRIN-0001",
+      "PROP-BASELINE-PRIN-0002",
+      "PROP-BASELINE-PRIN-0003",
+      "PROP-BASELINE-PRIN-0004",
+      "PROP-BASELINE-INTENT-0001",
+      "PROP-BASELINE-INTENT-0004",
+      "PROP-BASELINE-INTENT-0002",
+      "PROP-BASELINE-INTENT-0003",
+      "PROP-BASELINE-INTENT-0005",
+      "PROP-BASELINE-ADR-0001",
+      "PROP-BASELINE-ADR-0002",
+      "PROP-BASELINE-ADR-0003",
+      "PROP-BASELINE-ADR-0004",
+      "PROP-BASELINE-ADR-0005",
+      "PROP-BASELINE-ADR-0006",
+      "PROP-BASELINE-ADR-0007",
+      "PROP-BASELINE-ADR-0008",
+      "PROP-BASELINE-ADR-0009",
+      "PROP-BASELINE-ADR-0010",
+      "PROP-BASELINE-ADR-0011",
+      "PROP-BASELINE-ADR-0012",
+      "PROP-BASELINE-ADR-0013"
+    ]
+  },
+  "governing_principles": [
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-PRIN-0005",
+      "evidence_package_ids": [],
+      "principle_id": "ARCHPRIN-AGEIX-SECURE-BOUNDARIES",
+      "principle_number": "PRIN-0005",
+      "proposal_id": "PROP-BASELINE-PRIN-0005",
+      "rationale": "Trusted clients can still misuse access, so boundaries must be enforced in layers.",
+      "revision_ids": [],
+      "scope": "project",
+      "scope_distance": 0,
+      "statement": "External MCP clients must authenticate, authorize, and remain constrained by capability governance and trust boundaries.",
+      "summary": "External MCP clients must authenticate, authorize, and remain constrained by capability governance and trust boundaries.",
+      "title": "Secure external boundaries"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-PRIN-0006",
+      "evidence_package_ids": [],
+      "principle_id": "ARCHPRIN-AGEIX-SUMMARY-FIRST",
+      "principle_number": "PRIN-0006",
+      "proposal_id": "PROP-BASELINE-PRIN-0006",
+      "rationale": "This keeps external model context useful without oversized payloads.",
+      "revision_ids": [],
+      "scope": "project",
+      "scope_distance": 0,
+      "statement": "MCP and worker-facing context should be concise by default with explicit drill-down paths for detail.",
+      "summary": "MCP and worker-facing context should be concise by default with explicit drill-down paths for detail.",
+      "title": "Summary-first retrieval"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-PRIN-0001",
+      "evidence_package_ids": [],
+      "principle_id": "ARCHPRIN-AGEIX-GOVERNANCE-FIRST",
+      "principle_number": "PRIN-0001",
+      "proposal_id": "PROP-BASELINE-PRIN-0001",
+      "rationale": "Prevents autonomous or external actors from bypassing human authority.",
+      "revision_ids": [],
+      "scope": "project",
+      "scope_distance": 1,
+      "statement": "Ageix must route meaningful work through governed proposals, approval controls, and traceable authority before execution occurs.",
+      "summary": "Ageix must route meaningful work through governed proposals, approval controls, and traceable authority before execution occurs.",
+      "title": "Governance before execution"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-PRIN-0002",
+      "evidence_package_ids": [],
+      "principle_id": "ARCHPRIN-AGEIX-EVIDENCE-FIRST",
+      "principle_number": "PRIN-0002",
+      "proposal_id": "PROP-BASELINE-PRIN-0002",
+      "rationale": "Evidence gives decisions a stable factual basis and preserves explainability.",
+      "revision_ids": [],
+      "scope": "project",
+      "scope_distance": 1,
+      "statement": "Architectural and implementation decisions should be supported by scoped evidence packages where available.",
+      "summary": "Architectural and implementation decisions should be supported by scoped evidence packages where available.",
+      "title": "Evidence before decisions"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-PRIN-0003",
+      "evidence_package_ids": [],
+      "principle_id": "ARCHPRIN-AGEIX-DETERMINISTIC-FIRST",
+      "principle_number": "PRIN-0003",
+      "proposal_id": "PROP-BASELINE-PRIN-0003",
+      "rationale": "This keeps governance testable and allows intelligence to be layered later.",
+      "revision_ids": [],
+      "scope": "project",
+      "scope_distance": 1,
+      "statement": "Ageix should prefer deterministic, inspectable resolution before semantic inference or model judgment.",
+      "summary": "Ageix should prefer deterministic, inspectable resolution before semantic inference or model judgment.",
+      "title": "Deterministic before intelligent"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-PRIN-0004",
+      "evidence_package_ids": [],
+      "principle_id": "ARCHPRIN-AGEIX-IMMUTABLE-HISTORY",
+      "principle_number": "PRIN-0004",
+      "proposal_id": "PROP-BASELINE-PRIN-0004",
+      "rationale": "Historical explainability requires snapshots that do not silently change.",
+      "revision_ids": [],
+      "scope": "project",
+      "scope_distance": 1,
+      "statement": "Accepted evidence packages, ADRs, guidance contexts, work contexts, and decision traces should preserve historical state.",
+      "summary": "Accepted evidence packages, ADRs, guidance contexts, work contexts, and decision traces should preserve historical state.",
+      "title": "Immutable historical artifacts"
+    }
+  ],
+  "immutable_snapshot": true,
+  "metadata": {
+    "conflicts_explicit_only": true,
+    "deterministic": true,
+    "future_18_9_ready": true,
+    "no_scoring": true
+  },
+  "open_considerations": [],
+  "package_id": "GUIDECTX-BF6CB7A41049",
+  "persisted_snapshot": true,
+  "project_id": "Ageix",
+  "revision_lineage": [],
+  "scope": {
+    "adr_id": null,
+    "architecture_id": "ARCH-AGEIX-MCPPLATFORM",
+    "effective_guidance": true,
+    "inheritance": "downward_full_stack",
+    "intent_id": null,
+    "ordering": "nearest_scope_first",
+    "path": null,
+    "principle_id": null,
+    "project_id": "Ageix",
+    "revision_id": null
+  },
+  "source_revision_id": null,
+  "summary_first": true,
+  "traceability": [
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-PRIN-0005",
+      "evidence_package_ids": [],
+      "principle_id": "ARCHPRIN-AGEIX-SECURE-BOUNDARIES",
+      "proposal_id": "PROP-BASELINE-PRIN-0005",
+      "revision_ids": [],
+      "source_id": "ARCHPRIN-AGEIX-SECURE-BOUNDARIES",
+      "source_type": "principle",
+      "summary": "Secure external boundaries"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-PRIN-0006",
+      "evidence_package_ids": [],
+      "principle_id": "ARCHPRIN-AGEIX-SUMMARY-FIRST",
+      "proposal_id": "PROP-BASELINE-PRIN-0006",
+      "revision_ids": [],
+      "source_id": "ARCHPRIN-AGEIX-SUMMARY-FIRST",
+      "source_type": "principle",
+      "summary": "Summary-first retrieval"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-PRIN-0001",
+      "evidence_package_ids": [],
+      "principle_id": "ARCHPRIN-AGEIX-GOVERNANCE-FIRST",
+      "proposal_id": "PROP-BASELINE-PRIN-0001",
+      "revision_ids": [],
+      "source_id": "ARCHPRIN-AGEIX-GOVERNANCE-FIRST",
+      "source_type": "principle",
+      "summary": "Governance before execution"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-PRIN-0002",
+      "evidence_package_ids": [],
+      "principle_id": "ARCHPRIN-AGEIX-EVIDENCE-FIRST",
+      "proposal_id": "PROP-BASELINE-PRIN-0002",
+      "revision_ids": [],
+      "source_id": "ARCHPRIN-AGEIX-EVIDENCE-FIRST",
+      "source_type": "principle",
+      "summary": "Evidence before decisions"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-PRIN-0003",
+      "evidence_package_ids": [],
+      "principle_id": "ARCHPRIN-AGEIX-DETERMINISTIC-FIRST",
+      "proposal_id": "PROP-BASELINE-PRIN-0003",
+      "revision_ids": [],
+      "source_id": "ARCHPRIN-AGEIX-DETERMINISTIC-FIRST",
+      "source_type": "principle",
+      "summary": "Deterministic before intelligent"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-PRIN-0004",
+      "evidence_package_ids": [],
+      "principle_id": "ARCHPRIN-AGEIX-IMMUTABLE-HISTORY",
+      "proposal_id": "PROP-BASELINE-PRIN-0004",
+      "revision_ids": [],
+      "source_id": "ARCHPRIN-AGEIX-IMMUTABLE-HISTORY",
+      "source_type": "principle",
+      "summary": "Immutable historical artifacts"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-INTENT-0001",
+      "evidence_package_ids": [],
+      "intent_id": "ARCHINTENT-AGEIX-LOCAL-FIRST",
+      "principle_ids": [
+        "ARCHPRIN-AGEIX-DETERMINISTIC-FIRST",
+        "ARCHPRIN-AGEIX-EVIDENCE-FIRST",
+        "ARCHPRIN-AGEIX-GOVERNANCE-FIRST",
+        "ARCHPRIN-AGEIX-IMMUTABLE-HISTORY",
+        "ARCHPRIN-AGEIX-SECURE-BOUNDARIES",
+        "ARCHPRIN-AGEIX-SUMMARY-FIRST"
+      ],
+      "proposal_id": "PROP-BASELINE-INTENT-0001",
+      "revision_ids": [],
+      "source_id": "ARCHINTENT-AGEIX-LOCAL-FIRST",
+      "source_type": "intent",
+      "summary": "Local-first AI gateway"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-INTENT-0004",
+      "evidence_package_ids": [],
+      "intent_id": "ARCHINTENT-AGEIX-COMPOSABLE-CAPABILITIES",
+      "principle_ids": [
+        "ARCHPRIN-AGEIX-DETERMINISTIC-FIRST",
+        "ARCHPRIN-AGEIX-EVIDENCE-FIRST",
+        "ARCHPRIN-AGEIX-GOVERNANCE-FIRST",
+        "ARCHPRIN-AGEIX-IMMUTABLE-HISTORY",
+        "ARCHPRIN-AGEIX-SECURE-BOUNDARIES",
+        "ARCHPRIN-AGEIX-SUMMARY-FIRST"
+      ],
+      "proposal_id": "PROP-BASELINE-INTENT-0004",
+      "revision_ids": [],
+      "source_id": "ARCHINTENT-AGEIX-COMPOSABLE-CAPABILITIES",
+      "source_type": "intent",
+      "summary": "Composable capability architecture"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-INTENT-0002",
+      "evidence_package_ids": [],
+      "intent_id": "ARCHINTENT-AGEIX-GOVERNED-MULTI-AGENT",
+      "principle_ids": [
+        "ARCHPRIN-AGEIX-DETERMINISTIC-FIRST",
+        "ARCHPRIN-AGEIX-EVIDENCE-FIRST",
+        "ARCHPRIN-AGEIX-GOVERNANCE-FIRST",
+        "ARCHPRIN-AGEIX-IMMUTABLE-HISTORY",
+        "ARCHPRIN-AGEIX-SECURE-BOUNDARIES",
+        "ARCHPRIN-AGEIX-SUMMARY-FIRST"
+      ],
+      "proposal_id": "PROP-BASELINE-INTENT-0002",
+      "revision_ids": [],
+      "source_id": "ARCHINTENT-AGEIX-GOVERNED-MULTI-AGENT",
+      "source_type": "intent",
+      "summary": "Governed multi-agent collaboration"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-INTENT-0003",
+      "evidence_package_ids": [],
+      "intent_id": "ARCHINTENT-AGEIX-EVIDENCE-DRIVEN",
+      "principle_ids": [
+        "ARCHPRIN-AGEIX-DETERMINISTIC-FIRST",
+        "ARCHPRIN-AGEIX-EVIDENCE-FIRST",
+        "ARCHPRIN-AGEIX-GOVERNANCE-FIRST",
+        "ARCHPRIN-AGEIX-IMMUTABLE-HISTORY",
+        "ARCHPRIN-AGEIX-SECURE-BOUNDARIES",
+        "ARCHPRIN-AGEIX-SUMMARY-FIRST"
+      ],
+      "proposal_id": "PROP-BASELINE-INTENT-0003",
+      "revision_ids": [],
+      "source_id": "ARCHINTENT-AGEIX-EVIDENCE-DRIVEN",
+      "source_type": "intent",
+      "summary": "Evidence-driven decisions"
+    },
+    {
+      "adr_ids": [
+        "ADR-AGEIX-ARCH-GUIDANCE",
+        "ADR-AGEIX-ARCH-REGISTRY",
+        "ADR-AGEIX-CONSULTATION",
+        "ADR-AGEIX-EVIDENCE-FRESHNESS",
+        "ADR-AGEIX-EVIDENCE-PACKAGES",
+        "ADR-AGEIX-GOVERNANCE-FIRST",
+        "ADR-AGEIX-GUIDECTX",
+        "ADR-AGEIX-MCP-DISCOVERY",
+        "ADR-AGEIX-MCP-REGISTRY",
+        "ADR-AGEIX-OAUTH-JWT",
+        "ADR-AGEIX-SELF-ARCH",
+        "ADR-AGEIX-TRUST-BOUNDARY",
+        "ADR-AGEIX-WORKCTX"
+      ],
+      "decision_trace_id": "TRACE-BASELINE-INTENT-0005",
+      "evidence_package_ids": [],
+      "intent_id": "ARCHINTENT-AGEIX-SELF-DESCRIBING",
+      "principle_ids": [
+        "ARCHPRIN-AGEIX-DETERMINISTIC-FIRST",
+        "ARCHPRIN-AGEIX-EVIDENCE-FIRST",
+        "ARCHPRIN-AGEIX-GOVERNANCE-FIRST",
+        "ARCHPRIN-AGEIX-IMMUTABLE-HISTORY",
+        "ARCHPRIN-AGEIX-SECURE-BOUNDARIES",
+        "ARCHPRIN-AGEIX-SUMMARY-FIRST"
+      ],
+      "proposal_id": "PROP-BASELINE-INTENT-0005",
+      "revision_ids": [],
+      "source_id": "ARCHINTENT-AGEIX-SELF-DESCRIBING",
+      "source_type": "intent",
+      "summary": "Self-describing architecture"
+    },
+    {
+      "adr_id": "ADR-AGEIX-GOVERNANCE-FIRST",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0001",
+      "evidence_package_ids": [],
+      "proposal_id": "PROP-BASELINE-ADR-0001",
+      "revision_ids": [],
+      "source_id": "ADR-AGEIX-GOVERNANCE-FIRST",
+      "source_type": "adr",
+      "summary": "Governance before execution"
+    },
+    {
+      "adr_id": "ADR-AGEIX-CONSULTATION",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0002",
+      "evidence_package_ids": [],
+      "proposal_id": "PROP-BASELINE-ADR-0002",
+      "revision_ids": [],
+      "source_id": "ADR-AGEIX-CONSULTATION",
+      "source_type": "adr",
+      "summary": "Consultation framework"
+    },
+    {
+      "adr_id": "ADR-AGEIX-EVIDENCE-PACKAGES",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0003",
+      "evidence_package_ids": [],
+      "proposal_id": "PROP-BASELINE-ADR-0003",
+      "revision_ids": [],
+      "source_id": "ADR-AGEIX-EVIDENCE-PACKAGES",
+      "source_type": "adr",
+      "summary": "Evidence package architecture"
+    },
+    {
+      "adr_id": "ADR-AGEIX-EVIDENCE-FRESHNESS",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0004",
+      "evidence_package_ids": [],
+      "proposal_id": "PROP-BASELINE-ADR-0004",
+      "revision_ids": [],
+      "source_id": "ADR-AGEIX-EVIDENCE-FRESHNESS",
+      "source_type": "adr",
+      "summary": "Evidence freshness model"
+    },
+    {
+      "adr_id": "ADR-AGEIX-MCP-REGISTRY",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0005",
+      "evidence_package_ids": [],
+      "proposal_id": "PROP-BASELINE-ADR-0005",
+      "revision_ids": [],
+      "source_id": "ADR-AGEIX-MCP-REGISTRY",
+      "source_type": "adr",
+      "summary": "MCP capability registry"
+    },
+    {
+      "adr_id": "ADR-AGEIX-MCP-DISCOVERY",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0006",
+      "evidence_package_ids": [],
+      "proposal_id": "PROP-BASELINE-ADR-0006",
+      "revision_ids": [],
+      "source_id": "ADR-AGEIX-MCP-DISCOVERY",
+      "source_type": "adr",
+      "summary": "MCP discovery ergonomics"
+    },
+    {
+      "adr_id": "ADR-AGEIX-TRUST-BOUNDARY",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0007",
+      "evidence_package_ids": [],
+      "proposal_id": "PROP-BASELINE-ADR-0007",
+      "revision_ids": [],
+      "source_id": "ADR-AGEIX-TRUST-BOUNDARY",
+      "source_type": "adr",
+      "summary": "MCP trust boundary"
+    },
+    {
+      "adr_id": "ADR-AGEIX-OAUTH-JWT",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0008",
+      "evidence_package_ids": [],
+      "proposal_id": "PROP-BASELINE-ADR-0008",
+      "revision_ids": [],
+      "source_id": "ADR-AGEIX-OAUTH-JWT",
+      "source_type": "adr",
+      "summary": "OAuth/JWT identity model"
+    },
+    {
+      "adr_id": "ADR-AGEIX-ARCH-REGISTRY",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0009",
+      "evidence_package_ids": [],
+      "proposal_id": "PROP-BASELINE-ADR-0009",
+      "revision_ids": [],
+      "source_id": "ADR-AGEIX-ARCH-REGISTRY",
+      "source_type": "adr",
+      "summary": "Architecture registry"
+    },
+    {
+      "adr_id": "ADR-AGEIX-ARCH-GUIDANCE",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0010",
+      "evidence_package_ids": [],
+      "proposal_id": "PROP-BASELINE-ADR-0010",
+      "revision_ids": [],
+      "source_id": "ADR-AGEIX-ARCH-GUIDANCE",
+      "source_type": "adr",
+      "summary": "Architecture guidance model"
+    },
+    {
+      "adr_id": "ADR-AGEIX-GUIDECTX",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0011",
+      "evidence_package_ids": [],
+      "proposal_id": "PROP-BASELINE-ADR-0011",
+      "revision_ids": [],
+      "source_id": "ADR-AGEIX-GUIDECTX",
+      "source_type": "adr",
+      "summary": "Guidance context packages"
+    },
+    {
+      "adr_id": "ADR-AGEIX-WORKCTX",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0012",
+      "evidence_package_ids": [],
+      "proposal_id": "PROP-BASELINE-ADR-0012",
+      "revision_ids": [],
+      "source_id": "ADR-AGEIX-WORKCTX",
+      "source_type": "adr",
+      "summary": "Work context packages"
+    },
+    {
+      "adr_id": "ADR-AGEIX-SELF-ARCH",
+      "decision_trace_id": "TRACE-BASELINE-ADR-0013",
+      "evidence_package_ids": [],
+      "proposal_id": "PROP-BASELINE-ADR-0013",
+      "revision_ids": [],
+      "source_id": "ADR-AGEIX-SELF-ARCH",
+      "source_type": "adr",
+      "summary": "Canonical Ageix architecture baseline"
+    }
+  ]
+}
